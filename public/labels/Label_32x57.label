@@ -97,7 +97,7 @@
             </Size>
           </ObjectLayout>
         </TextObject>
-        <DateTimeObject>
+        <TextObject>
           <Name>Datum</Name>
           <Brushes>
             <BackgroundBrush>
@@ -139,10 +139,10 @@
             <IsVertical>False</IsVertical>
             <LineTextSpan>
               <TextSpan>
-                <Text />
+                <Text>Datum</Text>
                 <FontInfo>
                   <FontName>Helvetica</FontName>
-                  <FontSize>13.9</FontSize>
+                  <FontSize>21.4</FontSize>
                   <IsBold>False</IsBold>
                   <IsItalic>False</IsItalic>
                   <IsUnderline>False</IsUnderline>
@@ -153,26 +153,11 @@
                   </FontBrush>
                 </FontInfo>
               </TextSpan>
-              <FixedTextSpan>
-                <Text>31.07.2025</Text>
-                <FontInfo>
-                  <FontName>Helvetica</FontName>
-                  <FontSize>13.9</FontSize>
-                  <IsBold>False</IsBold>
-                  <IsItalic>False</IsItalic>
-                  <IsUnderline>False</IsUnderline>
-                  <FontBrush>
-                    <SolidColorBrush>
-                      <Color A="1" R="0" G="0" B="0"></Color>
-                    </SolidColorBrush>
-                  </FontBrush>
-                </FontInfo>
-              </FixedTextSpan>
               <TextSpan>
-                <Text />
+                <Text></Text>
                 <FontInfo>
                   <FontName>Helvetica</FontName>
-                  <FontSize>13.9</FontSize>
+                  <FontSize>21.4</FontSize>
                   <IsBold>False</IsBold>
                   <IsItalic>False</IsItalic>
                   <IsUnderline>False</IsUnderline>
@@ -185,24 +170,17 @@
               </TextSpan>
             </LineTextSpan>
           </FormattedText>
-          <Prefix />
-          <Postfix />
-          <Format>ShortSystemDate</Format>
-          <Use24HourTime>False</Use24HourTime>
-          <TimeFormat>Date</TimeFormat>
-          <IsStatic>False</IsStatic>
-          <StaticDateTime>2025-07-31T17:14:02.2526980+02:00</StaticDateTime>
           <ObjectLayout>
             <DYMOPoint>
-              <X>0.5825</X>
-              <Y>0.62500006</Y>
+              <X>0.50990033</X>
+              <Y>0.7822142</Y>
             </DYMOPoint>
             <Size>
-              <Width>1.085</Width>
-              <Height>0.565</Height>
+              <Width>1.2301993</Width>
+              <Height>0.30138963</Height>
             </Size>
           </ObjectLayout>
-        </DateTimeObject>
+        </TextObject>
       </LabelObjects>
     </DynamicLayoutManager>
   </DYMOLabel>

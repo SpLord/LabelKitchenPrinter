@@ -1,14 +1,27 @@
 
 import { useEffect, useState } from 'react';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
 import './styles.css';
 
-const predefined = ['Max Mustermann', 'Lisa Beispiel', 'Besucher'];
+const predefined = ['Steak', 'Filet', 'Steak Streifen'];
 
 export default function App() {
   const [input, setInput] = useState('');
   const [printerStatus, setPrinterStatus] = useState('checking');
   const [printerName, setPrinterName] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
+  const getEffectiveDate = () => {
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setHours(5, 0, 0, 0);
+    if (now < cutoff) now.setDate(now.getDate() - 1);
+    return now;
+  };
+
+const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
+
 
   useEffect(() => {
     const tryInitDymo = () => {
@@ -55,6 +68,8 @@ export default function App() {
       .then(labelXml => {
         const label = dymo.label.framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
+        label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
+
         label.print(printerName || "DYMO LabelWriter 450");
       })
       .catch(err => {
@@ -82,6 +97,7 @@ fetch('/labels/Label_32x57.label')
       if (!objects.includes("Name")) throw new Error("Label enthält kein Objekt namens 'Name'");
 
       label.setObjectText("Name", text);
+      label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
       const base64 = label.render();
 
       const preview = `data:image/png;base64,${base64}`;
@@ -148,6 +164,30 @@ fetch('/labels/Label_32x57.label')
           Drucken
         </button>
       </div>
+
+<div style={{
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.5rem",
+  marginTop: "2rem"
+}}>
+  <DatePicker
+    selected={selectedDate}
+    onChange={(date) => {
+      setSelectedDate(date);
+      generatePreview(input); // <--- Input ist dein aktueller Text-Status
+    }}
+    inline
+    calendarClassName="custom-datepicker"
+  />
+  <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+    📅 Gewähltes Datum: {selectedDate.toLocaleDateString("de-DE")}
+  </div>
+</div>
+
+
+
 
       {previewSrc && (
         <div className="preview">
