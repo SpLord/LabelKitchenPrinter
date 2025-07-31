@@ -8,13 +8,13 @@ export default function App() {
   const [input, setInput] = useState('');
   const [printerStatus, setPrinterStatus] = useState('checking');
   const [printerName, setPrinterName] = useState(null);
+  const [previewSrc, setPreviewSrc] = useState(null);
 
   useEffect(() => {
     const tryInitDymo = () => {
       try {
         dymo.label.framework.init();
         const printers = dymo.label.framework.getPrinters();
-        console.log("Drucker:", printers);
         if (printers && printers.length > 0) {
           setPrinterStatus('online');
           setPrinterName(printers[0].name);
@@ -45,27 +45,62 @@ export default function App() {
   }, []);
 
   const printLabel = (text) => {
-  if (!text) return alert('Bitte Text eingeben.');
+    if (!text) return alert('Bitte Text eingeben.');
 
-  fetch('/labels/Label_32x57.label')
+    fetch('/labels/Label_32x57.label')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+        return res.text();
+      })
+      .then(labelXml => {
+        const label = dymo.label.framework.openLabelXml(labelXml);
+        label.setObjectText("Name", text);
+        label.print(printerName || "DYMO LabelWriter 450");
+      })
+      .catch(err => {
+        alert("Fehler beim Drucken: " + err.message);
+      });
+  };
+
+const generatePreview = (text) => {
+  if (!text || !window.dymo?.label?.framework) {
+    setPreviewSrc(null);
+    return;
+  }
+
+fetch('/labels/Label_32x57.label')
     .then(res => {
-      console.log("Fetch-Status:", res.status);
       if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
       return res.text();
     })
     .then(labelXml => {
-        if (labelXml.includes('<html')) {
-          throw new Error("Label-Datei nicht gefunden – HTML statt Label geladen!");
-        }
       const label = dymo.label.framework.openLabelXml(labelXml);
+
+      // prüfen, ob Objektname existiert
+      const objects = label.getObjectNames();
+      console.log("Objekte:", label.getObjectNames());
+      if (!objects.includes("Name")) throw new Error("Label enthält kein Objekt namens 'Name'");
+
       label.setObjectText("Name", text);
-      label.print(printerName || "DYMO LabelWriter 450");
+      const base64 = label.render();
+
+      const preview = `data:image/png;base64,${base64}`;
+      setPreviewSrc(preview);
+
+      console.log("Render-Vorschau:", preview);
+
+      if (!preview.startsWith("data:image/png;base64,")) {
+        throw new Error("Ungültige Vorschau-Daten");
+      }
+
+      setPreviewSrc(preview);
     })
     .catch(err => {
-      alert("Fehler beim Drucken: " + err.message);
-      console.error("DRUCKFEHLER:", err);
+      console.error("Vorschaufehler:", err);
+      setPreviewSrc(null);
     });
 };
+
 
   return (
     <div className="container">
@@ -86,7 +121,10 @@ export default function App() {
           <button
             key={idx}
             disabled={printerStatus !== 'online'}
-            onClick={() => printLabel(name)}
+            onClick={() => {
+              printLabel(name);
+              generatePreview(name);
+            }}
           >
             {name}
           </button>
@@ -97,7 +135,10 @@ export default function App() {
         <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            generatePreview(e.target.value);
+          }}
           placeholder="Individueller Text"
         />
         <button
@@ -107,6 +148,13 @@ export default function App() {
           Drucken
         </button>
       </div>
+
+      {previewSrc && (
+        <div className="preview">
+          <h3>Vorschau:</h3>
+          <img src={previewSrc} alt="Etikettenvorschau" />
+        </div>
+      )}
     </div>
   );
 }

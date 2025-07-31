@@ -73,7 +73,7 @@
                 <Text>Text</Text>
                 <FontInfo>
                   <FontName>Helvetica</FontName>
-                  <FontSize>39.9</FontSize>
+                  <FontSize>51.7</FontSize>
                   <IsBold>False</IsBold>
                   <IsItalic>False</IsItalic>
                   <IsUnderline>False</IsUnderline>
@@ -88,15 +88,121 @@
           </FormattedText>
           <ObjectLayout>
             <DYMOPoint>
+              <X>0.03999996</X>
+              <Y>0.05999999</Y>
+            </DYMOPoint>
+            <Size>
+              <Width>2.17</Width>
+              <Height>0.72221416</Height>
+            </Size>
+          </ObjectLayout>
+        </TextObject>
+        <DateTimeObject>
+          <Name>Datum</Name>
+          <Brushes>
+            <BackgroundBrush>
+              <SolidColorBrush>
+                <Color A="0" R="0" G="0" B="0"></Color>
+              </SolidColorBrush>
+            </BackgroundBrush>
+            <BorderBrush>
+              <SolidColorBrush>
+                <Color A="1" R="0" G="0" B="0"></Color>
+              </SolidColorBrush>
+            </BorderBrush>
+            <StrokeBrush>
+              <SolidColorBrush>
+                <Color A="1" R="0" G="0" B="0"></Color>
+              </SolidColorBrush>
+            </StrokeBrush>
+            <FillBrush>
+              <SolidColorBrush>
+                <Color A="0" R="0" G="0" B="0"></Color>
+              </SolidColorBrush>
+            </FillBrush>
+          </Brushes>
+          <Rotation>Rotation0</Rotation>
+          <OutlineThickness>1</OutlineThickness>
+          <IsOutlined>False</IsOutlined>
+          <BorderStyle>SolidLine</BorderStyle>
+          <Margin>
+            <DYMOThickness Left="0" Top="0" Right="0" Bottom="0" />
+          </Margin>
+          <HorizontalAlignment>Center</HorizontalAlignment>
+          <VerticalAlignment>Middle</VerticalAlignment>
+          <FitMode>AlwaysFit</FitMode>
+          <IsVertical>False</IsVertical>
+          <FormattedText>
+            <FitMode>AlwaysFit</FitMode>
+            <HorizontalAlignment>Center</HorizontalAlignment>
+            <VerticalAlignment>Middle</VerticalAlignment>
+            <IsVertical>False</IsVertical>
+            <LineTextSpan>
+              <TextSpan>
+                <Text />
+                <FontInfo>
+                  <FontName>Helvetica</FontName>
+                  <FontSize>13.9</FontSize>
+                  <IsBold>False</IsBold>
+                  <IsItalic>False</IsItalic>
+                  <IsUnderline>False</IsUnderline>
+                  <FontBrush>
+                    <SolidColorBrush>
+                      <Color A="1" R="0" G="0" B="0"></Color>
+                    </SolidColorBrush>
+                  </FontBrush>
+                </FontInfo>
+              </TextSpan>
+              <FixedTextSpan>
+                <Text>31.07.2025</Text>
+                <FontInfo>
+                  <FontName>Helvetica</FontName>
+                  <FontSize>13.9</FontSize>
+                  <IsBold>False</IsBold>
+                  <IsItalic>False</IsItalic>
+                  <IsUnderline>False</IsUnderline>
+                  <FontBrush>
+                    <SolidColorBrush>
+                      <Color A="1" R="0" G="0" B="0"></Color>
+                    </SolidColorBrush>
+                  </FontBrush>
+                </FontInfo>
+              </FixedTextSpan>
+              <TextSpan>
+                <Text />
+                <FontInfo>
+                  <FontName>Helvetica</FontName>
+                  <FontSize>13.9</FontSize>
+                  <IsBold>False</IsBold>
+                  <IsItalic>False</IsItalic>
+                  <IsUnderline>False</IsUnderline>
+                  <FontBrush>
+                    <SolidColorBrush>
+                      <Color A="1" R="0" G="0" B="0"></Color>
+                    </SolidColorBrush>
+                  </FontBrush>
+                </FontInfo>
+              </TextSpan>
+            </LineTextSpan>
+          </FormattedText>
+          <Prefix />
+          <Postfix />
+          <Format>ShortSystemDate</Format>
+          <Use24HourTime>False</Use24HourTime>
+          <TimeFormat>Date</TimeFormat>
+          <IsStatic>False</IsStatic>
+          <StaticDateTime>2025-07-31T17:14:02.2526980+02:00</StaticDateTime>
+          <ObjectLayout>
+            <DYMOPoint>
               <X>0.5825</X>
-              <Y>0.059999984</Y>
+              <Y>0.62500006</Y>
             </DYMOPoint>
             <Size>
               <Width>1.085</Width>
               <Height>0.565</Height>
             </Size>
           </ObjectLayout>
-        </TextObject>
+        </DateTimeObject>
       </LabelObjects>
     </DynamicLayoutManager>
   </DYMOLabel>
