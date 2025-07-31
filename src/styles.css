@@ -37,3 +37,19 @@ button:hover {
   width: 300px;
   margin-right: 1rem;
 }
+
+.status-indicator {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.online {
+  color: green;
+}
+
+.offline {
+  color: red;
+}
