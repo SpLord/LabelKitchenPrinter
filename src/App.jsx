@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import TextbausteinVerwaltung from "./TextbausteinVerwaltung";
+
 
 import './styles.css';
 
@@ -185,6 +187,8 @@ fetch('/labels/Label_32x57.label')
     📅 Gewähltes Datum: {selectedDate.toLocaleDateString("de-DE")}
   </div>
 </div>
+
+<TextbausteinVerwaltung onSelect={(label) => printLabel(label)} />
 
 
 
