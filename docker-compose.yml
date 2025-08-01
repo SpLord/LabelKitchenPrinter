@@ -2,8 +2,8 @@ version: "3.8"
 
 services:
   labelkitchen:
-    image: splord/labelkitchen:latest
+    image: splord/labelkitchen:${IMAGE_VERSION}
     container_name: labelkitchen
     restart: unless-stopped
     ports:
-      - "7077:80"
+      - "${HOST_PORT}:80"
