@@ -2,18 +2,22 @@
 import { useEffect, useState } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import TextbausteinVerwaltung from "./TextbausteinVerwaltung";
-
 
 import './styles.css';
 
-const predefined = ['Steak', 'Filet', 'Steak Streifen'];
+const labelGroups = {
+  Fleisch: ['Steak', 'Filet', 'Steak Streifen', 'Filet Streifen', 'Kalbschnitzel','Schweineschnitzel'],
+  Saucen: ['Portweinsauce'],
+  Fond: ['Fleischfond', 'Gemüsefond'],
+  Dressing: ['Himbeerdressing', 'Balsamicodressing']
+};
 
 export default function App() {
   const [input, setInput] = useState('');
   const [printerStatus, setPrinterStatus] = useState('checking');
   const [printerName, setPrinterName] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
+
   const getEffectiveDate = () => {
     const now = new Date();
     const cutoff = new Date();
@@ -22,9 +26,9 @@ export default function App() {
     return now;
   };
 
-const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
+  const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
 
-
+  // Druckerstatus prüfen (DYMO)
   useEffect(() => {
     const tryInitDymo = () => {
       try {
@@ -39,10 +43,8 @@ const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
         }
       } catch (err) {
         if (err.message?.includes("service discovery is in progress")) {
-          console.log("Warte auf DYMO-Service… erneut versuchen in 500ms");
           setTimeout(tryInitDymo, 500);
         } else {
-          console.error("DYMO Init-Fehler:", err);
           setPrinterStatus('offline');
           setPrinterName(null);
         }
@@ -53,9 +55,6 @@ const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
       tryInitDymo();
       const interval = setInterval(tryInitDymo, 5000);
       return () => clearInterval(interval);
-    } else {
-      setPrinterStatus('offline');
-      setPrinterName(null);
     }
   }, []);
 
@@ -63,67 +62,38 @@ const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
     if (!text) return alert('Bitte Text eingeben.');
 
     fetch('/labels/Label_32x57.label')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
-        return res.text();
-      })
+      .then(res => res.text())
       .then(labelXml => {
         const label = dymo.label.framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
         label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
-
         label.print(printerName || "DYMO LabelWriter 450");
       })
-      .catch(err => {
-        alert("Fehler beim Drucken: " + err.message);
-      });
+      .catch(err => alert("Fehler beim Drucken: " + err.message));
   };
 
-const generatePreview = (text) => {
-  if (!text || !window.dymo?.label?.framework) {
-    setPreviewSrc(null);
-    return;
-  }
-
-fetch('/labels/Label_32x57.label')
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
-      return res.text();
-    })
-    .then(labelXml => {
-      const label = dymo.label.framework.openLabelXml(labelXml);
-
-      // prüfen, ob Objektname existiert
-      const objects = label.getObjectNames();
-      console.log("Objekte:", label.getObjectNames());
-      if (!objects.includes("Name")) throw new Error("Label enthält kein Objekt namens 'Name'");
-
-      label.setObjectText("Name", text);
-      label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
-      const base64 = label.render();
-
-      const preview = `data:image/png;base64,${base64}`;
-      setPreviewSrc(preview);
-
-      console.log("Render-Vorschau:", preview);
-
-      if (!preview.startsWith("data:image/png;base64,")) {
-        throw new Error("Ungültige Vorschau-Daten");
-      }
-
-      setPreviewSrc(preview);
-    })
-    .catch(err => {
-      console.error("Vorschaufehler:", err);
+  const generatePreview = (text) => {
+    if (!text || !window.dymo?.label?.framework) {
       setPreviewSrc(null);
-    });
-};
+      return;
+    }
 
+    fetch('/labels/Label_32x57.label')
+      .then(res => res.text())
+      .then(labelXml => {
+        const label = dymo.label.framework.openLabelXml(labelXml);
+        label.setObjectText("Name", text);
+        label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
+        const base64 = label.render();
+        setPreviewSrc(`data:image/png;base64,${base64}`);
+      })
+      .catch(() => setPreviewSrc(null));
+  };
 
   return (
-    <div className="container">
+    <>
       <div className="status-indicator">
-        {printerStatus === 'checking' && <span>🔄 Erkennung…</span>}
+        {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}
         {printerStatus === 'online' && (
           <span className="online">✅ Drucker bereit: {printerName}</span>
         )}
@@ -132,73 +102,58 @@ fetch('/labels/Label_32x57.label')
         )}
       </div>
 
-      <h1>Etikettendruck</h1>
-
-      <div className="button-grid">
-        {predefined.map((name, idx) => (
-          <button
-            key={idx}
-            disabled={printerStatus !== 'online'}
-            onClick={() => {
-              printLabel(name);
-              generatePreview(name);
-            }}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-
-      <div className="input-group">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            generatePreview(e.target.value);
-          }}
-          placeholder="Individueller Text"
-        />
-        <button
-          disabled={printerStatus !== 'online'}
-          onClick={() => printLabel(input)}
-        >
-          Drucken
-        </button>
-      </div>
-
-<div style={{
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "0.5rem",
-  marginTop: "2rem"
-}}>
-  <DatePicker
-    selected={selectedDate}
-    onChange={(date) => {
-      setSelectedDate(date);
-      generatePreview(input); // <--- Input ist dein aktueller Text-Status
-    }}
-    inline
-    calendarClassName="custom-datepicker"
-  />
-  <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
-    📅 Gewähltes Datum: {selectedDate.toLocaleDateString("de-DE")}
-  </div>
-</div>
-
-<TextbausteinVerwaltung onSelect={(label) => printLabel(label)} />
-
-
-
-
-      {previewSrc && (
-        <div className="preview">
-          <h3>Vorschau:</h3>
-          <img src={previewSrc} alt="Etikettenvorschau" />
+      <div className="main-layout">
+        <div className="preview-section">
+          {previewSrc && <img src={previewSrc} alt="Vorschau" />}
         </div>
-      )}
-    </div>
+
+        <div className="button-section">
+          {Object.entries(labelGroups).map(([group, labels]) => (
+            <div key={group} className="button-group">
+              <h3>{group}</h3>
+              {labels.map((name, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    printLabel(name);
+                    generatePreview(name);
+                  }}
+                  disabled={printerStatus !== 'online'}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          ))}
+          <div className="input-group">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                generatePreview(e.target.value);
+              }}
+              placeholder="Individueller Text"
+            />
+            <button onClick={() => printLabel(input)} disabled={printerStatus !== 'online'}>Drucken</button>
+          </div>
+        </div>
+
+        <div className="date-section">
+          <DatePicker
+            selected={selectedDate}
+            onChange={(date) => {
+              setSelectedDate(date);
+              generatePreview(input);
+            }}
+            inline
+            calendarClassName="custom-datepicker"
+          />
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+            📅 Gewähltes Datum: {selectedDate.toLocaleDateString("de-DE")}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
