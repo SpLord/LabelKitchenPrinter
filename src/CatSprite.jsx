@@ -110,12 +110,16 @@ export default function CatSprite({ play }) {
 
   const messages = useMemo(
     () => [
-      'Lea, hast du die Mails schon gesehen?',
-      'Kurz durchatmen. Danach Mails sortieren! 😺',
-      'Lea, ich glaub es gibt neue Mails.',
-      'Drucker läuft. Mails später, Lea?',
-      'Noch ein Kaffee? Dann die Mails checken.',
-      'Lea, ich halte die Stellung. 📬',
+      'Lea, hast du Mails schon gesehen?',
+      'Mails, alles gut bei dir?',
+      'Lea und Mails, Teamwork? 😺',
+      'Hey Mails, Kaffee oder Tee?',
+      'Lea, sag Mails hallo von mir!',
+      'Mails, ich halte hier die Stellung.',
+      'Lea, kurze Pause? Mails kommt gleich.',
+      'Mails, kommst du mal kurz rüber?',
+      'Lea, gemeinsam schaffen wir das!',
+      'Mails, du rockst! ✨',
     ],
     []
   );
