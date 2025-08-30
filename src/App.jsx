@@ -11,7 +11,16 @@ const labelGroups = {
   Fond: ['Fleischfond', 'Gemüsefond'],
   Dressing: ['Himbeerdressing', 'Balsamicodressing'],
   Salat: ['Fregola', 'Rote Beete', 'Fregola Gemüse'],
-  Menü: ['Lachs', 'Schmorjuis', 'USBeef'],
+  Menü: ['Lachs', 'Schmorjuis', 'USBeef', 'Parmesanschaum', 'Sherryschaum'],
+};
+
+const groupIcons = {
+  Fleisch: '🥩',
+  Fond: '🍲',
+  Saucen: '🧂',
+  Dressing: '🥗',
+  Salat: '🥬',
+  Menü: '🍽️',
 };
 
 export default function App() {
@@ -113,7 +122,7 @@ export default function App() {
           <div className="button-column">
             {['Fleisch', 'Fond'].map((group) => (
               <div key={group} className="button-group">
-                <h3>{group}</h3>
+                <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
                 {labelGroups[group].map((name, idx) => (
                   <button
                     key={idx}
@@ -133,7 +142,7 @@ export default function App() {
           <div className="button-column">
             {['Saucen', 'Dressing'].map((group) => (
               <div key={group} className="button-group">
-                <h3>{group}</h3>
+                <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
                 {labelGroups[group].map((name, idx) => (
                   <button
                     key={idx}
@@ -153,7 +162,7 @@ export default function App() {
           <div className="button-column">
             {['Menü'].map((group) => (
               <div key={group} className="button-group">
-                <h3>{group}</h3>
+                <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
                 {labelGroups[group].map((name, idx) => (
                   <button
                     key={idx}

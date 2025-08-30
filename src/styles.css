@@ -204,8 +204,14 @@ h1 {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--muted);
-  padding-left: 0.5rem;
-  border-left: 4px solid var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.group-icon {
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 /* =====================
