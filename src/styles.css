@@ -63,6 +63,36 @@ h1 {
   50% { transform: translateY(-6px); }
 }
 
+.cat-bubble {
+  position: absolute;
+  top: -8px;
+  left: 100%;
+  margin-left: 10px;
+  max-width: 260px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.25rem;
+  backdrop-filter: blur(8px);
+}
+
+.cat-bubble-tail {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 16px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface-strong);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+
 /* ==========================
    📦 Hauptlayout (3-Spalten)
    ========================== */
