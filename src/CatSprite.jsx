@@ -286,10 +286,20 @@ export default function CatSprite({ play, onCatch }) {
         const dist = Math.hypot(dx, dy);
         // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
-        // Catch detection with hysteresis
-        const catchRadius = play.kind === 'ball' ? 28 : 26;
-        const releaseRadius = 42;
-        if (dist <= catchRadius) {
+        // Strict catch detection: toy circle intersects cat rectangle
+        const toyR = play.kind === 'ball' ? 14 : 12;
+        const cx = play.x;
+        const cy = play.y;
+        const leftR = p.left;
+        const topR = p.top;
+        const rightR = p.left + catSize.w;
+        const bottomR = p.top + catSize.h;
+        const closestX = Math.max(leftR, Math.min(cx, rightR));
+        const closestY = Math.max(topR, Math.min(cy, bottomR));
+        const dxr = cx - closestX;
+        const dyr = cy - closestY;
+        const intersects = dxr * dxr + dyr * dyr <= toyR * toyR;
+        if (intersects) {
           if (!nearRef.current) {
             nearRef.current = true;
             if (play.kind === 'mouse') {
@@ -309,7 +319,7 @@ export default function CatSprite({ play, onCatch }) {
               setTimeout(() => { onCatch && onCatch(); }, 900);
             }
           }
-        } else if (dist > releaseRadius) {
+        } else {
           nearRef.current = false;
         }
         if (dist < 4) return p;

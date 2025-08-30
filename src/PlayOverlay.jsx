@@ -73,7 +73,7 @@ export default function PlayOverlay({ play, setPlay }) {
   if (!play) return null;
 
   const style = {
-    transform: `translate(${(play.x ?? 0) - (play.kind === 'ball' ? 14 : 12)}px, ${(play.y ?? 0) - (play.kind === 'ball' ? 14 : 12)}px)`,
+    transform: `translate3d(${(play.x ?? 0) - (play.kind === 'ball' ? 14 : 12)}px, ${(play.y ?? 0) - (play.kind === 'ball' ? 14 : 12)}px, 0)`
   };
 
   return (
