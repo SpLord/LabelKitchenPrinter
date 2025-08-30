@@ -9,7 +9,8 @@ const labelGroups = {
   Fleisch: ['Steak', 'Filet', 'Steak Streifen', 'Filet Streifen', 'Kalbschnitzel','Schweineschnitzel'],
   Saucen: ['Portweinsauce'],
   Fond: ['Fleischfond', 'Gemüsefond'],
-  Dressing: ['Himbeerdressing', 'Balsamicodressing']
+  Dressing: ['Himbeerdressing', 'Balsamicodressing'],
+  Salat: ['Fregola', 'Rote Beete', 'Fregola Gemüse'],
 };
 
 export default function App() {
@@ -108,36 +109,62 @@ export default function App() {
         </div>
 
         <div className="button-section">
-          {Object.entries(labelGroups).map(([group, labels]) => (
-            <div key={group} className="button-group">
-              <h3>{group}</h3>
-              {labels.map((name, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    printLabel(name);
-                    generatePreview(name);
-                  }}
-                  disabled={printerStatus !== 'online'}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-          ))}
-          <div className="input-group">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                generatePreview(e.target.value);
-              }}
-              placeholder="Individueller Text"
-            />
-            <button onClick={() => printLabel(input)} disabled={printerStatus !== 'online'}>Drucken</button>
-          </div>
-        </div>
+  <div className="button-column">
+    {['Fleisch', 'Fond'].map((group) => (
+      <div key={group} className="button-group">
+        <h3>{group}</h3>
+        {labelGroups[group].map((name, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              printLabel(name);
+              generatePreview(name);
+            }}
+            disabled={printerStatus !== 'online'}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    ))}
+  </div>
+
+  <div className="button-column">
+    {['Saucen', 'Dressing'].map((group) => (
+      <div key={group} className="button-group">
+        <h3>{group}</h3>
+        {labelGroups[group].map((name, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              printLabel(name);
+              generatePreview(name);
+            }}
+            disabled={printerStatus !== 'online'}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    ))}
+  </div>
+</div>
+
+<div className="input-group full-width">
+    <input
+      type="text"
+      value={input}
+      onChange={(e) => {
+        setInput(e.target.value);
+        generatePreview(e.target.value);
+      }}
+      placeholder="Individueller Text"
+    />
+    <button onClick={() => printLabel(input)} disabled={printerStatus !== 'online'}>
+      Drucken
+    </button>
+  </div>
+
 
         <div className="date-section">
           <DatePicker
