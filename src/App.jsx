@@ -7,10 +7,11 @@ import './styles.css';
 
 const labelGroups = {
   Fleisch: ['Steak', 'Filet', 'Steak Streifen', 'Filet Streifen', 'Kalbschnitzel','Schweineschnitzel'],
-  Saucen: ['Portweinsauce'],
+  Saucen: ['Portweinsauce', 'Trüffelmajo', 'Cocktailsauce', 'Scharfe Majo'],
   Fond: ['Fleischfond', 'Gemüsefond'],
   Dressing: ['Himbeerdressing', 'Balsamicodressing'],
   Salat: ['Fregola', 'Rote Beete', 'Fregola Gemüse'],
+  Menü: ['Lachs', 'Schmorjuis', 'USBeef'],
 };
 
 export default function App() {
@@ -109,46 +110,66 @@ export default function App() {
         </div>
 
         <div className="button-section">
-  <div className="button-column">
-    {['Fleisch', 'Fond'].map((group) => (
-      <div key={group} className="button-group">
-        <h3>{group}</h3>
-        {labelGroups[group].map((name, idx) => (
-          <button
-            key={idx}
-            onClick={() => {
-              printLabel(name);
-              generatePreview(name);
-            }}
-            disabled={printerStatus !== 'online'}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-    ))}
-  </div>
+          <div className="button-column">
+            {['Fleisch', 'Fond'].map((group) => (
+              <div key={group} className="button-group">
+                <h3>{group}</h3>
+                {labelGroups[group].map((name, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      printLabel(name);
+                      generatePreview(name);
+                    }}
+                    disabled={printerStatus !== 'online'}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
 
-  <div className="button-column">
-    {['Saucen', 'Dressing'].map((group) => (
-      <div key={group} className="button-group">
-        <h3>{group}</h3>
-        {labelGroups[group].map((name, idx) => (
-          <button
-            key={idx}
-            onClick={() => {
-              printLabel(name);
-              generatePreview(name);
-            }}
-            disabled={printerStatus !== 'online'}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-    ))}
-  </div>
-</div>
+          <div className="button-column">
+            {['Saucen', 'Dressing'].map((group) => (
+              <div key={group} className="button-group">
+                <h3>{group}</h3>
+                {labelGroups[group].map((name, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      printLabel(name);
+                      generatePreview(name);
+                    }}
+                    disabled={printerStatus !== 'online'}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div className="button-column">
+            {['Menü'].map((group) => (
+              <div key={group} className="button-group">
+                <h3>{group}</h3>
+                {labelGroups[group].map((name, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      printLabel(name);
+                      generatePreview(name);
+                    }}
+                    disabled={printerStatus !== 'online'}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
 
 <div className="input-group full-width">
     <input
