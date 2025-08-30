@@ -104,9 +104,7 @@ export default function CatSprite({ play }) {
   const [message, setMessage] = useState(null);
   const catSize = useMemo(() => ({ w: 120, h: 120 }), []);
   const hideTimeout = useRef(null);
-  const headingRef = useRef(0);
   const dirRef = useRef(1); // 1 right, -1 left
-  const tiltRef = useRef(0);
 
   const messages = useMemo(
     () => [
@@ -281,10 +279,8 @@ export default function CatSprite({ play }) {
         const dx = targetX - p.left;
         const dy = targetY - p.top;
         const dist = Math.hypot(dx, dy);
-        // update heading and tilt
-        headingRef.current = Math.atan2(dy, dx) * 180 / Math.PI;
+        // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
-        tiltRef.current = Math.sin(t * 0.02) * 6;
         if (dist < 4) return p;
         const step = Math.min(dist, speed * dt);
         const nx = p.left + (dx / (dist || 1)) * step;
@@ -302,7 +298,6 @@ export default function CatSprite({ play }) {
   }, [play, catSize.w, catSize.h]);
 
   const flip = dirRef.current < 0 ? -1 : 1;
-  const tilt = tiltRef.current;
 
   return (
     <div
@@ -315,9 +310,10 @@ export default function CatSprite({ play }) {
       onClick={showPurr}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPurr(); } }}
     >
-      <div className="cat-body" style={{ transform: `scaleX(${flip}) rotate(${tilt}deg)` }}>
+      <div className="cat-body" style={{ transform: `scaleX(${flip})` }}>
         <CatVariant index={variant} active={!!play} />
       </div>
+      <div className={`cat-shadow ${play ? 'run' : ''}`} />
       {message && (
         <div className="cat-bubble">
           {message}
