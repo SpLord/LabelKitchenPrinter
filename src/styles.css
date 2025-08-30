@@ -169,11 +169,10 @@ h1 {
    ============================= */
 
 .button-section {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 1.25rem;
-  flex-wrap: nowrap;
+  align-items: start;
 }
 
 /* Platzierung: rechts, über 2 Zeilen strecken */
@@ -184,7 +183,7 @@ h1 {
   flex-direction: column;
   gap: 1rem;
   flex: 1;
-  min-width: 240px;
+  min-width: 0;
 }
 
 /* ==============================
@@ -319,6 +318,9 @@ input:focus-visible {
   .main-layout {
     grid-template-columns: 1fr 1fr; /* Preview | Buttons */
   }
+  .button-section {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
   .date-section {
     grid-column: 1 / -1; /* unten vollbreit */
   }
@@ -337,9 +339,7 @@ input:focus-visible {
   .date-section {
     min-height: unset;
   }
-  .button-section {
-    flex-direction: column;
-  }
+  .button-section { grid-template-columns: 1fr; }
   .button-column {
     min-width: 100%;
   }
