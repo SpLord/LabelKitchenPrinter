@@ -5,6 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import './styles.css';
 import CatSprite from './CatSprite.jsx';
+import PlayOverlay from './PlayOverlay.jsx';
 
 const labelGroups = {
   Fleisch: ['Steak', 'Filet', 'Steak Streifen', 'Filet Streifen', 'Kalbschnitzel','Schweineschnitzel'],
@@ -29,6 +30,7 @@ export default function App() {
   const [printerStatus, setPrinterStatus] = useState('checking');
   const [printerName, setPrinterName] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
+  const [play, setPlay] = useState(null); // toy target for cat
 
   const getEffectiveDate = () => {
     const now = new Date();
@@ -70,6 +72,25 @@ export default function App() {
     }
   }, []);
 
+  // Global click to spawn toy when clicking on background areas
+  useEffect(() => {
+    const handler = (e) => {
+      // ignore if clicking on interactive or inside main layout/status
+      const interactiveTags = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A', 'IMG', 'LABEL']);
+      if (interactiveTags.has(e.target.tagName)) return;
+      if (e.target.closest('.button-group') || e.target.closest('.date-section') || e.target.closest('.preview-section') || e.target.closest('.status-indicator') || e.target.closest('.react-datepicker')) return;
+      // viewport click position
+      const x = e.clientX;
+      const y = e.clientY;
+      // choose kind
+      const kind = Math.random() < 0.5 ? 'ball' : 'mouse';
+      const id = Date.now();
+      setPlay({ id, kind, x, y });
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
+
   const printLabel = (text) => {
     if (!text) return alert('Bitte Text eingeben.');
 
@@ -104,7 +125,8 @@ export default function App() {
 
   return (
     <>
-      <CatSprite />
+      <CatSprite play={play} />
+      <PlayOverlay play={play} setPlay={setPlay} />
       <div className="status-indicator">
         {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}
         {printerStatus === 'online' && (

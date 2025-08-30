@@ -84,7 +84,7 @@ function CatVariant({ index }) {
   );
 }
 
-export default function CatSprite() {
+export default function CatSprite({ play }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
@@ -192,7 +192,8 @@ export default function CatSprite() {
   };
 
   const moveCat = () => {
-    setPos(pickSafePosition());
+    // only reposition when not playing
+    if (!play) setPos(pickSafePosition());
   };
 
   const showRandomMessage = () => {
@@ -236,6 +237,38 @@ export default function CatSprite() {
       window.removeEventListener('resize', onResize);
     };
   }, []);
+
+  // Chase logic towards current play target
+  useEffect(() => {
+    if (!play) return;
+    let rafId;
+    const speed = 320; // px/s
+    let last = performance.now();
+    const tick = (t) => {
+      const dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      setPos((p) => {
+        if (!play) return p;
+        const targetX = play.x - catSize.w / 2;
+        const targetY = play.y - catSize.h / 2;
+        const dx = targetX - p.left;
+        const dy = targetY - p.top;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 4) return p;
+        const step = Math.min(dist, speed * dt);
+        const nx = p.left + (dx / (dist || 1)) * step;
+        const ny = p.top + (dy / (dist || 1)) * step;
+        // keep within viewport
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const left = Math.max(0, Math.min(nx, vw - catSize.w));
+        const top = Math.max(0, Math.min(ny, vh - catSize.h));
+        return { top, left };
+      });
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [play, catSize.w, catSize.h]);
 
   return (
     <div
