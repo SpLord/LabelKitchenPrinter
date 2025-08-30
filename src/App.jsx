@@ -4,6 +4,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 import './styles.css';
+import CatSprite from './CatSprite.jsx';
 
 const labelGroups = {
   Fleisch: ['Steak', 'Filet', 'Steak Streifen', 'Filet Streifen', 'Kalbschnitzel','Schweineschnitzel'],
@@ -103,6 +104,7 @@ export default function App() {
 
   return (
     <>
+      <CatSprite />
       <div className="status-indicator">
         {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}
         {printerStatus === 'online' && (
