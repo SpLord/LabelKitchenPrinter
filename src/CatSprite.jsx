@@ -303,14 +303,15 @@ export default function CatSprite({ play, onCatch }) {
         const dist = Math.hypot(dx, dy);
         // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
-        // Strict catch detection: toy circle intersects cat rectangle
+        // Strict catch detection with generous window: toy circle intersects expanded cat rectangle
         const toyR = play.kind === 'ball' ? 14 : 12;
+        const pad = play.kind === 'ball' ? 22 : 16; // enlarge capture window
         const cx = play.x;
         const cy = play.y;
-        const leftR = p.left;
-        const topR = p.top;
-        const rightR = p.left + catSize.w;
-        const bottomR = p.top + catSize.h;
+        const leftR = p.left - pad;
+        const topR = p.top - pad;
+        const rightR = p.left + catSize.w + pad;
+        const bottomR = p.top + catSize.h + pad;
         const closestX = Math.max(leftR, Math.min(cx, rightR));
         const closestY = Math.max(topR, Math.min(cy, bottomR));
         const dxr = cx - closestX;
