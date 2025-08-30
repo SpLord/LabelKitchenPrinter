@@ -98,16 +98,62 @@ function CatVariant({ index, active }) {
   );
 }
 
+
 export default function CatSprite({ play, onCatch }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
   const [bubbleSize, setBubbleSize] = useState('normal');
+  const [trumpetActive, setTrumpetActive] = useState(false);
+  const [spray, setSpray] = useState(null); // water spray particles
+  const [spraying, setSpraying] = useState(false);
+  const [puddles, setPuddles] = useState([]); // accumulated water spots
+  const [waterProgress, setWaterProgress] = useState(0); // 0..1 visual fill toward half screen
+  const sprayIntervalRef = useRef(null);
+  const sprayedAreaRef = useRef(0);
   const catSize = useMemo(() => ({ w: 120, h: 120 }), []);
   const hideTimeout = useRef(null);
   const dirRef = useRef(1); // 1 right, -1 left
   const attemptsRef = useRef(0);
   const nearRef = useRef(false);
+  // Elephant removed
+  const [droppings, setDroppings] = useState([]);
+  const posRef = useRef(pos);
+  const [coins, setCoins] = useState([]); // ephemeral pop animations
+  const [coinCount, setCoinCount] = useState(0);
+  const [coinsLoaded, setCoinsLoaded] = useState(false);
+  const [fireworks, setFireworks] = useState([]);
+  const [fwShown, setFwShown] = useState(false); // legacy, kept for safety
+  const [fwDone, setFwDone] = useState(false);   // persisted: prevent re-trigger after reload
+  const fwIntervalRef = useRef(null);
+  const fwStartedRef = useRef(false);
+  const counterClicksRef = useRef(0);
+
+  // Cookie helpers for session persistence (fallback to localStorage)
+  const getCookie = (name) => {
+    try {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/\+^])/g, '\\$1') + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch { return null; }
+  };
+  const setCookie = (name, value, days = 30) => {
+    try {
+      const d = new Date();
+      d.setTime(d.getTime() + days*24*60*60*1000);
+      document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${d.toUTCString()}`;
+    } catch {}
+  };
+
+  // Read persisted fireworks-done flag on mount
+  useEffect(() => {
+    try {
+      const v = getCookie('cat_fwDone') ?? localStorage.getItem('cat_fwDone');
+      if (v === '1') {
+        setFwDone(true);
+        fwStartedRef.current = true; // ensure effect won't start
+      }
+    } catch {}
+  }, []);
 
   const messages = useMemo(
     () => [
@@ -151,6 +197,14 @@ export default function CatSprite({ play, onCatch }) {
     setMessage(msg);
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => { onCatch && onCatch(); }, 900);
+  };
+  const showTrumpet = () => {
+    setTrumpetActive(true);
+    setBubbleSize('big');
+    setMessage('Töröö!');
+    if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    hideTimeout.current = setTimeout(() => { setMessage(null); setTrumpetActive(false); }, 1800);
     setTimeout(() => { onCatch && onCatch(); }, 900);
   };
 
@@ -251,6 +305,18 @@ export default function CatSprite({ play, onCatch }) {
     hideTimeout.current = setTimeout(() => setMessage(null), 12000);
   };
 
+  // (no trunk anchor needed; no water effects)
+
+  const triggerSpray = () => {
+    // Water removed: just trumpet, keep elephant look during message
+    setTrumpetActive(true);
+    setBubbleSize('big');
+    setMessage('Töröö!');
+    if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    hideTimeout.current = setTimeout(() => { setMessage(null); setTrumpetActive(false); }, 1800);
+    setTimeout(() => { onCatch && onCatch(); }, 900);
+  };
+
   useEffect(() => {
     // First position on mount, variant rotation, speech scheduling
     moveCat();
@@ -289,7 +355,8 @@ export default function CatSprite({ play, onCatch }) {
   useEffect(() => {
     if (!play) return;
     let rafId;
-    const speed = 320; // px/s
+    // base speed; adjusted when elephant
+    const baseSpeed = 320; // px/s
     let last = performance.now();
     const tick = (t) => {
       const dt = Math.min(0.05, (t - last) / 1000);
@@ -298,8 +365,10 @@ export default function CatSprite({ play, onCatch }) {
         if (!play) return p;
         const targetX = play.x - catSize.w / 2;
         const targetY = play.y - catSize.h / 2;
-        const dx = targetX - p.left;
-        const dy = targetY - p.top;
+        let dx = targetX - p.left;
+        let dy = targetY - p.top;
+        let edgeSeverity = 0; // 0..1 how close to an edge
+        // Edge repulsion off (elephant removed)
         const dist = Math.hypot(dx, dy);
         // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
@@ -333,6 +402,7 @@ export default function CatSprite({ play, onCatch }) {
           nearRef.current = false;
         }
         if (dist < 4) return p;
+        let speed = baseSpeed;
         const step = Math.min(dist, speed * dt);
         const nx = p.left + (dx / (dist || 1)) * step;
         const ny = p.top + (dy / (dist || 1)) * step;
@@ -348,7 +418,142 @@ export default function CatSprite({ play, onCatch }) {
     return () => cancelAnimationFrame(rafId);
   }, [play, catSize.w, catSize.h, onCatch]);
 
-  // Reset attempts when a new play starts
+  // No water effects anymore
+
+  // Keep latest position in ref for timers
+  useEffect(() => { posRef.current = pos; }, [pos]);
+
+  // Drop a pile at random time within each 3h window; max 4 at once
+  useEffect(() => {
+    const PERIOD = 3 * 60 * 60 * 1000; // 3 hours
+    let timeoutId;
+    let cancelled = false;
+
+    const doDrop = () => {
+      const cur = posRef.current;
+      const x = cur.left + catSize.w / 2;
+      const y = cur.top + catSize.h - 6;
+      const size = 16 + Math.floor(Math.random() * 10);
+      const rot = Math.floor(Math.random() * 50) - 25; // -25..25 deg
+      setDroppings((prev) => {
+        if (prev.length >= 4) return prev; // cap at 4
+        return prev.concat({ id: Date.now() + Math.random(), x, y, s: size, r: rot });
+      });
+      // After dropping, cat moves a bit away (forward + slightly up), clamped to viewport
+      const dir = dirRef.current >= 0 ? 1 : -1;
+      const stepX = 24 * dir;
+      const stepY = -10;
+      const vw = window.innerWidth || 1920;
+      const vh = window.innerHeight || 1080;
+      const newLeft = Math.max(0, Math.min(cur.left + stepX, vw - catSize.w));
+      const newTop = Math.max(0, Math.min(cur.top + stepY, vh - catSize.h));
+      setPos({ top: newTop, left: newLeft });
+    };
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const MIN = 30 * 60 * 1000; // 30 minutes
+      const delay = MIN + Math.floor(Math.random() * Math.max(1, PERIOD - MIN)); // 30min..3h
+      timeoutId = setTimeout(() => {
+        doDrop();
+        scheduleNext();
+      }, delay);
+    };
+
+    scheduleNext();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
+  }, [catSize.w, catSize.h]);
+
+  const onDropClick = (e, id, x, y) => {
+    e.stopPropagation();
+    // remove dropping
+    setDroppings((prev) => prev.filter((d) => d.id !== id));
+    // spawn coin pop
+    const coinId = Date.now() + Math.random();
+    setCoins((prev) => prev.concat({ id: coinId, x, y }));
+    setCoinCount((c) => c + 1);
+    // cleanup coin after animation (~900ms)
+    setTimeout(() => {
+      setCoins((prev) => prev.filter((c) => c.id !== coinId));
+    }, 1000);
+  };
+
+  // Persist coin count: read from cookie/localStorage; write to both
+  useEffect(() => {
+    try {
+      const c = getCookie('cat_coinCount');
+      if (c != null) {
+        const n = parseInt(c, 10);
+        if (!Number.isNaN(n)) { setCoinCount(n); setCoinsLoaded(true); return; }
+      }
+      const saved = localStorage.getItem('cat_coinCount');
+      if (saved != null) setCoinCount(parseInt(saved, 10) || 0);
+      setCoinsLoaded(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (!coinsLoaded) return;
+    try { localStorage.setItem('cat_coinCount', String(coinCount)); } catch {}
+    setCookie('cat_coinCount', String(coinCount));
+  }, [coinCount, coinsLoaded]);
+
+  // Trigger fireworks once when reaching 100 coins
+  useEffect(() => {
+    if (coinCount >= 100 && !fwStartedRef.current && !fwDone) {
+      fwStartedRef.current = true;
+      setFwDone(true);
+      // persist that fireworks already shown
+      try { localStorage.setItem('cat_fwDone', '1'); } catch {}
+      setCookie('cat_fwDone', '1');
+      const palette = [
+        ['#fffb00', '#ff9f0a'],
+        ['#ff375f', '#ff9f0a'],
+        ['#32d74b', '#0a84ff'],
+        ['#a78bfa', '#0066cc'],
+        ['#ff3b30', '#ffd60a'],
+      ];
+      const emitBurst = () => {
+        const vw = window.innerWidth || 1200;
+        const vh = window.innerHeight || 800;
+        const centers = Array.from({ length: 4 }).map((_, i) => ({
+          x: Math.round((vw / 5) * (i + 0.7) + (Math.random() - 0.5) * 30),
+          y: Math.round(vh * (0.22 + Math.random() * 0.26)),
+        }));
+        const newParts = [];
+        centers.forEach((c) => {
+          const count = 20;
+          for (let k = 0; k < count; k++) {
+            const ang = (Math.PI * 2 * k) / count + (Math.random() - 0.5) * 0.5;
+            const R = 180 + Math.random() * 200;
+            const [c1, c2] = palette[Math.floor(Math.random() * palette.length)];
+            const s = 14 + Math.floor(Math.random() * 10);
+            const d = 1200 + Math.random() * 900;
+            newParts.push({ id: `${c.x}-${c.y}-${k}-${Math.random()}`, x: c.x, y: c.y, tx: Math.cos(ang) * R, ty: Math.sin(ang) * R, d, c1, c2, s });
+          }
+        });
+        setFireworks((prev) => {
+          const merged = prev.concat(newParts);
+          const MAX = 1200;
+          return merged.length > MAX ? merged.slice(merged.length - MAX) : merged;
+        });
+      };
+      // run for ~30s
+      const start = Date.now();
+      emitBurst();
+      fwIntervalRef.current = setInterval(() => {
+        if (Date.now() - start >= 30000) {
+          clearInterval(fwIntervalRef.current);
+          fwIntervalRef.current = null;
+          setTimeout(() => setFireworks([]), 3000);
+        } else {
+          emitBurst();
+        }
+      }, 1000);
+    }
+  }, [coinCount, fwDone]);
+  useEffect(() => () => { if (fwIntervalRef.current) clearInterval(fwIntervalRef.current); }, []);
+
+  // Reset attempts when a new play starts (elephant removed)
   useEffect(() => {
     attemptsRef.current = 0;
     nearRef.current = false;
@@ -357,11 +562,76 @@ export default function CatSprite({ play, onCatch }) {
   const flip = dirRef.current < 0 ? -1 : 1;
 
   return (
-    <div
-      className={`cat-sprite ${play ? 'running' : 'idle'}`}
-      style={{ top: pos.top, left: pos.left }}
-      aria-hidden
-      role="button"
+    <>
+      {/* Coin counter shows after first coin */}
+      {coinCount > 0 && (
+        <div
+          className="coin-counter"
+          aria-hidden
+          title="Klicke 20x zum Zurücksetzen"
+          onClick={(e) => {
+            e.stopPropagation();
+            counterClicksRef.current += 1;
+            if (counterClicksRef.current >= 20) {
+              counterClicksRef.current = 0;
+              setCoinCount(0);
+            }
+          }}
+        >
+          <span className="coin-ico">🪙</span>
+          <span className="coin-num">{coinCount}</span>
+        </div>
+      )}
+      {/* Fireworks layer */}
+      {fireworks.length > 0 && (
+        <div className="fw-layer" aria-hidden>
+          {fireworks.map((p) => (
+            <span
+              key={p.id}
+              className="fw-particle"
+              style={{
+                left: p.x,
+                top: p.y,
+                ['--tx']: `${p.tx}px`,
+                ['--ty']: `${p.ty}px`,
+                animationDuration: `${p.d}ms`,
+                width: `${p.s}px`,
+                height: `${p.s}px`,
+                background: `radial-gradient(circle at 30% 30%, #fff, ${p.c1} 45%, ${p.c2} 100%)`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {/* Droppings and coins layers */}
+      {(droppings.length > 0) && (
+        <div className="dropping-layer">
+          {droppings.map((d) => (
+            <span
+              key={d.id}
+              className="dropping"
+              onClick={(e) => onDropClick(e, d.id, d.x, d.y)}
+              title="Sammle Münze"
+              style={{ left: d.x, top: d.y, fontSize: `${d.s}px`, transform: `translate(-50%, -50%) rotate(${d.r}deg)` }}
+            >
+              💩
+            </span>
+          ))}
+        </div>
+      )}
+      {(coins.length > 0) && (
+        <div className="coin-layer" aria-hidden>
+          {coins.map((c) => (
+            <span key={c.id} className="coin-pop" style={{ left: c.x, top: c.y }}>🪙</span>
+          ))}
+        </div>
+      )}
+      <div
+        className={`cat-sprite ${play ? 'running' : 'idle'}`}
+        
+        style={{ top: pos.top, left: pos.left }}
+        aria-hidden
+        role="button"
       tabIndex={0}
       title="Klick für Schnurren"
       onClick={(e) => { e.stopPropagation(); showPurr(); }}
@@ -370,6 +640,8 @@ export default function CatSprite({ play, onCatch }) {
       <div className="cat-body" style={{ transform: `scaleX(${flip})` }}>
         <CatVariant index={variant} active={!!play} />
       </div>
+      {/* Crown after 50 coins */}
+      {coinCount >= 50 && <div className="cat-crown" aria-hidden>👑</div>}
       <div className={`cat-shadow ${play ? 'run' : ''}`} />
       {message && (
         <div className={`cat-bubble ${bubbleSize === 'big' ? 'big' : ''} ${ (pos.left > (typeof window !== 'undefined' ? (window.innerWidth - (120 + 280)) : 100000)) ? 'left' : 'right' }`}>
@@ -377,6 +649,7 @@ export default function CatSprite({ play, onCatch }) {
           <span className="cat-bubble-tail" />
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

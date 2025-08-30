@@ -93,7 +93,7 @@ export default function App() {
       // viewport click position
       const x = e.clientX;
       const y = e.clientY;
-      // choose kind
+      // spawn ball or mouse (50/50)
       const kind = Math.random() < 0.5 ? 'ball' : 'mouse';
       const id = Date.now();
       setPlay({ id, kind, x, y });
