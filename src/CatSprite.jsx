@@ -98,13 +98,16 @@ function CatVariant({ index, active }) {
   );
 }
 
-export default function CatSprite({ play }) {
+export default function CatSprite({ play, onCatch }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
+  const [bubbleSize, setBubbleSize] = useState('normal');
   const catSize = useMemo(() => ({ w: 120, h: 120 }), []);
   const hideTimeout = useRef(null);
   const dirRef = useRef(1); // 1 right, -1 left
+  const attemptsRef = useRef(0);
+  const nearRef = useRef(false);
 
   const messages = useMemo(
     () => [
@@ -218,6 +221,7 @@ export default function CatSprite({ play }) {
   const showRandomMessage = () => {
     const msg = messages[Math.floor(Math.random() * messages.length)];
     setMessage(msg);
+    setBubbleSize('normal');
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => setMessage(null), 12000);
   };
@@ -225,6 +229,7 @@ export default function CatSprite({ play }) {
   const showPurr = () => {
     const msg = purrs[Math.floor(Math.random() * purrs.length)];
     setMessage(msg);
+    setBubbleSize('normal');
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => setMessage(null), 12000);
   };
@@ -281,6 +286,32 @@ export default function CatSprite({ play }) {
         const dist = Math.hypot(dx, dy);
         // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
+        // Catch detection with hysteresis
+        const catchRadius = play.kind === 'ball' ? 28 : 26;
+        const releaseRadius = 42;
+        if (dist <= catchRadius) {
+          if (!nearRef.current) {
+            nearRef.current = true;
+            if (play.kind === 'mouse') {
+              attemptsRef.current += 1;
+              if (attemptsRef.current >= 3) {
+                setBubbleSize('big');
+                setMessage('😄🎉');
+                if (hideTimeout.current) clearTimeout(hideTimeout.current);
+                hideTimeout.current = setTimeout(() => setMessage(null), 3000);
+                setTimeout(() => { onCatch && onCatch(); }, 900);
+              }
+            } else {
+              setBubbleSize('big');
+              setMessage('😄🎉');
+              if (hideTimeout.current) clearTimeout(hideTimeout.current);
+              hideTimeout.current = setTimeout(() => setMessage(null), 3000);
+              setTimeout(() => { onCatch && onCatch(); }, 900);
+            }
+          }
+        } else if (dist > releaseRadius) {
+          nearRef.current = false;
+        }
         if (dist < 4) return p;
         const step = Math.min(dist, speed * dt);
         const nx = p.left + (dx / (dist || 1)) * step;
@@ -295,7 +326,13 @@ export default function CatSprite({ play }) {
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [play, catSize.w, catSize.h]);
+  }, [play, catSize.w, catSize.h, onCatch]);
+
+  // Reset attempts when a new play starts
+  useEffect(() => {
+    attemptsRef.current = 0;
+    nearRef.current = false;
+  }, [play?.id]);
 
   const flip = dirRef.current < 0 ? -1 : 1;
 
@@ -307,7 +344,7 @@ export default function CatSprite({ play }) {
       role="button"
       tabIndex={0}
       title="Klick für Schnurren"
-      onClick={showPurr}
+      onClick={(e) => { e.stopPropagation(); showPurr(); }}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPurr(); } }}
     >
       <div className="cat-body" style={{ transform: `scaleX(${flip})` }}>
@@ -315,7 +352,7 @@ export default function CatSprite({ play }) {
       </div>
       <div className={`cat-shadow ${play ? 'run' : ''}`} />
       {message && (
-        <div className="cat-bubble">
+        <div className={`cat-bubble ${bubbleSize === 'big' ? 'big' : ''} ${ (pos.left > (typeof window !== 'undefined' ? (window.innerWidth - (120 + 280)) : 100000)) ? 'left' : 'right' }`}>
           {message}
           <span className="cat-bubble-tail" />
         </div>

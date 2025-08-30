@@ -78,7 +78,18 @@ export default function App() {
       // ignore if clicking on interactive or inside main layout/status
       const interactiveTags = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A', 'IMG', 'LABEL']);
       if (interactiveTags.has(e.target.tagName)) return;
-      if (e.target.closest('.button-group') || e.target.closest('.date-section') || e.target.closest('.preview-section') || e.target.closest('.status-indicator') || e.target.closest('.react-datepicker')) return;
+      if (
+        e.target.closest('.button-group') ||
+        e.target.closest('.date-section') ||
+        e.target.closest('.preview-section') ||
+        e.target.closest('.status-indicator') ||
+        e.target.closest('.react-datepicker') ||
+        e.target.closest('.custom-datepicker') ||
+        e.target.closest('.react-datepicker__month-container') ||
+        e.target.closest('.react-datepicker__day') ||
+        e.target.closest('.react-datepicker__navigation') ||
+        e.target.closest('.cat-sprite')
+      ) return;
       // viewport click position
       const x = e.clientX;
       const y = e.clientY;
@@ -125,7 +136,7 @@ export default function App() {
 
   return (
     <>
-      <CatSprite play={play} />
+      <CatSprite play={play} onCatch={() => setPlay(null)} />
       <PlayOverlay play={play} setPlay={setPlay} />
       <div className="status-indicator">
         {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}

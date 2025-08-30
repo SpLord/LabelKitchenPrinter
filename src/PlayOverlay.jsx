@@ -79,7 +79,9 @@ export default function PlayOverlay({ play, setPlay }) {
   return (
     <div className="play-overlay" aria-hidden>
       {play.kind === 'ball' ? (
-        <div className="toy-ball" style={style} />
+        <div className="toy-ball" style={style}>
+          <div className="ball-core" />
+        </div>
       ) : (
         <div className="toy-mouse" style={style}>
           <span role="img" aria-label="mouse">🐭</span>
