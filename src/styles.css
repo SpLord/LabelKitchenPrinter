@@ -59,6 +59,9 @@ h1 {
   cursor: pointer;
 }
 
+.cat-sprite.running { animation-duration: 1.4s; }
+.cat-body { transition: transform 80ms ease; will-change: transform; }
+
 @keyframes cat-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }

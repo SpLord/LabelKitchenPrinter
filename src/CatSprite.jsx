@@ -13,10 +13,12 @@ const VARIANTS = [
   { name: 'snow', body: '#f8fafc', stroke: '#334155', accent: '#a3e635', pattern: 'spots', patternColor: '#a3e635' },
 ];
 
-function CatVariant({ index }) {
+function CatVariant({ index, active }) {
   const v = VARIANTS[index % VARIANTS.length];
   const earTilt = index % 2 === 0 ? '' : 'rotate(-6 60 40)';
   const earTiltR = index % 2 === 0 ? '' : 'rotate(6 120 42)';
+  const tailDur = active ? '1.1s' : '1.8s';
+  const pawDur = active ? '0.28s' : '1.1s';
   return (
     <svg viewBox="0 0 200 200" width="100%" height="100%">
       <defs>
@@ -25,15 +27,19 @@ function CatVariant({ index }) {
         </filter>
       </defs>
       <path d="M155 120c20 0 30 15 20 28s-26 10-33 3" fill="none" stroke={v.stroke} strokeWidth="8" strokeLinecap="round">
-        <animate attributeName="d" dur="1.8s" repeatCount="indefinite" values="M155 120c20 0 30 15 20 28s-26 10-33 3; M155 120c22 2 34 12 26 26s-26 12-35 6; M155 120c20 0 30 15 20 28s-26 10-33 3" />
+        <animate attributeName="d" dur={tailDur} repeatCount="indefinite" values="M155 120c20 0 30 15 20 28s-26 10-33 3; M155 120c22 2 34 12 26 26s-26 12-35 6; M155 120c20 0 30 15 20 28s-26 10-33 3" />
       </path>
       <g filter="url(#shadow)">
         {/* Body + Head */}
         <ellipse cx="110" cy="120" rx="70" ry="55" fill={v.body} stroke={v.stroke} strokeWidth="6" />
         <circle cx="80" cy="85" r="40" fill={v.body} stroke={v.stroke} strokeWidth="6" />
         {/* Ears */}
-        <path d="M55 56 L45 25 L75 45 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTilt} />
-        <path d="M105 56 L135 25 L125 60 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTiltR} />
+        <path d="M55 56 L45 25 L75 45 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTilt}>
+          <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="0 60 40; 4 60 40; 0 60 40" dur="4s" repeatCount="indefinite" />
+        </path>
+        <path d="M105 56 L135 25 L125 60 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTiltR}>
+          <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="0 120 42; -3 120 42; 0 120 42" dur="4.5s" repeatCount="indefinite" />
+        </path>
 
         {/* Patterns */}
         {v.pattern === 'stripes' && (
@@ -69,16 +75,24 @@ function CatVariant({ index }) {
         )}
 
         {/* Eyes / Face */}
-        <circle cx="65" cy="85" r="6" fill={v.stroke} />
-        <circle cx="95" cy="85" r="6" fill={v.stroke} />
+        <circle cx="65" cy="85" r="6" fill={v.stroke}>
+          <animate attributeName="r" dur="6s" repeatCount="indefinite" values="6;6;1;6;6" keyTimes="0;0.88;0.9;0.92;1" />
+        </circle>
+        <circle cx="95" cy="85" r="6" fill={v.stroke}>
+          <animate attributeName="r" dur="6.2s" repeatCount="indefinite" values="6;6;1;6;6" keyTimes="0;0.86;0.88;0.9;1" />
+        </circle>
         <polygon points="80,95 75,103 85,103" fill={v.accent} />
         <path d="M75 108 q5 6 10 0" stroke={v.stroke} strokeWidth="4" fill="none" strokeLinecap="round" />
         <path d="M52 95 h18 M52 103 h18 M52 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
         <path d="M90 95 h18 M90 103 h18 M90 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
 
         {/* Paws */}
-        <ellipse cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
-        <ellipse cx="95" cy="165" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
+        <ellipse cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6">
+          <animate attributeName="cy" dur={pawDur} values="155;153;155" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="95" cy="165" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6">
+          <animate attributeName="cy" dur={pawDur} values="165;163;165" repeatCount="indefinite" begin="-0.14s" />
+        </ellipse>
       </g>
     </svg>
   );
@@ -90,6 +104,9 @@ export default function CatSprite({ play }) {
   const [message, setMessage] = useState(null);
   const catSize = useMemo(() => ({ w: 120, h: 120 }), []);
   const hideTimeout = useRef(null);
+  const headingRef = useRef(0);
+  const dirRef = useRef(1); // 1 right, -1 left
+  const tiltRef = useRef(0);
 
   const messages = useMemo(
     () => [
@@ -211,9 +228,8 @@ export default function CatSprite({ play }) {
   };
 
   useEffect(() => {
-    // First position and schedule moves
+    // First position on mount, variant rotation, speech scheduling
     moveCat();
-    const mvId = setInterval(moveCat, 20000);
     // Change variant every ~3 hours
     const varId = setInterval(() => setVariant((v) => (v + 1) % VARIANTS.length), 10800000);
     // Random speech every 60–180s
@@ -227,16 +243,23 @@ export default function CatSprite({ play }) {
     }
     scheduleSpeak();
 
-    const onResize = () => moveCat();
+    const onResize = () => setPos(pickSafePosition());
     window.addEventListener('resize', onResize);
     return () => {
-      clearInterval(mvId);
       clearInterval(varId);
       clearTimeout(speakId);
       if (hideTimeout.current) clearTimeout(hideTimeout.current);
       window.removeEventListener('resize', onResize);
     };
   }, []);
+
+  // Reposition occasionally when idle (every 20s), but pause while chasing
+  useEffect(() => {
+    const fn = () => { if (!play) setPos(pickSafePosition()); };
+    fn();
+    const id = setInterval(fn, 20000);
+    return () => clearInterval(id);
+  }, [play]);
 
   // Chase logic towards current play target
   useEffect(() => {
@@ -254,6 +277,10 @@ export default function CatSprite({ play }) {
         const dx = targetX - p.left;
         const dy = targetY - p.top;
         const dist = Math.hypot(dx, dy);
+        // update heading and tilt
+        headingRef.current = Math.atan2(dy, dx) * 180 / Math.PI;
+        dirRef.current = dx < 0 ? -1 : 1;
+        tiltRef.current = Math.sin(t * 0.02) * 6;
         if (dist < 4) return p;
         const step = Math.min(dist, speed * dt);
         const nx = p.left + (dx / (dist || 1)) * step;
@@ -270,9 +297,12 @@ export default function CatSprite({ play }) {
     return () => cancelAnimationFrame(rafId);
   }, [play, catSize.w, catSize.h]);
 
+  const flip = dirRef.current < 0 ? -1 : 1;
+  const tilt = tiltRef.current;
+
   return (
     <div
-      className="cat-sprite"
+      className={`cat-sprite ${play ? 'running' : 'idle'}`}
       style={{ top: pos.top, left: pos.left }}
       aria-hidden
       role="button"
@@ -281,7 +311,9 @@ export default function CatSprite({ play }) {
       onClick={showPurr}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPurr(); } }}
     >
-      <CatVariant index={variant} />
+      <div className="cat-body" style={{ transform: `scaleX(${flip}) rotate(${tilt}deg)` }}>
+        <CatVariant index={variant} active={!!play} />
+      </div>
       {message && (
         <div className="cat-bubble">
           {message}
