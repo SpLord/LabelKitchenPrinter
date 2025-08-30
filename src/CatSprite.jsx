@@ -128,6 +128,18 @@ export default function CatSprite({ play, onCatch }) {
   const fwIntervalRef = useRef(null);
   const fwStartedRef = useRef(false);
   const counterClicksRef = useRef(0);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [x2Active, setX2Active] = useState(false);
+  const [magnetActive, setMagnetActive] = useState(false);
+  // Visual effect states
+  const [sparkles, setSparkles] = useState([]); // around cat
+  const [footprints, setFootprints] = useState([]); // short-lived paw prints
+  const [rainbowDots, setRainbowDots] = useState([]); // trail dots
+  const [confetti, setConfetti] = useState([]); // small bursts
+  const [paradeActive, setParadeActive] = useState(false); // emoji banner
+  const [capeVisible, setCapeVisible] = useState(false);
+  const [goldOutlineActive, setGoldOutlineActive] = useState(false);
+  const unlockedRef = useRef({});
 
   // Cookie helpers for session persistence (fallback to localStorage)
   const getCookie = (name) => {
@@ -199,6 +211,96 @@ export default function CatSprite({ play, onCatch }) {
     hideTimeout.current = setTimeout(() => setMessage(null), 3000);
     setTimeout(() => { onCatch && onCatch(); }, 900);
   };
+
+  // Helpers to trigger visual effects
+  const triggerSparkles = () => {
+    const cx = posRef.current.left + catSize.w / 2;
+    const cy = posRef.current.top + catSize.h / 2;
+    const parts = Array.from({ length: 14 }).map((_, i) => ({ id: 'sp'+Date.now()+i, x: cx + (Math.random()*80-40), y: cy + (Math.random()*60-30) }));
+    setSparkles(parts);
+    setTimeout(() => setSparkles([]), 1600);
+  };
+  const triggerFootprints = () => {
+    const baseX = posRef.current.left + catSize.w/2 - 20;
+    const baseY = posRef.current.top + catSize.h - 10;
+    const prints = Array.from({ length: 8 }).map((_, i) => ({ id: 'fp'+Date.now()+i, x: baseX + i*10, y: baseY + (i%2?6:-6) }));
+    setFootprints(prints);
+    setTimeout(() => setFootprints([]), 2000);
+  };
+  const startRainbowTrail = (ms=3000) => {
+    const start = Date.now();
+    const id = setInterval(() => {
+      const t = Date.now();
+      if (t-start > ms) { clearInterval(id); return; }
+      const x = posRef.current.left + catSize.w/2;
+      const y = posRef.current.top + catSize.h/2;
+      const hue = Math.floor((t/20)%360);
+      const dot = { id: 'rb'+t+Math.random(), x, y, c: `hsl(${hue}deg 90% 60%)` };
+      setRainbowDots((prev)=>{
+        const merged = prev.concat(dot);
+        return merged.length>150 ? merged.slice(merged.length-150) : merged;
+      });
+    }, 60);
+    setTimeout(()=> setRainbowDots([]), ms+800);
+  };
+  const triggerConfetti = (strong=false) => {
+    const vw = window.innerWidth||1200, vh = window.innerHeight||800;
+    const n = strong? 120: 40;
+    const parts = Array.from({ length: n }).map((_,i)=>({ id:'cf'+Date.now()+i, x: Math.random()*vw, y: -20-Math.random()*60, c: `hsl(${Math.floor(Math.random()*360)}deg 90% 60%)`, d: 800+Math.random()*800 }));
+    setConfetti((prev)=> prev.concat(parts));
+    setTimeout(()=> setConfetti([]), strong? 1800: 1000);
+  };
+  const startShake = () => {
+    document.documentElement.classList.add('shake');
+    setTimeout(()=> document.documentElement.classList.remove('shake'), 100);
+  };
+  const startParade = () => {
+    setParadeActive(true);
+    setTimeout(()=> setParadeActive(false), 1200);
+  };
+  const showCape = () => { setCapeVisible(true); setTimeout(()=> setCapeVisible(false), 5000); };
+  const startGoldOutline = () => { setGoldOutlineActive(true); setTimeout(()=> setGoldOutlineActive(false), 10000); };
+
+  // Milestone triggers on coin thresholds (once per session)
+  const lastCoinsRef = useRef(0);
+  useEffect(()=>{
+    if (!coinsLoaded) return;
+    const c = coinCount;
+    const mark = (key, fn) => { if (!unlockedRef.current[key] && c >= Number(key)) { unlockedRef.current[key]=true; fn&&fn(); } };
+    // 5 sparkles when collecting up to 10
+    mark(5, triggerSparkles);
+    mark(10, ()=> setMessage('Miau!'));
+    mark(15, triggerFootprints);
+    mark(20, ()=> triggerConfetti(false));
+    mark(25, ()=> startRainbowTrail());
+    // 35: quest (simple bonus if +5 coins in 60s)
+    if (!unlockedRef.current['35'] && c>=35){
+      unlockedRef.current['35']=true;
+      const start = coinCount;
+      const t0 = Date.now();
+      const int = setInterval(()=>{
+        if (Date.now()-t0>60000){ clearInterval(int); return; }
+        if (coinCount - start >= 5){ setCoinCount(v=>v+3); clearInterval(int); setMessage('Bonus +3!'); setTimeout(()=>setMessage(null),1500);} 
+      }, 500);
+    }
+    mark(40, ()=> { setX2Active(true); setTimeout(()=> setX2Active(false), 10000); });
+    // 50 crown already handled by render
+    mark(60, ()=> triggerConfetti(false));
+    mark(70, ()=> { startShake(); setMessage('Super Miau!'); setTimeout(()=> setMessage(null), 800); });
+    mark(75, startParade);
+    mark(80, triggerFootprints);
+    mark(90, showCape);
+    // 100 fireworks handled separately
+    mark(110, ()=> triggerConfetti(true));
+    mark(150, ()=> triggerConfetti(true));
+    mark(200, startGoldOutline);
+    // 250 deluxe crown handled via CSS shimmer
+    mark(300, ()=> { setMessage('Miau Miau Miau!'); setTimeout(()=> setMessage(null), 1200); });
+    mark(400, ()=> triggerConfetti(false));
+    mark(500, ()=> triggerConfetti(true));
+    // 750 / 1000 handled via panel unlocks (we already have panel)
+    lastCoinsRef.current = c;
+  }, [coinCount, coinsLoaded]);
   const showTrumpet = () => {
     setTrumpetActive(true);
     setBubbleSize('big');
@@ -471,7 +573,7 @@ export default function CatSprite({ play, onCatch }) {
     // spawn coin pop
     const coinId = Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-    setCoinCount((c) => c + 1);
+    setCoinCount((c) => c + 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0));
     // cleanup coin after animation (~900ms)
     setTimeout(() => {
       setCoins((prev) => prev.filter((c) => c.id !== coinId));
@@ -580,7 +682,40 @@ export default function CatSprite({ play, onCatch }) {
         >
           <span className="coin-ico">🪙</span>
           <span className="coin-num">{coinCount}</span>
+          {x2Active && <span className="fx-badge">x2</span>}
+          {magnetActive && <span className="fx-badge">🧲</span>}
         </div>
+      )}
+      {confetti.length > 0 && (
+        <div className="confetti-layer" aria-hidden>
+          {confetti.map((q)=> (
+            <span key={q.id} className="confetti" style={{ left: q.x, top: q.y, background: q.c, animationDuration: `${q.d}ms` }} />
+          ))}
+        </div>
+      )}
+      {sparkles.length > 0 && (
+        <div className="sparkle-layer" aria-hidden>
+          {sparkles.map((s)=> (
+            <span key={s.id} className="sparkle" style={{ left: s.x, top: s.y }} />
+          ))}
+        </div>
+      )}
+      {footprints.length > 0 && (
+        <div className="footprint-layer" aria-hidden>
+          {footprints.map((f)=> (
+            <span key={f.id} className="footprint" style={{ left: f.x, top: f.y }}>🐾</span>
+          ))}
+        </div>
+      )}
+      {rainbowDots.length > 0 && (
+        <div className="rainbow-layer" aria-hidden>
+          {rainbowDots.map((r)=> (
+            <span key={r.id} className="rainbow-dot" style={{ left: r.x, top: r.y, background: r.c }} />
+          ))}
+        </div>
+      )}
+      {paradeActive && (
+        <div className="emoji-parade" aria-hidden>😺 🐟 🧀 🪙 🎉 😻 ✨</div>
       )}
       {/* Fireworks layer */}
       {fireworks.length > 0 && (
@@ -648,6 +783,29 @@ export default function CatSprite({ play, onCatch }) {
           {message}
           <span className="cat-bubble-tail" />
         </div>
+      )}
+      {coinCount >= 30 && (
+        <>
+          <button className="gimmick-toggle" onClick={(e) => { e.stopPropagation(); setPanelOpen((v) => !v); }} title="Gimmicks">✨</button>
+          {panelOpen && (
+            <div className="gimmick-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="gimmick-title">Gimmicks</div>
+              <button onClick={() => {
+                const vw = window.innerWidth || 1200;
+                const items = Array.from({ length: 20 }).map((_, i) => ({ id: 'r'+Date.now()+i, x: Math.random()*vw, y: -20- Math.random()*80 }));
+                setCoins((prev) => prev.concat(items.map(it => ({ id: it.id, x: it.x, y: it.y }))));
+                setTimeout(() => setCoins((prev) => prev.filter((c) => !String(c.id).startsWith('r'))), 1200);
+              }}>Coin‑Shower</button>
+              <button onClick={() => setDroppings([])}>Poops entfernen</button>
+              {coinCount >= 60 && (
+                <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
+              )}
+              {coinCount >= 120 && (
+                <button onClick={() => { setMagnetActive(true); setTimeout(() => setMagnetActive(false), 15000); }}>Magnet (15s)</button>
+              )}
+            </div>
+          )}
+        </>
       )}
       </div>
     </>

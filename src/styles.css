@@ -84,6 +84,21 @@ h1 {
   opacity: 1;
 }
 
+/* ===== Extra Effects ===== */
+.confetti-layer, .sparkle-layer, .footprint-layer, .rainbow-layer { position: fixed; inset: 0; pointer-events: none; z-index: 62; }
+.confetti { position: absolute; width: 8px; height: 12px; transform: translate(-50%, -50%); animation: confetti-fall var(--d, 1s) ease-out forwards; border-radius: 2px; }
+@keyframes confetti-fall { from { transform: translate(-50%, -50%) translateY(0) rotate(0); opacity: 1; } to { transform: translate(-50%, -50%) translateY(200px) rotate(180deg); opacity: 0; }}
+.sparkle { position: absolute; width: 6px; height: 6px; transform: translate(-50%, -50%); background: radial-gradient(circle, #fff, #fffb00 60%, transparent 70%); border-radius: 50%; filter: drop-shadow(0 0 6px rgba(255,255,100,0.9)); animation: sparkle-pop 1.2s ease-out forwards; }
+@keyframes sparkle-pop { from { transform: translate(-50%, -50%) scale(0.5); opacity: 1; } to { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }}
+.footprint { position: absolute; transform: translate(-50%, -50%); opacity: 0.9; animation: footprint-fade 2s ease-out forwards; font-size: 14px; }
+@keyframes footprint-fade { from { opacity: 0.9;} to { opacity: 0;} }
+.rainbow-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); animation: rainbow-fade 800ms linear forwards; }
+@keyframes rainbow-fade { from { opacity: 1;} to { opacity:0;} }
+.emoji-parade { position: fixed; top: 8px; left: -40%; right: 0; text-align: center; z-index: 68; font-size: 20px; animation: parade-move 1.2s linear forwards; }
+@keyframes parade-move { from { transform: translateX(-40%);} to { transform: translateX(40%);} }
+.cat-cape { position: absolute; top: 20px; right: -6px; font-size: 18px; transform: rotate(-8deg); }
+.cat-body.gold { box-shadow: 0 0 0 3px rgba(255,215,0,0.8), 0 0 12px rgba(255,215,0,0.9); border-radius: 12px; }
+
 /* ==========================
    🐾 Cat droppings (persist)
    ========================== */
@@ -121,6 +136,14 @@ h1 {
 }
 .coin-counter .coin-ico { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15)); }
 .coin-counter .coin-num { min-width: 1.8em; text-align: right; }
+.coin-counter .fx-badge {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(16,185,129,0.15);
+  border: 1px solid rgba(16,185,129,0.35);
+  font-size: 0.8rem;
+}
 
 /* Coins pop animation */
 .coin-layer { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -166,6 +189,45 @@ h1 {
   70% { transform: translate(-50%, -50%) translate(calc(var(--tx) * 0.6), calc(var(--ty) * 0.6)) scale(1.4); opacity: 1; }
   90% { transform: translate(-50%, -50%) translate(calc(var(--tx) * 0.9), calc(var(--ty) * 0.9)) scale(1.2); opacity: 0.9; }
   100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.05); opacity: 0; }
+}
+
+/* Gimmick panel */
+.gimmick-toggle {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 70;
+  background: #fff;
+  border: 1px solid rgba(2,6,23,0.08);
+  border-radius: 999px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 20px rgba(2,6,23,0.18);
+  cursor: pointer;
+}
+.gimmick-panel {
+  position: fixed;
+  right: 14px;
+  bottom: 56px;
+  z-index: 70;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(2,6,23,0.08);
+  border-radius: 12px;
+  padding: 10px;
+  width: 220px;
+  box-shadow: 0 14px 30px rgba(2,6,23,0.2);
+  backdrop-filter: blur(6px);
+}
+.gimmick-title { font-weight: 700; margin-bottom: 6px; }
+.gimmick-panel button {
+  display: block;
+  width: 100%;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(67,56,202,0.25);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-600) 100%);
+  color: #fff;
+  cursor: pointer;
 }
 @keyframes coin-blink {
   0%, 100% { filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)) brightness(1); }
