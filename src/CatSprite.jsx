@@ -137,6 +137,23 @@ export default function CatSprite({ play, onCatch }) {
     []
   );
 
+  const celebrates = useMemo(
+    () => [
+      '😸', '😺', '😻', '😁', '🤩', '🥳', '😆', '😃', '😊', '😄',
+      '😸🎉', '😺🎊', '😻✨', '🥳🎉', '🤩✨', '😄🎊'
+    ],
+    []
+  );
+
+  const showCelebrate = () => {
+    const msg = celebrates[Math.floor(Math.random() * celebrates.length)];
+    setBubbleSize('big');
+    setMessage(msg);
+    if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    hideTimeout.current = setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => { onCatch && onCatch(); }, 900);
+  };
+
   function rectsOverlap(a, b) {
     return !(a.left > b.right || a.right < b.left || a.top > b.bottom || a.bottom < b.top);
   }
@@ -305,18 +322,10 @@ export default function CatSprite({ play, onCatch }) {
             if (play.kind === 'mouse') {
               attemptsRef.current += 1;
               if (attemptsRef.current >= 3) {
-                setBubbleSize('big');
-                setMessage('😄🎉');
-                if (hideTimeout.current) clearTimeout(hideTimeout.current);
-                hideTimeout.current = setTimeout(() => setMessage(null), 3000);
-                setTimeout(() => { onCatch && onCatch(); }, 900);
+                showCelebrate();
               }
             } else {
-              setBubbleSize('big');
-              setMessage('😄🎉');
-              if (hideTimeout.current) clearTimeout(hideTimeout.current);
-              hideTimeout.current = setTimeout(() => setMessage(null), 3000);
-              setTimeout(() => { onCatch && onCatch(); }, 900);
+              showCelebrate();
             }
           }
         } else {
