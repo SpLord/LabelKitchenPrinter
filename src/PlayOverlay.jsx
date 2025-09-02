@@ -12,6 +12,8 @@ export default function PlayOverlay({ play, setPlay }) {
   const frameCountRef = useRef(0);
   useEffect(() => {
     if (!play) return;
+  // Laser: no autonomous movement; it only follows pointer via App state updates
+  if (play.kind === 'laser') return;
     // Initialize physics refs
     xRef.current = play.x ?? 0;
     yRef.current = play.y ?? 0;
@@ -37,7 +39,7 @@ export default function PlayOverlay({ play, setPlay }) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      if (play.kind === 'ball') {
+  if (play.kind === 'ball') {
         const friction = 0.996;
         vx *= friction;
         vy *= friction;
@@ -48,7 +50,7 @@ export default function PlayOverlay({ play, setPlay }) {
         if (x > vw - r) { x = vw - r; vx = -Math.abs(vx); }
         if (y < r) { y = r; vy = Math.abs(vy); }
         if (y > vh - r) { y = vh - r; vy = -Math.abs(vy); }
-      } else {
+  } else {
         // mouse random walk
         const speed = 230;
         vx += (Math.random() * 2 - 1) * 40;
@@ -91,7 +93,7 @@ export default function PlayOverlay({ play, setPlay }) {
 
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [play?.id]);
+  }, [play?.id, play?.kind]);
 
   if (!play) return null;
 

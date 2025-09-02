@@ -865,6 +865,25 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     if (debugUi) setPanelOpen(true);
   }, [debugUi]);
 
+  // Unlock flags and availability
+  const unlocked = {
+    coinShower: debugUi || coinCount >= 30,
+    treats: debugUi || coinCount >= 45,
+    feed: debugUi || coinCount >= 50,
+    x2: debugUi || coinCount >= 60,
+    laser: debugUi || coinCount >= 75,
+    shell: debugUi || coinCount >= 90,
+    magnet: debugUi || coinCount >= 120,
+  };
+  const hasAnyUnlocked = Object.values(unlocked).some(Boolean);
+  const unlockItems = [
+    { key: 'treats', label: 'Leckerlis', thr: 45 },
+    { key: 'feed', label: 'Füttern & Wasser', thr: 50 },
+    { key: 'laser', label: 'Laserpointer', thr: 75 },
+    { key: 'shell', label: 'Hütchenspiel', thr: 90 },
+    { key: 'magnet', label: 'Magnet', thr: 120 },
+  ];
+
   return (
     <>
       {/* Coin counter shows after first coin */}
@@ -895,23 +914,45 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
               <span className="pet-stat" title="Durst">💧 {Math.round(thirst)}%</span>
             </>
           )}
-          <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setPanelOpen(v=>!v); }} title="Gimmicks">✨</button>
-          <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setShowUnlocks(true); }} title="Freischaltungen">📜</button>
+          {hasAnyUnlocked && (
+            <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setPanelOpen(v=>!v); }} title="Gimmicks">✨</button>
+          )}
+          {hasAnyUnlocked && (
+            <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setShowUnlocks(true); }} title="Freischaltungen">📜</button>
+          )}
         </div>
       )}
-      {(debugUi || coinCount >= 30) && panelOpen && (
+      {showUnlocks && (
+        <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
+          <div className="gimmick-title">Freischaltungen</div>
+          <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+            {(debugUi ? unlockItems : unlockItems.filter(it => coinCount >= it.thr)).map(it => (
+              <div key={it.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--surface)' }}>
+                <span style={{ fontWeight: 600 }}>{coinCount >= it.thr ? '✅' : '🔒'} {it.label}</span>
+                <span style={{ color: 'var(--muted)' }}>{it.thr} 🪙</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+            <button onClick={() => setShowUnlocks(false)}>Schließen</button>
+          </div>
+        </div>
+      )}
+      {hasAnyUnlocked && panelOpen && (
         <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
           <div className="gimmick-title">Gimmicks</div>
           <button onClick={() => setShowUnlocks(true)}>📜 Freischaltungen</button>
-          <button onClick={triggerCoinShower}>Coin‑Shower</button>
+          {unlocked.coinShower && (
+            <button onClick={triggerCoinShower}>Coin‑Shower</button>
+          )}
           <button onClick={() => setDroppings([])}>Poops entfernen</button>
-          {(debugUi || coinCount >= 45) && (
+          {unlocked.treats && (
             <button onClick={startTreats}>Leckerlis</button>
           )}
-          {(debugUi || coinCount >= 75) && (
+          {unlocked.laser && (
             <button onClick={onToggleLaser}>{laserMode ? '🔴 Laser an' : '⚪️ Laser aus'}</button>
           )}
-          {(debugUi || coinCount >= 50) && (
+          {unlocked.feed && (
             <>
               <div style={{ fontWeight: 700, marginTop: 6 }}>Füttern</div>
               {FOOD_OPTIONS.map(opt => (
@@ -922,13 +963,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
               <button onClick={startPlaceWater}>💧 Wasser (kostenlos, +30% Durst)</button>
             </>
           )}
-          {(debugUi || coinCount >= 90) && (
+          {unlocked.shell && (
             <button onClick={() => setShellOpen(true)}>Hütchenspiel</button>
           )}
-          {(debugUi || coinCount >= 60) && (
+          {unlocked.x2 && (
             <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
           )}
-          {(debugUi || coinCount >= 120) && (
+          {unlocked.magnet && (
             <button onClick={() => { setMagnetActive(true); setTimeout(() => setMagnetActive(false), 15000); }}>Magnet (15s)</button>
           )}
         </div>
@@ -1052,54 +1093,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         </div>
       )}
   {/* Menü über der Katze entfernt – Bedienung nur über das obere Gimmick-Menü */}
-      {shellOpen && (
+  {shellOpen && (
         <ShellGame
           onClose={() => setShellOpen(false)}
           onResult={(add) => { setCoinCount((c) => c + add); setCoinWallet((c)=> c + add); }}
         />
       )}
-    {showUnlocks && (
-        <UnlocksOverlay
-          coinCount={coinCount}
-      debugUi={debugUi}
-          onClose={() => setShowUnlocks(false)}
-        />
-      )}
       </div>
     </>
-  );
-}
-
-function UnlocksOverlay({ coinCount, onClose, debugUi }) {
-  const items = [
-    { key: 'treats', label: 'Leckerlis', thr: 45 },
-    { key: 'feed', label: 'Füttern & Wasser', thr: 50 },
-    { key: 'laser', label: 'Laserpointer', thr: 75 },
-    { key: 'shell', label: 'Hütchenspiel', thr: 90 },
-    { key: 'magnet', label: 'Magnet', thr: 120 },
-  ];
-  const list = debugUi ? items : items.filter(it => coinCount >= it.thr);
-  return (
-    <div className="shell-overlay" role="dialog" aria-modal="true" aria-label="Freischaltungen">
-      <div className="shell-board">
-        <div className="shell-title">Freischaltungen</div>
-        <div className="shell-sub">{debugUi ? 'Alle Stufen (Debug)' : 'Erreichte Stufen'}</div>
-        <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
-          {list.map(it => {
-            const unlocked = coinCount >= it.thr;
-            return (
-              <div key={it.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--surface)' }}>
-                <span style={{ fontWeight: 600 }}>{unlocked ? '✅' : '🔒'} {it.label}</span>
-                <span style={{ color: 'var(--muted)' }}>{it.thr} 🪙</span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="shell-footer" style={{ marginTop: '12px' }}>
-          <span className="shell-msg">Deine Münzen: {coinCount}</span>
-          <button className="shell-close" onClick={onClose}>Schließen</button>
-        </div>
-      </div>
-    </div>
   );
 }
