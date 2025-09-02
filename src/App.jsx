@@ -41,6 +41,7 @@ export default function App() {
   };
 
   const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
+  const debugUi = (input || '').trim().toUpperCase() === 'BATCAT';
 
   // Druckerstatus prüfen (DYMO)
   useEffect(() => {
@@ -103,6 +104,10 @@ export default function App() {
   }, []);
 
   const printLabel = (text) => {
+    if (debugUi) {
+      // BATCAT-Modus: keine Drucke
+      return;
+    }
     if (!text) return alert('Bitte Text eingeben.');
 
     fetch('/labels/Label_32x57.label')
@@ -136,7 +141,7 @@ export default function App() {
 
   return (
     <>
-      <CatSprite play={play} onCatch={() => setPlay(null)} />
+      <CatSprite play={play} onCatch={() => setPlay(null)} debugUi={debugUi} />
       <PlayOverlay play={play} setPlay={setPlay} />
       <div className="status-indicator">
         {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}

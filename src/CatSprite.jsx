@@ -99,7 +99,7 @@ function CatVariant({ index, active }) {
 }
 
 
-export default function CatSprite({ play, onCatch }) {
+export default function CatSprite({ play, onCatch, debugUi = false }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
@@ -308,6 +308,16 @@ export default function CatSprite({ play, onCatch }) {
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => { setMessage(null); setTrumpetActive(false); }, 1800);
     setTimeout(() => { onCatch && onCatch(); }, 900);
+  };
+
+  // Trigger a short coin shower animation (drops temporary coins from the top)
+  const triggerCoinShower = () => {
+    const vw = window.innerWidth || 1200;
+    const items = Array.from({ length: 20 }).map((_, i) => ({ id: 'r' + Date.now() + i, x: Math.random() * vw, y: -20 - Math.random() * 80 }));
+    // Reuse coin pop layer for simple rain effect
+    setCoins((prev) => prev.concat(items.map(it => ({ id: it.id, x: it.x, y: it.y }))));
+    // Cleanup rain coins after ~1.2s (animation time)
+    setTimeout(() => setCoins((prev) => prev.filter((c) => !String(c.id).startsWith('r'))), 1200);
   };
 
   function rectsOverlap(a, b) {
@@ -663,10 +673,15 @@ export default function CatSprite({ play, onCatch }) {
 
   const flip = dirRef.current < 0 ? -1 : 1;
 
+  // Force open panel in BATCAT mode
+  useEffect(() => {
+    if (debugUi) setPanelOpen(true);
+  }, [debugUi]);
+
   return (
     <>
       {/* Coin counter shows after first coin */}
-      {coinCount > 0 && (
+      {(debugUi || coinCount > 0) && (
         <div
           className="coin-counter"
           aria-hidden
@@ -684,6 +699,20 @@ export default function CatSprite({ play, onCatch }) {
           <span className="coin-num">{coinCount}</span>
           {x2Active && <span className="fx-badge">x2</span>}
           {magnetActive && <span className="fx-badge">🧲</span>}
+          <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setPanelOpen(v=>!v); }} title="Gimmicks">✨</button>
+        </div>
+      )}
+      {(debugUi || coinCount >= 30) && panelOpen && (
+        <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
+          <div className="gimmick-title">Gimmicks</div>
+          <button onClick={triggerCoinShower}>Coin‑Shower</button>
+          <button onClick={() => setDroppings([])}>Poops entfernen</button>
+          {(debugUi || coinCount >= 60) && (
+            <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
+          )}
+          {(debugUi || coinCount >= 120) && (
+            <button onClick={() => { setMagnetActive(true); setTimeout(() => setMagnetActive(false), 15000); }}>Magnet (15s)</button>
+          )}
         </div>
       )}
       {confetti.length > 0 && (
@@ -717,8 +746,8 @@ export default function CatSprite({ play, onCatch }) {
       {paradeActive && (
         <div className="emoji-parade" aria-hidden>😺 🐟 🧀 🪙 🎉 😻 ✨</div>
       )}
-      {/* Fireworks layer */}
-      {fireworks.length > 0 && (
+      {/* Fireworks layer (already rendered above when active) */}
+      {false && fireworks.length > 0 && (
         <div className="fw-layer" aria-hidden>
           {fireworks.map((p) => (
             <span
@@ -776,7 +805,7 @@ export default function CatSprite({ play, onCatch }) {
         <CatVariant index={variant} active={!!play} />
       </div>
       {/* Crown after 50 coins */}
-      {coinCount >= 50 && <div className="cat-crown" aria-hidden>👑</div>}
+      {(debugUi || coinCount >= 50) && <div className="cat-crown" aria-hidden>👑</div>}
       <div className={`cat-shadow ${play ? 'run' : ''}`} />
       {message && (
         <div className={`cat-bubble ${bubbleSize === 'big' ? 'big' : ''} ${ (pos.left > (typeof window !== 'undefined' ? (window.innerWidth - (120 + 280)) : 100000)) ? 'left' : 'right' }`}>
@@ -784,23 +813,18 @@ export default function CatSprite({ play, onCatch }) {
           <span className="cat-bubble-tail" />
         </div>
       )}
-      {coinCount >= 30 && (
+      {(debugUi || coinCount >= 30) && (
         <>
           <button className="gimmick-toggle" onClick={(e) => { e.stopPropagation(); setPanelOpen((v) => !v); }} title="Gimmicks">✨</button>
           {panelOpen && (
             <div className="gimmick-panel" onClick={(e) => e.stopPropagation()}>
               <div className="gimmick-title">Gimmicks</div>
-              <button onClick={() => {
-                const vw = window.innerWidth || 1200;
-                const items = Array.from({ length: 20 }).map((_, i) => ({ id: 'r'+Date.now()+i, x: Math.random()*vw, y: -20- Math.random()*80 }));
-                setCoins((prev) => prev.concat(items.map(it => ({ id: it.id, x: it.x, y: it.y }))));
-                setTimeout(() => setCoins((prev) => prev.filter((c) => !String(c.id).startsWith('r'))), 1200);
-              }}>Coin‑Shower</button>
+              <button onClick={triggerCoinShower}>Coin‑Shower</button>
               <button onClick={() => setDroppings([])}>Poops entfernen</button>
-              {coinCount >= 60 && (
+              {(debugUi || coinCount >= 60) && (
                 <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
               )}
-              {coinCount >= 120 && (
+              {(debugUi || coinCount >= 120) && (
                 <button onClick={() => { setMagnetActive(true); setTimeout(() => setMagnetActive(false), 15000); }}>Magnet (15s)</button>
               )}
             </div>

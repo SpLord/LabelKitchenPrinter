@@ -134,7 +134,23 @@ h1 {
   backdrop-filter: blur(6px);
   font-weight: 700;
 }
-.coin-counter .coin-ico { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15)); }
+.coin-counter .coin-ico {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+  vertical-align: -2px;
+  color: transparent; /* hide emoji glyph, use CSS coin instead */
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));
+}
+.coin-counter .coin-ico::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fde68a 35%, #f59e0b 60%, #d97706 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), 0 2px 3px rgba(0,0,0,0.2);
+}
 .coin-counter .coin-num { min-width: 1.8em; text-align: right; }
 .coin-counter .fx-badge {
   margin-left: 8px;
@@ -144,6 +160,14 @@ h1 {
   border: 1px solid rgba(16,185,129,0.35);
   font-size: 0.8rem;
 }
+.gimmick-toggle-inline {
+  margin-left: 8px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(2,6,23,0.1);
+  background: #fff;
+  cursor: pointer;
+}
 
 /* Coins pop animation */
 .coin-layer { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -152,11 +176,29 @@ h1 {
   transform: translate(-50%, -50%);
   animation: coin-pop 0.9s ease-out forwards, coin-blink 0.9s steps(2, start) forwards;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+  /* Ensure visible size even if emoji is not rendered (Edge fallback) */
+  width: 22px;
+  height: 22px;
+  color: transparent; /* hide emoji glyph, use CSS coin instead */
 }
 @keyframes coin-pop {
   0% { transform: translate(-50%, -50%) translateY(0) scale(0.9); opacity: 0.9; }
   60% { transform: translate(-50%, -50%) translateY(-50px) scale(1.1); opacity: 1; }
   100% { transform: translate(-50%, -50%) translateY(-80px) scale(1); opacity: 0; }
+}
+
+/* CSS-rendered coin for browsers lacking 🪙 emoji support (e.g., some Edge builds) */
+.coin-pop::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fde68a 35%, #f59e0b 60%, #d97706 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.25);
 }
 
 /* Crown on cat (after 5 coins) */
@@ -217,6 +259,7 @@ h1 {
   box-shadow: 0 14px 30px rgba(2,6,23,0.2);
   backdrop-filter: blur(6px);
 }
+.gimmick-panel.top { right: auto; bottom: auto; left: 12px; top: 52px; }
 .gimmick-title { font-weight: 700; margin-bottom: 6px; }
 .gimmick-panel button {
   display: block;
@@ -229,6 +272,11 @@ h1 {
   color: #fff;
   cursor: pointer;
 }
+
+/* Coin rain for Coin‑Shower */
+.coin-rain-layer { position: fixed; inset: 0; pointer-events: none; z-index: 63; }
+.coin-rain { position: absolute; transform: translate(-50%, -50%); animation: coin-rain 1.2s ease-in forwards; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
+@keyframes coin-rain { from { transform: translate(-50%, -50%) translateY(0) rotate(0); opacity: 1; } to { transform: translate(-50%, -50%) translateY(220px) rotate(90deg); opacity: 0; } }
 @keyframes coin-blink {
   0%, 100% { filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)) brightness(1); }
   50% { filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35)) brightness(1.2); }
