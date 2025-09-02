@@ -106,10 +106,17 @@ export default function PlayOverlay({ play, setPlay }) {
         <div ref={nodeRef} className="toy-ball" style={style}>
           <div className="ball-core" />
         </div>
-      ) : (
+      ) : play.kind === 'mouse' ? (
         <div ref={nodeRef} className="toy-mouse" style={style}>
           <span role="img" aria-label="mouse">🐭</span>
         </div>
+      ) : (
+        // Laser dot: no sprite, just a bright red point following the cursor
+        <div
+          ref={nodeRef}
+          className="toy-laser"
+          style={{ transform: `translate3d(${(play.x ?? 0) - 6}px, ${(play.y ?? 0) - 6}px, 0)` }}
+        />
       )}
     </div>
   );

@@ -31,6 +31,7 @@ export default function App() {
   const [printerName, setPrinterName] = useState(null);
   const [previewSrc, setPreviewSrc] = useState(null);
   const [play, setPlay] = useState(null); // toy target for cat
+  const [laserMode, setLaserMode] = useState(false);
 
   const getEffectiveDate = () => {
     const now = new Date();
@@ -76,6 +77,7 @@ export default function App() {
   // Global click to spawn toy when clicking on background areas
   useEffect(() => {
     const handler = (e) => {
+  if (laserMode) return; // no spawn while laser active
       // ignore if clicking on interactive or inside main layout/status
       const interactiveTags = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A', 'IMG', 'LABEL']);
       if (interactiveTags.has(e.target.tagName)) return;
@@ -101,7 +103,23 @@ export default function App() {
     };
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
-  }, []);
+  }, [laserMode]);
+
+  // Laserpointer mode: follow mouse cursor with a red dot
+  useEffect(() => {
+    if (!laserMode) return;
+    const onMove = (e) => {
+      setPlay((p) => ({ id: 'laser', kind: 'laser', x: e.clientX, y: e.clientY }));
+    };
+    const onLeave = () => setPlay((p) => (p && p.kind === 'laser' ? null : p));
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseleave', onLeave);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseleave', onLeave);
+    };
+  }, [laserMode]);
+
 
   const printLabel = (text) => {
     if (debugUi) {
@@ -141,7 +159,16 @@ export default function App() {
 
   return (
     <>
-      <CatSprite play={play} onCatch={() => setPlay(null)} debugUi={debugUi} />
+      <CatSprite
+        play={play}
+        onCatch={() => setPlay(null)}
+        debugUi={debugUi}
+        laserMode={laserMode}
+        onToggleLaser={() => {
+          setLaserMode((v) => !v);
+          if (laserMode) setPlay((p) => (p && p.kind === 'laser' ? null : p));
+        }}
+      />
       <PlayOverlay play={play} setPlay={setPlay} />
       <div className="status-indicator">
         {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}

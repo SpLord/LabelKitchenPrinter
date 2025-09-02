@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ShellGame from './ShellGame.jsx';
 
 const VARIANTS = [
   { name: 'sand', body: '#f5d3b3', stroke: '#3b3b3b', accent: '#e08e79', pattern: 'none' },
@@ -99,7 +100,7 @@ function CatVariant({ index, active }) {
 }
 
 
-export default function CatSprite({ play, onCatch, debugUi = false }) {
+export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
@@ -140,6 +141,9 @@ export default function CatSprite({ play, onCatch, debugUi = false }) {
   const [capeVisible, setCapeVisible] = useState(false);
   const [goldOutlineActive, setGoldOutlineActive] = useState(false);
   const unlockedRef = useRef({});
+  // Treats mini-game
+  const [treats, setTreats] = useState([]); // {id,x,y,vy,kind}
+  const [shellOpen, setShellOpen] = useState(false);
 
   // Cookie helpers for session persistence (fallback to localStorage)
   const getCookie = (name) => {
@@ -590,6 +594,44 @@ export default function CatSprite({ play, onCatch, debugUi = false }) {
     }, 1000);
   };
 
+  // Treats spawn: falling snacks to click for bonus coins
+  const startTreats = () => {
+    const vw = window.innerWidth || 1200;
+    const batch = Array.from({ length: 10 }).map((_, i) => ({
+      id: 't' + Date.now() + i,
+      x: Math.random() * vw,
+      y: -20 - Math.random() * 100,
+      vy: 120 + Math.random() * 120,
+      kind: Math.random() < 0.5 ? 'fish' : 'chicken'
+    }));
+    setTreats(batch);
+  };
+  useEffect(() => {
+    if (treats.length === 0) return;
+    let raf;
+    let last = performance.now();
+    const step = (t) => {
+      const dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      setTreats((prev) => {
+        const vh = window.innerHeight || 800;
+        const next = prev.map(it => ({ ...it, y: it.y + it.vy * dt })).filter(it => it.y < vh + 40);
+        return next;
+      });
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [treats.length]);
+  const onTreatClick = (e, id, x, y) => {
+    e.stopPropagation();
+    setTreats((prev) => prev.filter((t) => t.id !== id));
+    const coinId = 'tc' + Date.now() + Math.random();
+    setCoins((prev) => prev.concat({ id: coinId, x, y }));
+    setCoinCount((c) => c + 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0));
+    setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
+  };
+
   // Persist coin count: read from cookie/localStorage; write to both
   useEffect(() => {
     try {
@@ -707,6 +749,15 @@ export default function CatSprite({ play, onCatch, debugUi = false }) {
           <div className="gimmick-title">Gimmicks</div>
           <button onClick={triggerCoinShower}>Coin‑Shower</button>
           <button onClick={() => setDroppings([])}>Poops entfernen</button>
+          {(debugUi || coinCount >= 45) && (
+            <button onClick={startTreats}>Leckerlis</button>
+          )}
+          {(debugUi || coinCount >= 75) && (
+            <button onClick={onToggleLaser}>{laserMode ? '🔴 Laser an' : '⚪️ Laser aus'}</button>
+          )}
+          {(debugUi || coinCount >= 90) && (
+            <button onClick={() => setShellOpen(true)}>Hütchenspiel</button>
+          )}
           {(debugUi || coinCount >= 60) && (
             <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
           )}
@@ -783,6 +834,19 @@ export default function CatSprite({ play, onCatch, debugUi = false }) {
           ))}
         </div>
       )}
+      {(treats.length > 0) && (
+        <div className="coin-rain-layer" aria-hidden>
+          {treats.map((t) => (
+            <span
+              key={t.id}
+              className="treat"
+              onClick={(e) => onTreatClick(e, t.id, t.x, t.y)}
+              style={{ left: t.x, top: t.y }}
+              title="Leckerli"
+            >{t.kind === 'fish' ? '🐟' : '🍗'}</span>
+          ))}
+        </div>
+      )}
       {(coins.length > 0) && (
         <div className="coin-layer" aria-hidden>
           {coins.map((c) => (
@@ -821,6 +885,15 @@ export default function CatSprite({ play, onCatch, debugUi = false }) {
               <div className="gimmick-title">Gimmicks</div>
               <button onClick={triggerCoinShower}>Coin‑Shower</button>
               <button onClick={() => setDroppings([])}>Poops entfernen</button>
+              {(debugUi || coinCount >= 45) && (
+                <button onClick={startTreats}>Leckerlis</button>
+              )}
+              {(debugUi || coinCount >= 75) && (
+                <button onClick={onToggleLaser}>{laserMode ? '🔴 Laser an' : '⚪️ Laser aus'}</button>
+              )}
+              {(debugUi || coinCount >= 90) && (
+                <button onClick={() => setShellOpen(true)}>Hütchenspiel</button>
+              )}
               {(debugUi || coinCount >= 60) && (
                 <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
               )}
@@ -830,6 +903,12 @@ export default function CatSprite({ play, onCatch, debugUi = false }) {
             </div>
           )}
         </>
+      )}
+      {shellOpen && (
+        <ShellGame
+          onClose={() => setShellOpen(false)}
+          onResult={(add) => setCoinCount((c) => c + add)}
+        />
       )}
       </div>
     </>
