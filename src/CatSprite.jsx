@@ -100,7 +100,7 @@ function CatVariant({ index, active }) {
 }
 
 
-export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser }) {
+export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser, setSuppressSpawn }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
@@ -122,7 +122,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const posRef = useRef(pos);
   const [coins, setCoins] = useState([]); // ephemeral pop animations
   const [coinCount, setCoinCount] = useState(0);
+  const [coinWallet, setCoinWallet] = useState(0); // spendable coins for purchases
   const [coinsLoaded, setCoinsLoaded] = useState(false);
+  const [walletLoaded, setWalletLoaded] = useState(false);
   const [fireworks, setFireworks] = useState([]);
   const [fwShown, setFwShown] = useState(false); // legacy, kept for safety
   const [fwDone, setFwDone] = useState(false);   // persisted: prevent re-trigger after reload
@@ -144,6 +146,29 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Treats mini-game
   const [treats, setTreats] = useState([]); // {id,x,y,vy,kind}
   const [shellOpen, setShellOpen] = useState(false);
+  const [showUnlocks, setShowUnlocks] = useState(false);
+  // Pet care
+  const clamp01 = (v) => Math.max(0, Math.min(100, v));
+  const [hunger, setHunger] = useState(() => {
+    const v = Number(localStorage.getItem('cat_hunger')); return Number.isFinite(v) ? clamp01(v) : 80;
+  });
+  const [thirst, setThirst] = useState(() => {
+    const v = Number(localStorage.getItem('cat_thirst')); return Number.isFinite(v) ? clamp01(v) : 80;
+  });
+  useEffect(()=>{ try{ localStorage.setItem('cat_hunger', String(hunger)); }catch{} }, [hunger]);
+  useEffect(()=>{ try{ localStorage.setItem('cat_thirst', String(thirst)); }catch{} }, [thirst]);
+  // degrade over time
+  useEffect(() => {
+    const id = setInterval(() => {
+      setHunger((v) => clamp01(v - 1));
+      setThirst((v) => clamp01(v - 1));
+    }, 30000); // every 30s -1%
+    return () => clearInterval(id);
+  }, []);
+  // Placement state
+  const [placing, setPlacing] = useState(null); // { kind: 'food'|'water', fill:number, cost:number, label:string, emoji:string }
+  const [placedItem, setPlacedItem] = useState(null); // { id, kind, x, y, emoji, fill }
+  const [internalPlay, setInternalPlay] = useState(null); // mirrors placed item for chase
 
   // Cookie helpers for session persistence (fallback to localStorage)
   const getCookie = (name) => {
@@ -278,13 +303,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     mark(20, ()=> triggerConfetti(false));
     mark(25, ()=> startRainbowTrail());
     // 35: quest (simple bonus if +5 coins in 60s)
-    if (!unlockedRef.current['35'] && c>=35){
+  if (!unlockedRef.current['35'] && c>=35){
       unlockedRef.current['35']=true;
       const start = coinCount;
       const t0 = Date.now();
       const int = setInterval(()=>{
         if (Date.now()-t0>60000){ clearInterval(int); return; }
-        if (coinCount - start >= 5){ setCoinCount(v=>v+3); clearInterval(int); setMessage('Bonus +3!'); setTimeout(()=>setMessage(null),1500);} 
+    if (coinCount - start >= 5){ setCoinCount(v=>v+3); setCoinWallet(v=>v+3); clearInterval(int); setMessage('Bonus +3!'); setTimeout(()=>setMessage(null),1500);} 
       }, 500);
     }
     mark(40, ()=> { setX2Active(true); setTimeout(()=> setX2Active(false), 10000); });
@@ -469,7 +494,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
 
   // Chase logic towards current play target
   useEffect(() => {
-    if (!play) return;
+    const target = internalPlay || play;
+    if (!target) return;
     let rafId;
     // base speed; adjusted when elephant
     const baseSpeed = 320; // px/s
@@ -478,9 +504,10 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       const dt = Math.min(0.05, (t - last) / 1000);
       last = t;
       setPos((p) => {
-        if (!play) return p;
-        const targetX = play.x - catSize.w / 2;
-        const targetY = play.y - catSize.h / 2;
+        if (!(internalPlay || play)) return p;
+        const active = internalPlay || play;
+        const targetX = active.x - catSize.w / 2;
+        const targetY = active.y - catSize.h / 2;
         let dx = targetX - p.left;
         let dy = targetY - p.top;
         let edgeSeverity = 0; // 0..1 how close to an edge
@@ -489,10 +516,10 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
         // Strict catch detection with generous window: toy circle intersects expanded cat rectangle
-        const toyR = play.kind === 'ball' ? 14 : 12;
-        const pad = play.kind === 'ball' ? 22 : 16; // enlarge capture window
-        const cx = play.x;
-        const cy = play.y;
+        const toyR = active.kind === 'ball' ? 14 : active.kind === 'mouse' ? 12 : 16;
+        const pad = active.kind === 'ball' ? 22 : active.kind === 'mouse' ? 16 : 22; // food/water capture a bit wider
+        const cx = active.x;
+        const cy = active.y;
         const leftR = p.left - pad;
         const topR = p.top - pad;
         const rightR = p.left + catSize.w + pad;
@@ -503,9 +530,25 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         const dyr = cy - closestY;
         const intersects = dxr * dxr + dyr * dyr <= toyR * toyR;
         if (intersects) {
+          if (active.kind === 'food' || active.kind === 'water') {
+            // consume
+            if (placedItem && placedItem.id === active.id) {
+              if (active.kind === 'food') setHunger((v) => clamp01(v + (placedItem.fill || 0)));
+              if (active.kind === 'water') setThirst((v) => clamp01(v + (placedItem.fill || 0)));
+              setPlacedItem(null);
+            }
+            setInternalPlay(null);
+            // clear external play only if laser to avoid overriding toys
+            if (play && play.kind === 'laser') { onCatch && onCatch(); }
+            // small message
+            setBubbleSize('normal');
+            setMessage(active.kind === 'food' ? 'Nom nom~' : 'Schlürf~');
+            if (hideTimeout.current) clearTimeout(hideTimeout.current);
+            hideTimeout.current = setTimeout(() => setMessage(null), 1200);
+          } else {
           if (!nearRef.current) {
             nearRef.current = true;
-            if (play.kind === 'mouse') {
+            if (active.kind === 'mouse') {
               attemptsRef.current += 1;
               if (attemptsRef.current >= 3) {
                 showCelebrate();
@@ -513,6 +556,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
             } else {
               showCelebrate();
             }
+          }
           }
         } else {
           nearRef.current = false;
@@ -532,18 +576,27 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [play, catSize.w, catSize.h, onCatch]);
+  }, [play, internalPlay, placedItem, catSize.w, catSize.h, onCatch]);
 
   // No water effects anymore
 
   // Keep latest position in ref for timers
   useEffect(() => { posRef.current = pos; }, [pos]);
 
-  // Drop a pile at random time within each 3h window; max 4 at once
+  // Drop a pile at random time within each 3h window; max 4 at once (persistent schedule)
   useEffect(() => {
     const PERIOD = 3 * 60 * 60 * 1000; // 3 hours
+    const MIN = 30 * 60 * 1000; // 30 minutes
+    const STORAGE_NEXT = 'cat_drop_next';
     let timeoutId;
     let cancelled = false;
+
+    const planNext = (baseNow = Date.now()) => {
+      const delay = MIN + Math.floor(Math.random() * Math.max(1, PERIOD - MIN)); // 30min..3h
+      const nextTs = baseNow + delay;
+      try { localStorage.setItem(STORAGE_NEXT, String(nextTs)); } catch {}
+      return delay;
+    };
 
     const doDrop = () => {
       const cur = posRef.current;
@@ -564,30 +617,49 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       const newLeft = Math.max(0, Math.min(cur.left + stepX, vw - catSize.w));
       const newTop = Math.max(0, Math.min(cur.top + stepY, vh - catSize.h));
       setPos({ top: newTop, left: newLeft });
+      // schedule and persist next
+      if (!cancelled) {
+        const delay = planNext(Date.now());
+        timeoutId = setTimeout(() => { doDrop(); }, delay);
+      }
     };
 
-    const scheduleNext = () => {
+    const start = () => {
       if (cancelled) return;
-      const MIN = 30 * 60 * 1000; // 30 minutes
-      const delay = MIN + Math.floor(Math.random() * Math.max(1, PERIOD - MIN)); // 30min..3h
-      timeoutId = setTimeout(() => {
-        doDrop();
-        scheduleNext();
-      }, delay);
+      let nextTs = NaN;
+      try {
+        const v = localStorage.getItem(STORAGE_NEXT);
+        if (v != null) nextTs = parseInt(v, 10);
+      } catch {}
+      const now = Date.now();
+      if (Number.isFinite(nextTs)) {
+        const delta = nextTs - now;
+        if (delta > 1000) {
+          timeoutId = setTimeout(() => { doDrop(); }, delta);
+        } else {
+          // overdue or very near: drop soon and reschedule
+          timeoutId = setTimeout(() => { doDrop(); }, 1200);
+        }
+      } else {
+        const delay = planNext(now);
+        timeoutId = setTimeout(() => { doDrop(); }, delay);
+      }
     };
 
-    scheduleNext();
+    start();
     return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
   }, [catSize.w, catSize.h]);
 
   const onDropClick = (e, id, x, y) => {
     e.stopPropagation();
     // remove dropping
-    setDroppings((prev) => prev.filter((d) => d.id !== id));
+  setDroppings((prev) => prev.filter((d) => d.id !== id));
     // spawn coin pop
     const coinId = Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-    setCoinCount((c) => c + 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0));
+  const add = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
+  setCoinCount((c) => c + add);
+  setCoinWallet((c) => c + add);
     // cleanup coin after animation (~900ms)
     setTimeout(() => {
       setCoins((prev) => prev.filter((c) => c.id !== coinId));
@@ -625,10 +697,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   }, [treats.length]);
   const onTreatClick = (e, id, x, y) => {
     e.stopPropagation();
-    setTreats((prev) => prev.filter((t) => t.id !== id));
+  setTreats((prev) => prev.filter((t) => t.id !== id));
     const coinId = 'tc' + Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-    setCoinCount((c) => c + 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0));
+  const add = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
+  setCoinCount((c) => c + add);
+  setCoinWallet((c) => c + add);
     setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
   };
 
@@ -650,6 +724,77 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     try { localStorage.setItem('cat_coinCount', String(coinCount)); } catch {}
     setCookie('cat_coinCount', String(coinCount));
   }, [coinCount, coinsLoaded]);
+
+  // Wallet: load after coins loaded (seed from lifetime if absent on first run)
+  useEffect(() => {
+    if (!coinsLoaded || walletLoaded) return;
+    try {
+      const c = getCookie('cat_coinWallet');
+      if (c != null) {
+        const n = parseInt(c, 10);
+        if (!Number.isNaN(n)) { setCoinWallet(n); setWalletLoaded(true); return; }
+      }
+      const saved = localStorage.getItem('cat_coinWallet');
+      if (saved != null) {
+        setCoinWallet(parseInt(saved, 10) || 0);
+        setWalletLoaded(true);
+        return;
+      }
+      // Seed: if no wallet persisted, initialize with current lifetime coins
+      setCoinWallet(coinCount);
+      setWalletLoaded(true);
+    } catch {
+      setWalletLoaded(true);
+    }
+  }, [coinsLoaded, walletLoaded, coinCount]);
+  useEffect(() => {
+    if (!walletLoaded) return;
+    try { localStorage.setItem('cat_coinWallet', String(coinWallet)); } catch {}
+    setCookie('cat_coinWallet', String(coinWallet));
+  }, [coinWallet, walletLoaded]);
+
+  // Placement click handler
+  useEffect(() => {
+    if (!placing) return;
+    setSuppressSpawn && setSuppressSpawn(true);
+    const onClick = (e) => {
+      // block other click handlers (prevents toy spawn)
+      e.preventDefault();
+      e.stopPropagation();
+      // ignore clicks inside panels or cat
+      if (
+        e.target.closest('.gimmick-panel') ||
+        e.target.closest('.gimmick-toggle') ||
+        e.target.closest('.status-indicator') ||
+        e.target.closest('.main-layout')
+      ) return;
+      const x = e.clientX; const y = e.clientY;
+      const id = 'pi' + Date.now();
+      const item = { id, kind: placing.kind, x, y, emoji: placing.emoji, fill: placing.fill };
+      setPlacedItem(item);
+      setInternalPlay({ id, kind: placing.kind, x, y });
+      setPlacing(null);
+      // release suppression after this event cycle
+      setTimeout(() => { setSuppressSpawn && setSuppressSpawn(false); }, 0);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => { document.removeEventListener('click', onClick, true); setSuppressSpawn && setSuppressSpawn(false); };
+  }, [placing, setSuppressSpawn]);
+
+  // Food options (cost fills hunger); water fills thirst, free
+  const FOOD_OPTIONS = [
+    { key: 'dry', label: 'Trockenfutter', emoji: '🍖', cost: 3, fill: 20 },
+    { key: 'wet', label: 'Nassfutter', emoji: '🥫', cost: 5, fill: 35 },
+    { key: 'treat', label: 'Leckerli', emoji: '🐟', cost: 1, fill: 10 },
+  ];
+  const startPlaceFood = (opt) => {
+    if (!debugUi && coinWallet < opt.cost) { setMessage('Nicht genug Kaufmünzen'); setTimeout(()=>setMessage(null), 1000); return; }
+    if (!debugUi) setCoinWallet((c) => Math.max(0, c - opt.cost));
+    setPlacing({ kind: 'food', fill: opt.fill, cost: opt.cost, label: opt.label, emoji: opt.emoji });
+  };
+  const startPlaceWater = () => {
+    setPlacing({ kind: 'water', fill: 30, cost: 0, label: 'Wasser', emoji: '💧' });
+  };
 
   // Trigger fireworks once when reaching 100 coins
   useEffect(() => {
@@ -723,7 +868,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   return (
     <>
       {/* Coin counter shows after first coin */}
-      {(debugUi || coinCount > 0) && (
+  {(debugUi || coinCount > 0) && (
         <div
           className="coin-counter"
           aria-hidden
@@ -739,14 +884,25 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         >
           <span className="coin-ico">🪙</span>
           <span className="coin-num">{coinCount}</span>
+          {(debugUi || coinCount >= 50) && (
+            <span className="coin-wallet" title="Kaufmünzen">💼 {coinWallet}</span>
+          )}
           {x2Active && <span className="fx-badge">x2</span>}
           {magnetActive && <span className="fx-badge">🧲</span>}
+          {(debugUi || coinCount >= 50) && (
+            <>
+              <span className="pet-stat" title="Hunger">🍽️ {Math.round(hunger)}%</span>
+              <span className="pet-stat" title="Durst">💧 {Math.round(thirst)}%</span>
+            </>
+          )}
           <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setPanelOpen(v=>!v); }} title="Gimmicks">✨</button>
+          <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setShowUnlocks(true); }} title="Freischaltungen">📜</button>
         </div>
       )}
       {(debugUi || coinCount >= 30) && panelOpen && (
         <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
           <div className="gimmick-title">Gimmicks</div>
+          <button onClick={() => setShowUnlocks(true)}>📜 Freischaltungen</button>
           <button onClick={triggerCoinShower}>Coin‑Shower</button>
           <button onClick={() => setDroppings([])}>Poops entfernen</button>
           {(debugUi || coinCount >= 45) && (
@@ -754,6 +910,17 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           )}
           {(debugUi || coinCount >= 75) && (
             <button onClick={onToggleLaser}>{laserMode ? '🔴 Laser an' : '⚪️ Laser aus'}</button>
+          )}
+          {(debugUi || coinCount >= 50) && (
+            <>
+              <div style={{ fontWeight: 700, marginTop: 6 }}>Füttern</div>
+              {FOOD_OPTIONS.map(opt => (
+                <button key={opt.key} onClick={() => startPlaceFood(opt)}>
+                  {opt.emoji} {opt.label} (−{opt.cost}🪙, +{opt.fill}% Hunger)
+                </button>
+              ))}
+              <button onClick={startPlaceWater}>💧 Wasser (kostenlos, +30% Durst)</button>
+            </>
           )}
           {(debugUi || coinCount >= 90) && (
             <button onClick={() => setShellOpen(true)}>Hütchenspiel</button>
@@ -847,6 +1014,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           ))}
         </div>
       )}
+      {placedItem && (
+        <div className="placed-layer" aria-hidden>
+          <span className="placed-item" style={{ left: placedItem.x, top: placedItem.y }}>
+            {placedItem.emoji}
+          </span>
+        </div>
+      )}
       {(coins.length > 0) && (
         <div className="coin-layer" aria-hidden>
           {coins.map((c) => (
@@ -877,40 +1051,55 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           <span className="cat-bubble-tail" />
         </div>
       )}
-      {(debugUi || coinCount >= 30) && (
-        <>
-          <button className="gimmick-toggle" onClick={(e) => { e.stopPropagation(); setPanelOpen((v) => !v); }} title="Gimmicks">✨</button>
-          {panelOpen && (
-            <div className="gimmick-panel" onClick={(e) => e.stopPropagation()}>
-              <div className="gimmick-title">Gimmicks</div>
-              <button onClick={triggerCoinShower}>Coin‑Shower</button>
-              <button onClick={() => setDroppings([])}>Poops entfernen</button>
-              {(debugUi || coinCount >= 45) && (
-                <button onClick={startTreats}>Leckerlis</button>
-              )}
-              {(debugUi || coinCount >= 75) && (
-                <button onClick={onToggleLaser}>{laserMode ? '🔴 Laser an' : '⚪️ Laser aus'}</button>
-              )}
-              {(debugUi || coinCount >= 90) && (
-                <button onClick={() => setShellOpen(true)}>Hütchenspiel</button>
-              )}
-              {(debugUi || coinCount >= 60) && (
-                <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
-              )}
-              {(debugUi || coinCount >= 120) && (
-                <button onClick={() => { setMagnetActive(true); setTimeout(() => setMagnetActive(false), 15000); }}>Magnet (15s)</button>
-              )}
-            </div>
-          )}
-        </>
-      )}
+  {/* Menü über der Katze entfernt – Bedienung nur über das obere Gimmick-Menü */}
       {shellOpen && (
         <ShellGame
           onClose={() => setShellOpen(false)}
-          onResult={(add) => setCoinCount((c) => c + add)}
+          onResult={(add) => { setCoinCount((c) => c + add); setCoinWallet((c)=> c + add); }}
+        />
+      )}
+    {showUnlocks && (
+        <UnlocksOverlay
+          coinCount={coinCount}
+      debugUi={debugUi}
+          onClose={() => setShowUnlocks(false)}
         />
       )}
       </div>
     </>
+  );
+}
+
+function UnlocksOverlay({ coinCount, onClose, debugUi }) {
+  const items = [
+    { key: 'treats', label: 'Leckerlis', thr: 45 },
+    { key: 'feed', label: 'Füttern & Wasser', thr: 50 },
+    { key: 'laser', label: 'Laserpointer', thr: 75 },
+    { key: 'shell', label: 'Hütchenspiel', thr: 90 },
+    { key: 'magnet', label: 'Magnet', thr: 120 },
+  ];
+  const list = debugUi ? items : items.filter(it => coinCount >= it.thr);
+  return (
+    <div className="shell-overlay" role="dialog" aria-modal="true" aria-label="Freischaltungen">
+      <div className="shell-board">
+        <div className="shell-title">Freischaltungen</div>
+        <div className="shell-sub">{debugUi ? 'Alle Stufen (Debug)' : 'Erreichte Stufen'}</div>
+        <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+          {list.map(it => {
+            const unlocked = coinCount >= it.thr;
+            return (
+              <div key={it.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--surface)' }}>
+                <span style={{ fontWeight: 600 }}>{unlocked ? '✅' : '🔒'} {it.label}</span>
+                <span style={{ color: 'var(--muted)' }}>{it.thr} 🪙</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="shell-footer" style={{ marginTop: '12px' }}>
+          <span className="shell-msg">Deine Münzen: {coinCount}</span>
+          <button className="shell-close" onClick={onClose}>Schließen</button>
+        </div>
+      </div>
+    </div>
   );
 }

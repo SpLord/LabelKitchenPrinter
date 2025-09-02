@@ -32,6 +32,8 @@ export default function App() {
   const [previewSrc, setPreviewSrc] = useState(null);
   const [play, setPlay] = useState(null); // toy target for cat
   const [laserMode, setLaserMode] = useState(false);
+  const [laserDragging, setLaserDragging] = useState(false);
+  const [suppressSpawn, setSuppressSpawn] = useState(false);
 
   const getEffectiveDate = () => {
     const now = new Date();
@@ -77,6 +79,7 @@ export default function App() {
   // Global click to spawn toy when clicking on background areas
   useEffect(() => {
     const handler = (e) => {
+  if (suppressSpawn) return; // placement active
   if (laserMode) return; // no spawn while laser active
       // ignore if clicking on interactive or inside main layout/status
       const interactiveTags = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A', 'IMG', 'LABEL']);
@@ -103,22 +106,34 @@ export default function App() {
     };
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
-  }, [laserMode]);
+  }, [laserMode, suppressSpawn]);
 
-  // Laserpointer mode: follow mouse cursor with a red dot
+  // Laserpointer: folgt nur bei gedrücktem Finger/Zeiger (Drag)
   useEffect(() => {
     if (!laserMode) return;
-    const onMove = (e) => {
-      setPlay((p) => ({ id: 'laser', kind: 'laser', x: e.clientX, y: e.clientY }));
+    const onPointerDown = (e) => {
+      setLaserDragging(true);
+      setPlay({ id: 'laser', kind: 'laser', x: e.clientX, y: e.clientY });
     };
-    const onLeave = () => setPlay((p) => (p && p.kind === 'laser' ? null : p));
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseleave', onLeave);
+    const onPointerMove = (e) => {
+      if (!laserDragging) return;
+      setPlay({ id: 'laser', kind: 'laser', x: e.clientX, y: e.clientY });
+    };
+    const endLaser = () => {
+      setLaserDragging(false);
+      setPlay((p) => (p && p.kind === 'laser' ? null : p));
+    };
+    document.addEventListener('pointerdown', onPointerDown, { passive: true });
+    document.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.addEventListener('pointerup', endLaser, { passive: true });
+    document.addEventListener('pointercancel', endLaser, { passive: true });
     return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseleave', onLeave);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', endLaser);
+      document.removeEventListener('pointercancel', endLaser);
     };
-  }, [laserMode]);
+  }, [laserMode, laserDragging]);
 
 
   const printLabel = (text) => {
@@ -168,6 +183,7 @@ export default function App() {
           setLaserMode((v) => !v);
           if (laserMode) setPlay((p) => (p && p.kind === 'laser' ? null : p));
         }}
+  setSuppressSpawn={setSuppressSpawn}
       />
       <PlayOverlay play={play} setPlay={setPlay} />
       <div className="status-indicator">
