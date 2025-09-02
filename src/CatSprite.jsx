@@ -915,10 +915,26 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
             </>
           )}
           {hasAnyUnlocked && (
-            <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setPanelOpen(v=>!v); }} title="Gimmicks">✨</button>
+            <button
+              className="gimmick-toggle-inline"
+              onClick={(e)=> {
+                e.stopPropagation();
+                setShowUnlocks(false);
+                setPanelOpen(v=>!v);
+              }}
+              title="Gimmicks"
+            >✨</button>
           )}
           {hasAnyUnlocked && (
-            <button className="gimmick-toggle-inline" onClick={(e)=> { e.stopPropagation(); setShowUnlocks(true); }} title="Freischaltungen">📜</button>
+            <button
+              className="gimmick-toggle-inline"
+              onClick={(e)=> {
+                e.stopPropagation();
+                setPanelOpen(false);
+                setShowUnlocks(v=>!v);
+              }}
+              title="Freischaltungen"
+            >📜</button>
           )}
         </div>
       )}
@@ -941,7 +957,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       {hasAnyUnlocked && panelOpen && (
         <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
           <div className="gimmick-title">Gimmicks</div>
-          <button onClick={() => setShowUnlocks(true)}>📜 Freischaltungen</button>
+          <button onClick={() => { setPanelOpen(false); setShowUnlocks(true); }}>📜 Freischaltungen</button>
           {unlocked.coinShower && (
             <button onClick={triggerCoinShower}>Coin‑Shower</button>
           )}
