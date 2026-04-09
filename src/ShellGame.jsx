@@ -56,7 +56,7 @@ export default function ShellGame({ onClose, onResult }) {
   const [numCups, setNumCups] = useState(3);
 
   // order[cupIdx] = slotIdx  (which slot each cup is currently at)
-  const [order, setOrder] = useState(() => Array.from({length: 3}, (_, i) => i));
+  const [order, setOrder] = useState(() => Array.from({length: numCups}, (_, i) => i));
 
   // prize cup index (useMemo – setter never needed)
   const prizeCup = useMemo(() => Math.floor(Math.random() * 3), []);
