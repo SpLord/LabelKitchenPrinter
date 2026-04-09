@@ -56,7 +56,7 @@ export default function ShellGame({ onClose, onResult }) {
   const [numCups, setNumCups] = useState(3);
 
   // order[cupIdx] = slotIdx  (which slot each cup is currently at)
-  const [order, setOrder] = useState([0, 1, 2]);
+  const [order, setOrder] = useState(() => Array.from({length: 3}, (_, i) => i));
 
   // prize cup index (useMemo – setter never needed)
   const prizeCup = useMemo(() => Math.floor(Math.random() * 3), []);
@@ -165,7 +165,10 @@ export default function ShellGame({ onClose, onResult }) {
         return next;
       });
       // Unlock 4th cup after 3 wins
-      setNumCups(prev => (streak >= 2 && prev < 4) ? 4 : prev);
+      if (streak >= 2 && numCups < 4) {
+        setNumCups(4);
+        setOrder(Array.from({length: 4}, (_, i) => i));
+      }
     } else {
       playLose();
       setMessage('😢 Knapp daneben! +1 Münze');
@@ -220,6 +223,7 @@ export default function ShellGame({ onClose, onResult }) {
         </div>
 
         {/* Cup Area */}
+        <div style={{textAlign:'center', marginBottom:'8px', fontSize:'1rem', opacity:0.85}}>Einsatz: {level === 2 ? 10 : 5} 🪙</div>
         <div className={`shell-area cups-${numCups}`}>
           {cups.map((i) => {
             const isWinner = stage === 'result' && i === prizeCup;

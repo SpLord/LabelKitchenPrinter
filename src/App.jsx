@@ -243,7 +243,7 @@ export default function App() {
           </div>
 
           <div className="button-column">
-            {['Menü'].map((group) => (
+            {['Salat', 'Menü'].map((group) => (
               <div key={group} className="button-group">
                 <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
                 {labelGroups[group].map((name, idx) => (

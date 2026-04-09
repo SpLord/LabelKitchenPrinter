@@ -1022,7 +1022,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         <div className="emoji-parade" aria-hidden>😺 🐟 🧀 🪙 🎉 😻 ✨</div>
       )}
       {/* Fireworks layer (already rendered above when active) */}
-      {false && fireworks.length > 0 && (
+      {fireworks.length > 0 && (
         <div className="fw-layer" aria-hidden>
           {fireworks.map((p) => (
             <span
