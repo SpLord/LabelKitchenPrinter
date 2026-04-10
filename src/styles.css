@@ -454,6 +454,17 @@ h1 {
   color: #fff;
 }
 
+.shell-bet {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  margin-left: 6px;
+}
+
 .shell-sub { color: var(--muted); margin-top: 4px; margin-bottom: 10px; min-height: 1.2em; }
 
 /* Cup area – accommodates 3 or 4 cups */

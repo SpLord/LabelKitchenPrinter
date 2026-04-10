@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /*
   ShellGame Overlay (Hütchenspiel)
@@ -58,8 +58,9 @@ export default function ShellGame({ onClose, onResult }) {
   // order[cupIdx] = slotIdx  (which slot each cup is currently at)
   const [order, setOrder] = useState(() => Array.from({length: numCups}, (_, i) => i));
 
-  // prize cup index (useMemo – setter never needed)
-  const prizeCup = useMemo(() => Math.floor(Math.random() * 3), []);
+  // prize cup index (useRef – stable per mount, not a computed value)
+  const prizeCupRef = useRef(Math.floor(Math.random() * 3));
+  const prizeCup = prizeCupRef.current;
 
   // stage: 'peek' | 'shuffle' | 'choose' | 'result'
   const [stage, setStage] = useState('peek');
@@ -214,6 +215,7 @@ export default function ShellGame({ onClose, onResult }) {
           🎩 Hütchenspiel
           {level >= 2 && <span className="shell-level"> Level 2 🚀</span>}
           {streak >= 2 && <span className="shell-streak"> 🔥 {streak}x Streak!</span>}
+          <span className="shell-bet"> 🪙 Gewinn: {streak >= 2 ? '5' : '3'}</span>
         </div>
         <div className="shell-sub">
           {stage === 'peek'  && 'Merke dir, wo die Münze ist!'}
