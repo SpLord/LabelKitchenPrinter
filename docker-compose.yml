@@ -1,9 +1,9 @@
-version: "3.8"
-
 services:
   labelkitchen:
-    image: splord/labelkitchen:${IMAGE_VERSION}
+    # Defaults, damit der Portainer-Git-Stack ohne .env im Repository auskommt.
+    # Überschreibbar über die Stack-Umgebung in Portainer oder eine .env auf dem Host.
+    image: splord/labelkitchen:${IMAGE_VERSION:-latest}
     container_name: labelkitchen
     restart: unless-stopped
     ports:
-      - "${HOST_PORT}:80"
+      - "${HOST_PORT:-7077}:80"
