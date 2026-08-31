@@ -50,14 +50,25 @@ h1 {
 
 .cat-sprite {
   position: fixed;
+  top: 0;
+  left: 0;
   width: 120px;
   height: 120px;
   z-index: 40;
   transition: none;
-  animation: cat-float 3s ease-in-out infinite;
   pointer-events: auto; /* jetzt klickbar */
   cursor: pointer;
-  will-change: top, left;
+  /* Bewegt wird über transform (Kompositor). Vorher liefen top/left, was in
+     jedem Bild eine Layout-Neuberechnung auslöste. */
+  will-change: transform;
+}
+
+/* Eigene Ebene, damit das Schweben nicht mit dem Positions-transform kollidiert */
+.cat-float {
+  width: 100%;
+  height: 100%;
+  animation: cat-float 3s ease-in-out infinite;
+  will-change: transform;
 }
 
 .cat-sprite.idle { transition: top 300ms ease, left 300ms ease; }
@@ -1351,4 +1362,100 @@ input:focus-visible {
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+/* ==========================================================
+   🐱 Katzen-Animation in CSS statt SMIL
+
+   Die sechs SMIL-Animationen (<animate>/<animateTransform>) liefen im
+   Hauptthread und kosteten gemessen rund ein Drittel der Bildrate.
+   Als CSS-Transforms laufen sie auf dem Kompositor.
+   ========================================================== */
+
+.cat-svg {
+  --tail-dur: 2.6s;
+  --paw-dur: 1.4s;
+  --ear-dur: 4s;
+  overflow: visible;
+}
+
+/* Beim Spielen schlägt alles schneller */
+.cat-svg.aktiv {
+  --tail-dur: 0.9s;
+  --paw-dur: 0.3s;
+  --ear-dur: 1.6s;
+}
+
+/* transform-box: sonst bezieht sich transform-origin auf das ganze SVG */
+.cat-svg .cat-tail,
+.cat-svg .cat-ear,
+.cat-svg .cat-eye,
+.cat-svg .cat-paw {
+  /* Ohne fill-box bezöge sich transform-origin auf das ganze SVG.
+     Kein will-change: die Teile sind winzig, eigene Ebenen kosten hier
+     mehr als sie bringen. */
+  transform-box: fill-box;
+}
+
+/* Schwanz: weiches Pendeln um den Ansatz */
+.cat-tail {
+  /* Drehpunkt am Ansatz, damit die Spitze den weiten Weg macht */
+  transform-origin: 0% 30%;
+  animation: schwanz var(--tail-dur) cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+@keyframes schwanz {
+  0%, 100% { transform: rotate(-11deg); }
+  50%      { transform: rotate(13deg); }
+}
+
+/* Ohren: seltenes, leichtes Zucken – versetzt, damit es lebendig wirkt */
+.cat-ear { transform-origin: 50% 100%; }
+.cat-ear-l { animation: ohr-l var(--ear-dur) ease-in-out infinite; }
+.cat-ear-r { animation: ohr-r calc(var(--ear-dur) * 1.15) ease-in-out infinite; }
+@keyframes ohr-l {
+  0%, 82%, 100% { transform: rotate(0deg); }
+  88%           { transform: rotate(5deg); }
+  94%           { transform: rotate(-2deg); }
+}
+@keyframes ohr-r {
+  0%, 78%, 100% { transform: rotate(0deg); }
+  86%           { transform: rotate(-5deg); }
+  92%           { transform: rotate(2deg); }
+}
+
+/* Blinzeln: kurzes Zusammenziehen der Lider */
+.cat-eye {
+  transform-origin: 50% 50%;
+  animation: blinzeln 6s ease-in-out infinite;
+  animation-delay: var(--blink-delay, 0s);
+}
+.cat-eye-r { animation-duration: 6.2s; }
+@keyframes blinzeln {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.1); }
+  97%           { transform: scaleY(1); }
+}
+
+/* Pfoten: abwechselndes Trippeln */
+.cat-paw-1 { animation: pfote var(--paw-dur) ease-in-out infinite; }
+.cat-paw-2 { animation: pfote var(--paw-dur) ease-in-out infinite; animation-delay: calc(var(--paw-dur) / -2); }
+@keyframes pfote {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2.5px); }
+}
+
+/* Schweben: beim Laufen etwas beschwingter */
+.cat-sprite.running .cat-float { animation-duration: 0.55s; }
+
+/* Schatten atmet mit der Bewegung mit */
+.cat-shadow.run { animation: schatten 0.55s ease-in-out infinite; }
+@keyframes schatten {
+  0%, 100% { transform: translateX(-50%) scaleX(1);    opacity: 0.9; }
+  50%      { transform: translateX(-50%) scaleX(0.82); opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-tail, .cat-ear, .cat-eye, .cat-paw, .cat-float, .cat-shadow.run {
+    animation: none !important;
+  }
 }

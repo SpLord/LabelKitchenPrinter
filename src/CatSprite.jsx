@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import ShellGame, { STAKE as SHELL_STAKE } from './ShellGame.jsx';
 import { catchUp, clampNeed, coinsFor, conditionOf, decayOver, feed } from './cat/needs.js';
@@ -20,29 +20,29 @@ function CatVariant({ index, active }) {
   const v = VARIANTS[index % VARIANTS.length];
   const earTilt = index % 2 === 0 ? '' : 'rotate(-6 60 40)';
   const earTiltR = index % 2 === 0 ? '' : 'rotate(6 120 42)';
-  const tailDur = active ? '1.1s' : '1.8s';
-  const pawDur = active ? '0.28s' : '1.1s';
+  // Blinzeln pro Katze leicht versetzt, damit nicht alle im Gleichtakt zwinkern
+  const blinkDelay = `${-(index % 5) * 1.3}s`;
   return (
-    <svg viewBox="0 0 200 200" width="100%" height="100%">
+    <svg
+      viewBox="0 0 200 200"
+      width="100%"
+      height="100%"
+      className={`cat-svg ${active ? 'aktiv' : ''}`}
+      style={{ '--blink-delay': blinkDelay }}
+    >
       <defs>
         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.25" />
         </filter>
       </defs>
-      <path d="M155 120c20 0 30 15 20 28s-26 10-33 3" fill="none" stroke={v.stroke} strokeWidth="8" strokeLinecap="round">
-        <animate attributeName="d" dur={tailDur} repeatCount="indefinite" values="M155 120c20 0 30 15 20 28s-26 10-33 3; M155 120c22 2 34 12 26 26s-26 12-35 6; M155 120c20 0 30 15 20 28s-26 10-33 3" />
-      </path>
+      <path className="cat-tail" d="M158 118 c34 -6 52 16 40 40 s-34 14-44 2" fill="none" stroke={v.stroke} strokeWidth="8" strokeLinecap="round" />
       <g filter="url(#shadow)">
         {/* Body + Head */}
         <ellipse cx="110" cy="120" rx="70" ry="55" fill={v.body} stroke={v.stroke} strokeWidth="6" />
         <circle cx="80" cy="85" r="40" fill={v.body} stroke={v.stroke} strokeWidth="6" />
         {/* Ears */}
-        <path d="M55 56 L45 25 L75 45 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTilt}>
-          <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="0 60 40; 4 60 40; 0 60 40" dur="4s" repeatCount="indefinite" />
-        </path>
-        <path d="M105 56 L135 25 L125 60 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTiltR}>
-          <animateTransform attributeName="transform" attributeType="XML" type="rotate" values="0 120 42; -3 120 42; 0 120 42" dur="4.5s" repeatCount="indefinite" />
-        </path>
+        <path className="cat-ear cat-ear-l" d="M55 56 L45 25 L75 45 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTilt} />
+        <path className="cat-ear cat-ear-r" d="M105 56 L135 25 L125 60 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTiltR} />
 
         {/* Patterns */}
         {v.pattern === 'stripes' && (
@@ -78,31 +78,23 @@ function CatVariant({ index, active }) {
         )}
 
         {/* Eyes / Face */}
-        <circle cx="65" cy="85" r="6" fill={v.stroke}>
-          <animate attributeName="r" dur="6s" repeatCount="indefinite" values="6;6;1;6;6" keyTimes="0;0.88;0.9;0.92;1" />
-        </circle>
-        <circle cx="95" cy="85" r="6" fill={v.stroke}>
-          <animate attributeName="r" dur="6.2s" repeatCount="indefinite" values="6;6;1;6;6" keyTimes="0;0.86;0.88;0.9;1" />
-        </circle>
+        <circle className="cat-eye cat-eye-l" cx="65" cy="85" r="6" fill={v.stroke} />
+        <circle className="cat-eye cat-eye-r" cx="95" cy="85" r="6" fill={v.stroke} />
         <polygon points="80,95 75,103 85,103" fill={v.accent} />
         <path d="M75 108 q5 6 10 0" stroke={v.stroke} strokeWidth="4" fill="none" strokeLinecap="round" />
         <path d="M52 95 h18 M52 103 h18 M52 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
         <path d="M90 95 h18 M90 103 h18 M90 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
 
         {/* Paws */}
-        <ellipse cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6">
-          <animate attributeName="cy" dur={pawDur} values="155;153;155" repeatCount="indefinite" />
-        </ellipse>
-        <ellipse cx="95" cy="165" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6">
-          <animate attributeName="cy" dur={pawDur} values="165;163;165" repeatCount="indefinite" begin="-0.14s" />
-        </ellipse>
+        <ellipse className="cat-paw cat-paw-1" cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
+        <ellipse className="cat-paw cat-paw-2" cx="95" cy="165" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
       </g>
     </svg>
   );
 }
 
 
-export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser, setSuppressSpawn }) {
+export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser, setSuppressSpawn, toyPosRef }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
@@ -115,6 +107,22 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Elephant removed
   const [droppings, setDroppings] = useState([]);
   const posRef = useRef(pos);
+  const catRef = useRef(null);
+  const bodyRef = useRef(null);
+  const flipRef = useRef(1);
+
+  // Position und Blickrichtung direkt ans Element schreiben – ohne Re-Render.
+  const applyPos = useCallback((p) => {
+    posRef.current = p;
+    const el = catRef.current;
+    if (el) el.style.transform = `translate3d(${p.left}px, ${p.top}px, 0)`;
+  }, []);
+
+  const applyFlip = useCallback((dir) => {
+    if (flipRef.current === dir) return;
+    flipRef.current = dir;
+    if (bodyRef.current) bodyRef.current.style.transform = `scaleX(${dir})`;
+  }, []);
   const [coins, setCoins] = useState([]); // ephemeral pop animations
   // Ein Kontostand statt der früheren Aufteilung in Lebenszeit- und Kaufmünzen:
   // die Trennung war nicht vermittelbar (1410 verdient, davon 2 ausgebbar).
@@ -538,94 +546,99 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     return () => clearInterval(id);
   }, [play]);
 
-  // Chase logic towards current play target
+  /*
+    Verfolgung. Die Position wird bewusst NICHT über React-State geführt:
+    setPos in jedem Bild liess den kompletten Katzen-Teilbaum neu rendern –
+    gemessen 11,7 ms Style-Neuberechnung pro Bild, rund 86 % CPU. Der Wert
+    landet jetzt direkt als transform am Element (Kompositor-Eigenschaft,
+    kein Layout) und in posRef für alles, was ihn sonst braucht.
+  */
   useEffect(() => {
     const target = internalPlay || play;
     if (!target) return;
     let rafId;
-    // base speed; adjusted when elephant
     const baseSpeed = 320; // px/s
     let last = performance.now();
+
     const tick = (t) => {
       const dt = Math.min(0.05, (t - last) / 1000);
       last = t;
-      setPos((p) => {
-        if (!(internalPlay || play)) return p;
-        const active = internalPlay || play;
-        const targetX = active.x - catSize.w / 2;
-        const targetY = active.y - catSize.h / 2;
-        let dx = targetX - p.left;
-        let dy = targetY - p.top;
-        const dist = Math.hypot(dx, dy);
-        // update facing direction (no rotation)
-        dirRef.current = dx < 0 ? -1 : 1;
-        // Strict catch detection with generous window: toy circle intersects expanded cat rectangle
-        const toyR = active.kind === 'ball' ? 14 : active.kind === 'mouse' ? 12 : 16;
-        const pad = active.kind === 'ball' ? 22 : active.kind === 'mouse' ? 16 : 22; // food/water capture a bit wider
-        const cx = active.x;
-        const cy = active.y;
-        const leftR = p.left - pad;
-        const topR = p.top - pad;
-        const rightR = p.left + catSize.w + pad;
-        const bottomR = p.top + catSize.h + pad;
-        const closestX = Math.max(leftR, Math.min(cx, rightR));
-        const closestY = Math.max(topR, Math.min(cy, bottomR));
-        const dxr = cx - closestX;
-        const dyr = cy - closestY;
-        const intersects = dxr * dxr + dyr * dyr <= toyR * toyR;
-        if (intersects) {
-          if (active.kind === 'food' || active.kind === 'water') {
-            // consume
-            if (placedItem && placedItem.id === active.id) {
-              if (active.kind === 'food') setHunger((v) => feed(v, placedItem.fill || 0));
-              if (active.kind === 'water') setThirst((v) => feed(v, placedItem.fill || 0));
-              setPlacedItem(null);
-            }
-            setInternalPlay(null);
-            // clear external play only if laser to avoid overriding toys
-            if (play && play.kind === 'laser') { onCatch && onCatch(); }
-            // small message
-            setBubbleSize('normal');
-            setMessage(active.kind === 'food' ? 'Nom nom~' : 'Schlürf~');
-            if (hideTimeout.current) clearTimeout(hideTimeout.current);
-            hideTimeout.current = setTimeout(() => setMessage(null), 1200);
+
+      // Beim externen Spielzeug ist der Ref aktueller als der State
+      const roh = internalPlay || play;
+      if (!roh) { rafId = requestAnimationFrame(tick); return; }
+      const live = !internalPlay && toyPosRef?.current?.id === roh.id ? toyPosRef.current : roh;
+      const active = { ...roh, x: live.x, y: live.y };
+
+      const p = posRef.current;
+      const targetX = active.x - catSize.w / 2;
+      const targetY = active.y - catSize.h / 2;
+      const dx = targetX - p.left;
+      const dy = targetY - p.top;
+      const dist = Math.hypot(dx, dy);
+
+      // Blickrichtung weich nachziehen statt hart umzuklappen
+      if (Math.abs(dx) > 6) dirRef.current = dx < 0 ? -1 : 1;
+      applyFlip(dirRef.current);
+
+      // Trefferprüfung: Spielzeugkreis schneidet den erweiterten Katzenkasten
+      const toyR = active.kind === 'ball' ? 14 : active.kind === 'mouse' ? 12 : 16;
+      const pad  = active.kind === 'ball' ? 22 : active.kind === 'mouse' ? 16 : 22;
+      const closestX = Math.max(p.left - pad, Math.min(active.x, p.left + catSize.w + pad));
+      const closestY = Math.max(p.top - pad, Math.min(active.y, p.top + catSize.h + pad));
+      const ddx = active.x - closestX;
+      const ddy = active.y - closestY;
+      const intersects = ddx * ddx + ddy * ddy <= toyR * toyR;
+
+      if (intersects) {
+        if (active.kind === 'food' || active.kind === 'water') {
+          if (placedItem && placedItem.id === active.id) {
+            if (active.kind === 'food') setHunger((v) => feed(v, placedItem.fill || 0));
+            if (active.kind === 'water') setThirst((v) => feed(v, placedItem.fill || 0));
+            setPlacedItem(null);
+          }
+          setInternalPlay(null);
+          if (play && play.kind === 'laser') { onCatch && onCatch(); }
+          setBubbleSize('normal');
+          setMessage(active.kind === 'food' ? 'Nom nom~' : 'Schlürf~');
+          if (hideTimeout.current) clearTimeout(hideTimeout.current);
+          hideTimeout.current = setTimeout(() => setMessage(null), 1200);
+        } else if (!nearRef.current) {
+          nearRef.current = true;
+          if (active.kind === 'mouse') {
+            attemptsRef.current += 1;
+            if (attemptsRef.current >= 3) showCelebrate();
           } else {
-          if (!nearRef.current) {
-            nearRef.current = true;
-            if (active.kind === 'mouse') {
-              attemptsRef.current += 1;
-              if (attemptsRef.current >= 3) {
-                showCelebrate();
-              }
-            } else {
-              showCelebrate();
-            }
+            showCelebrate();
           }
-          }
-        } else {
-          nearRef.current = false;
         }
-        if (dist < 4) return p;
-        let speed = baseSpeed;
+      } else {
+        nearRef.current = false;
+      }
+
+      if (dist >= 4) {
+        // Sanftes Anfahren und Abbremsen statt konstanter Geschwindigkeit
+        const naehe = Math.min(1, dist / 160);
+        const speed = baseSpeed * (0.35 + 0.65 * naehe);
         const step = Math.min(dist, speed * dt);
-        const nx = p.left + (dx / (dist || 1)) * step;
-        const ny = p.top + (dy / (dist || 1)) * step;
-        // keep within viewport
         const vw = window.innerWidth, vh = window.innerHeight;
-        const left = Math.max(0, Math.min(nx, vw - catSize.w));
-        const top = Math.max(0, Math.min(ny, vh - catSize.h));
-        return { top, left };
-      });
+        applyPos({
+          left: Math.max(0, Math.min(p.left + (dx / (dist || 1)) * step, vw - catSize.w)),
+          top:  Math.max(0, Math.min(p.top  + (dy / (dist || 1)) * step, vh - catSize.h)),
+        });
+      }
+
       rafId = requestAnimationFrame(tick);
     };
+
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [play, internalPlay, placedItem, catSize.w, catSize.h, onCatch]);
+  }, [play, internalPlay, placedItem, catSize.w, catSize.h, onCatch, applyPos, applyFlip, toyPosRef]);
 
   // No water effects anymore
 
   // Keep latest position in ref for timers
-  useEffect(() => { posRef.current = pos; }, [pos]);
+  useEffect(() => { applyPos(pos); }, [pos, applyPos]);
 
   // Drop a pile at random time within each 3h window; max 4 at once (persistent schedule)
   useEffect(() => {
@@ -899,7 +912,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     nearRef.current = false;
   }, [play?.id]);
 
-  const flip = dirRef.current < 0 ? -1 : 1;
+  const flip = flipRef.current;
 
   // Force open panel in BATCAT mode
   useEffect(() => {
@@ -1134,9 +1147,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         </div>
       )}
       <div
+        ref={catRef}
         className={`cat-sprite ${play ? 'running' : 'idle'} ${zustand.key}`}
-        
-        style={{ top: pos.top, left: pos.left }}
+        style={{ transform: `translate3d(${pos.left}px, ${pos.top}px, 0)` }}
         aria-hidden
         role="button"
       tabIndex={0}
@@ -1144,14 +1157,16 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       onClick={(e) => { e.stopPropagation(); showPurr(); }}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPurr(); } }}
     >
-      <div className="cat-body" style={{ transform: `scaleX(${flip})` }}>
-        <CatVariant index={variant} active={!!play} />
+      <div className="cat-float">
+        <div ref={bodyRef} className="cat-body" style={{ transform: `scaleX(${flip})` }}>
+          <CatVariant index={variant} active={!!play} />
+        </div>
       </div>
       {/* Crown after 50 coins */}
       {(debugUi || coinCount >= 50) && <div className="cat-crown" aria-hidden>👑</div>}
       <div className={`cat-shadow ${play ? 'run' : ''}`} />
       {message && (
-        <div className={`cat-bubble ${bubbleSize === 'big' ? 'big' : ''} ${ (pos.left > (typeof window !== 'undefined' ? (window.innerWidth - (120 + 280)) : 100000)) ? 'left' : 'right' }`}>
+        <div className={`cat-bubble ${bubbleSize === 'big' ? 'big' : ''} ${ (posRef.current.left > (typeof window !== 'undefined' ? (window.innerWidth - (120 + 280)) : 100000)) ? 'left' : 'right' }`}>
           {message}
           <span className="cat-bubble-tail" />
         </div>

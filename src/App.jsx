@@ -29,6 +29,9 @@ export default function App() {
     if (!saveGroups(next)) showError('Etiketten konnten nicht gespeichert werden.');
   };
 
+  // Aktuelle Spielzeugposition – von PlayOverlay geschrieben, von der Katze gelesen
+  const toyPosRef = useRef(null);
+
   const errorTimerRef = useRef(null);
   const previewTimerRef = useRef(null);
 
@@ -141,6 +144,7 @@ export default function App() {
       // spawn ball or mouse (50/50)
       const kind = Math.random() < 0.5 ? 'ball' : 'mouse';
       const id = Date.now();
+      toyPosRef.current = { id, kind, x, y };
       setPlay({ id, kind, x, y });
     };
     document.addEventListener('click', handler);
@@ -244,8 +248,9 @@ export default function App() {
             if (laserMode) setPlay((p) => (p && p.kind === 'laser' ? null : p));
           }}
           setSuppressSpawn={setSuppressSpawn}
+          toyPosRef={toyPosRef}
         />
-        <PlayOverlay play={play} setPlay={setPlay} />
+        <PlayOverlay play={play} setPlay={setPlay} posRef={toyPosRef} />
       </ErrorBoundary>
       {editorOpen && (
         <ErrorBoundary label="Der Etiketten-Editor">

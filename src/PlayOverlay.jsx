@@ -1,6 +1,16 @@
 import { useEffect, useRef } from 'react';
 
-export default function PlayOverlay({ play, setPlay }) {
+/*
+  props:
+    - play, setPlay
+    - posRef: gemeinsamer Ref, über den die Katze der aktuellen Position folgt.
+
+  Früher wurde die Position alle drei Bilder in den React-State geschrieben,
+  nur damit die Katze sie lesen kann – rund 20 Zustandsänderungen pro Sekunde,
+  jede mit einem kompletten Neuaufbau des Etiketten-Rasters. Der Ref kostet
+  nichts und die Katze liest ihn in ihrer eigenen Schleife.
+*/
+export default function PlayOverlay({ play, setPlay, posRef }) {
   const nodeRef = useRef(null);
   const vxRef = useRef(0);
   const vyRef = useRef(0);
@@ -74,18 +84,14 @@ export default function PlayOverlay({ play, setPlay }) {
         nodeRef.current.style.transform = `translate3d(${x - r}px, ${y - r}px, 0)`;
       }
 
-      // Occasionally update React state so the cat can chase
+      // Position teilen, ohne React zu bemühen
+      if (posRef) posRef.current = { id: play.id, kind: play.kind, x, y };
+
+      // Nur das Ende der Spielzeit ist eine echte Zustandsänderung
       frameCountRef.current++;
-      if (frameCountRef.current % 3 === 0) {
-        const start = startRef.current;
-        const elapsed = t - start;
-        const dur = durRef.current;
-        if (elapsed >= dur) {
-          setPlay((p) => (p && p.id === play.id ? null : p));
-          return; // stop loop
-        } else {
-          setPlay((p) => (p && p.id === play.id ? { ...p, x, y, vx, vy, start, duration: dur } : p));
-        }
+      if (frameCountRef.current % 6 === 0 && t - startRef.current >= durRef.current) {
+        setPlay((p) => (p && p.id === play.id ? null : p));
+        return; // Schleife beenden
       }
 
       rafRef.current = requestAnimationFrame(step);
@@ -93,7 +99,7 @@ export default function PlayOverlay({ play, setPlay }) {
 
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [play?.id, play?.kind]);
+  }, [play?.id, play?.kind, posRef, setPlay]);
 
   if (!play) return null;
 
