@@ -142,14 +142,12 @@
     0 4px 8px rgba(0,0,0,0.3),
     0 0 0 6px rgba(245, 158, 11, 0.25),
     0 0 22px 6px rgba(245, 158, 11, 0.45);
-  /* Nur die Deckkraft animieren: die frühere scale()-Animation blieb im
-     Startbild hängen und zeigte die Münze dauerhaft halb so gross. */
-  animation: coin-appear 220ms ease-out both;
-}
-
-@keyframes coin-appear {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  /* Bewusst ohne Einblend-Animation: erst blieb sie im Startbild von scale()
+     hängen (Münze dauerhaft halb so gross), dann im Startbild von opacity
+     (Münze dauerhaft unsichtbar). Eine 220-ms-Verzierung ist es nicht wert,
+     dass der Spieler nicht sieht, wo die Münze liegt. Die Bewegung liefert
+     der Becherdeckel, der sich hebt. */
+  opacity: 1;
 }
 
 .shell-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }

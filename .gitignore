@@ -30,3 +30,8 @@ yarn-error.log*
 .hive-mind/
 ruvector.db
 *.rvf
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

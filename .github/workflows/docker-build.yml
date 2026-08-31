@@ -32,6 +32,22 @@ jobs:
       - name: Build
         run: npm run build
 
+      # E2E im echten Browser. Lint, Unit-Tests und Build haben an einem Tag
+      # sechs Fehler durchgelassen, die alle erst hier aufgefallen sind.
+      - name: Browser für E2E installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E
+        run: npm run test:e2e
+
+      - name: Bericht bei Fehlschlag sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: playwright-report/
+          retention-days: 7
+
   build:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
