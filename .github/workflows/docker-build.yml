@@ -9,7 +9,7 @@ on:
 jobs:
   # Gate: läuft auch auf PRs und blockt den Push-Job bei Fehlern.
   verify:
-    runs-on: [self-hosted, allure]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
   build:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: [self-hosted, allure]
+    runs-on: ubuntu-latest
     env:
       IMAGE_NAME: splord/labelkitchen
 
