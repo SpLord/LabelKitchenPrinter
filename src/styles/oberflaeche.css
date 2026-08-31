@@ -465,11 +465,15 @@ input:focus-visible {
 .side-rail .input-group input { max-width: none; }
 
 
-/* Münzanzeige (fixiert, oben links, bis rund 380px breit) und Leisteninhalt
-   teilen sich die erste Zeile. Reicht die Breite nicht, rutscht die Leiste
-   darunter. Schwelle gerechnet: 380 Münzanzeige + Status, Druckerauswahl und
-   Editor-Knopf mit Abständen ergeben rund 1140px – 1200 lässt Luft. */
-@media (max-width: 1200px) {
+/* Münzanzeige (fixiert, oben links) und Leisteninhalt teilen sich die erste
+   Zeile. Reicht die Breite nicht, rutscht die Leiste darunter.
+
+   Schwelle gerechnet: die Münzanzeige ist mit Zustand, Werten, Lebensphase und
+   Herzen auf rund 580px gewachsen; Status, Druckerauswahl und Editor-Knopf
+   brauchen mit Abständen zusammen rund 750px. Ab etwa 1345px wird es eng,
+   1400 lässt Luft. Wächst die Leiste weiter, schlägt der Überlappungstest in
+   e2e/oberflaeche.spec.js an. */
+@media (max-width: 1400px) {
   .app-bar { padding-top: 52px; }
 }
 

@@ -5,6 +5,8 @@ import { FREUDE_LECKERLI, FREUDE_SPIEL, FREUDE_STREICHELN, MEDIZIN_PREIS, bedarf
 import useCatNeeds from './cat/useCatNeeds.js';
 import useCatCoins from './cat/useCatCoins.js';
 import useKatzenladen from './cat/useKatzenladen.js';
+import useWachstum from './cat/useWachstum.js';
+import { FREUNDSCHAFT_FUETTERN, FREUNDSCHAFT_SPIELEN, FREUNDSCHAFT_STREICHELN } from './cat/wachstum.js';
 import Katzenladen from './cat/Katzenladen.jsx';
 import { getCookie, setCookie } from './cat/storage.js';
 
@@ -77,6 +79,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const meldeRef = useRef(() => {});
   const laden = useKatzenladen(coinCount, setCoinCount, (text) => meldeRef.current(text));
   const [ladenOffen, setLadenOffen] = useState(false);
+
+  // Lebensphase und Freundschaft (src/cat/useWachstum.js)
+  const wachstum = useWachstum(zustand.key, (text) => meldeRef.current(text));
+  // Stabile Referenz: das ganze wachstum-Objekt als Abhängigkeit würde die
+  // Verfolgungsschleife bei jedem Freundschaftspunkt neu starten.
+  const { naeherKommen } = wachstum;
   // Placement state
   const [placing, setPlacing] = useState(null); // { kind: 'food'|'water', fill:number, cost:number, label:string, emoji:string }
   const [placedItem, setPlacedItem] = useState(null); // { id, kind, x, y, emoji, fill }
@@ -391,6 +399,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
 
   const showPurr = () => {
     erfreuen(FREUDE_STREICHELN);
+    wachstum.naeherKommen(FREUNDSCHAFT_STREICHELN);
     const msg = purrs[Math.floor(Math.random() * purrs.length)];
     setMessage(msg);
     setBubbleSize('normal');
@@ -481,7 +490,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       if (intersects) {
         if (active.kind === 'food' || active.kind === 'water') {
           if (placedItem && placedItem.id === active.id) {
-            if (active.kind === 'food') fuettern(placedItem.fill || 0);
+            if (active.kind === 'food') { fuettern(placedItem.fill || 0); naeherKommen(FREUNDSCHAFT_FUETTERN); }
             if (active.kind === 'water') traenken(placedItem.fill || 0);
             setPlacedItem(null);
           }
@@ -522,7 +531,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
   }, [play, internalPlay, placedItem, catSize.w, catSize.h, onCatch, applyPos, applyFlip,
-      toyPosRef, fuettern, traenken, showCelebrate]);
+      toyPosRef, fuettern, traenken, showCelebrate, naeherKommen]);
 
   // No water effects anymore
 
@@ -608,6 +617,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
   erfreuen(FREUDE_SPIEL);
+  naeherKommen(FREUNDSCHAFT_SPIELEN);
     // cleanup coin after animation (~900ms)
     setTimeout(() => {
       setCoins((prev) => prev.filter((c) => c.id !== coinId));
@@ -840,6 +850,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
               <span className={`pet-stat ${hunger < 15 ? 'kritisch' : ''}`} title="Hunger">🍽️ {Math.round(hunger)}%</span>
               <span className={`pet-stat ${thirst < 15 ? 'kritisch' : ''}`} title="Durst">💧 {Math.round(thirst)}%</span>
               <span className={`pet-stat ${freude < 25 ? 'kritisch' : ''}`} title="Zufriedenheit">💛 {Math.round(freude)}%</span>
+              <span
+                className="pet-phase"
+                title={`${wachstum.phase.name} · ${wachstum.tage} gepflegte Tage · Freundschaft ${wachstum.freundschaft} von 100`}
+              >
+                {wachstum.phase.name} {'❤️'.repeat(wachstum.herzen)}{'🤍'.repeat(5 - wachstum.herzen)}
+              </span>
             </>
           )}
           {hasAnyUnlocked && (
@@ -1057,7 +1073,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       onClick={(e) => { e.stopPropagation(); showPurr(); }}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPurr(); } }}
     >
-      <div className="cat-float">
+      <div className="cat-float" style={{ '--phasen-groesse': wachstum.phase.groesse }}>
         <div ref={bodyRef} className="cat-body" style={{ transform: `scaleX(${flip})` }}>
           <CatVariant index={laden.fellVariante ?? variant} active={!!play} zubehoer={laden.angelegt} />
         </div>

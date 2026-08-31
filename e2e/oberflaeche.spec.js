@@ -1,4 +1,4 @@
-import { test, expect, menuepunkt } from './hilfen.js';
+import { test, expect, grundaufbau, menuepunkt } from './hilfen.js';
 
 /* Elemente, die frei über der Seite schweben und sich deshalb überdecken können. */
 const SCHWEBEND = ['.coin-counter', '.status-indicator', '.edit-toggle', '.drucker-wahl',
@@ -72,4 +72,43 @@ test('beim Merken ist die Münze wirklich zu sehen', async ({ seite }) => {
   expect(sicht.freiUnterDemDeckel).toBe(true);
   expect(sicht.groesse).toBeGreaterThan(30);
   expect(sicht.deckkraft).toBe(1);
+});
+
+/*
+  Die Projekte decken nur 1024 und 1920 ab. Als die Münzanzeige um Phase und
+  Herzen wuchs, überlappte es bei 1280 und 1201 – beide Projektbreiten blieben
+  grün. Deshalb hier ein ausdrücklicher Durchlauf über die Zwischenbreiten.
+*/
+const BREITEN = [1920, 1600, 1440, 1401, 1366, 1280, 1201, 1100, 1024, 900, 820, 768];
+
+test('die Kopfleiste bleibt über alle Breiten frei', async ({ seite }) => {
+  const kaputt = [];
+  for (const breite of BREITEN) {
+    await seite.setViewportSize({ width: breite, height: 800 });
+    await seite.waitForTimeout(120);
+    const treffer = await ueberlappungen(seite, SCHWEBEND);
+    if (treffer.length) kaputt.push(`${breite}px: ${treffer.join(', ')}`);
+  }
+  expect(kaputt, `Überlappungen:\n${kaputt.join('\n')}`).toEqual([]);
+});
+
+/*
+  Der ungünstigste Fall: zwei Drucker, dann steht zusätzlich die Auswahl in der
+  Leiste. Genau der fehlte, als die Münzanzeige um Phase und Herzen wuchs – mit
+  nur einem Drucker blieb alles grün, mit zweien überlappte es ab 1345px.
+*/
+test('auch mit zwei Druckern bleibt die Leiste frei', async ({ page }) => {
+  await grundaufbau(page, ['DYMO Küche', 'DYMO Bar']);
+  await page.goto('/');
+  await page.waitForSelector('.status-indicator .online');
+  await expect(page.locator('.drucker-wahl')).toBeVisible();
+
+  const kaputt = [];
+  for (const breite of BREITEN) {
+    await page.setViewportSize({ width: breite, height: 800 });
+    await page.waitForTimeout(120);
+    const treffer = await ueberlappungen(page, SCHWEBEND);
+    if (treffer.length) kaputt.push(`${breite}px: ${treffer.join(', ')}`);
+  }
+  expect(kaputt, `Überlappungen:\n${kaputt.join('\n')}`).toEqual([]);
 });
