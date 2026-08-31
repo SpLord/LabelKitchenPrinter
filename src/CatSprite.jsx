@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import ShellGame from './ShellGame.jsx';
+import { catchUp, clampNeed, coinsFor, conditionOf, decayOver, feed } from './cat/needs.js';
 
 const VARIANTS = [
   { name: 'sand', body: '#f5d3b3', stroke: '#3b3b3b', accent: '#e08e79', pattern: 'none' },
@@ -115,10 +116,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const [droppings, setDroppings] = useState([]);
   const posRef = useRef(pos);
   const [coins, setCoins] = useState([]); // ephemeral pop animations
+  // Ein Kontostand statt der früheren Aufteilung in Lebenszeit- und Kaufmünzen:
+  // die Trennung war nicht vermittelbar (1410 verdient, davon 2 ausgebbar).
   const [coinCount, setCoinCount] = useState(0);
-  const [coinWallet, setCoinWallet] = useState(0); // spendable coins for purchases
+  // Höchststand, damit Ausgeben nichts wieder zusperrt.
+  const [coinPeak, setCoinPeak] = useState(0);
   const [coinsLoaded, setCoinsLoaded] = useState(false);
-  const [walletLoaded, setWalletLoaded] = useState(false);
   const [fireworks, setFireworks] = useState([]);
   const [fwDone, setFwDone] = useState(false);   // persisted: prevent re-trigger after reload
   const fwIntervalRef = useRef(null);
@@ -137,24 +140,43 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Treats mini-game
   const [treats, setTreats] = useState([]); // {id,x,y,vy,kind}
   const [shellOpen, setShellOpen] = useState(false);
+  // Siegesserie des Hütchenspiels überlebt Runde und Reload
+  const [shellStreak, setShellStreak] = useState(() => {
+    const v = parseInt(localStorage.getItem('cat_shellStreak') ?? '0', 10);
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  });
+  useEffect(() => {
+    try { localStorage.setItem('cat_shellStreak', String(shellStreak)); } catch {}
+  }, [shellStreak]);
   const [showUnlocks, setShowUnlocks] = useState(false);
   // Pet care
-  const clamp01 = (v) => Math.max(0, Math.min(100, v));
   const [hunger, setHunger] = useState(() => {
-    const v = Number(localStorage.getItem('cat_hunger')); return Number.isFinite(v) ? clamp01(v) : 80;
+    const v = Number(localStorage.getItem('cat_hunger')); return Number.isFinite(v) ? clampNeed(v) : 80;
   });
   const [thirst, setThirst] = useState(() => {
-    const v = Number(localStorage.getItem('cat_thirst')); return Number.isFinite(v) ? clamp01(v) : 80;
+    const v = Number(localStorage.getItem('cat_thirst')); return Number.isFinite(v) ? clampNeed(v) : 80;
   });
   useEffect(()=>{ try{ localStorage.setItem('cat_hunger', String(hunger)); }catch{} }, [hunger]);
   useEffect(()=>{ try{ localStorage.setItem('cat_thirst', String(thirst)); }catch{} }, [thirst]);
-  // degrade over time
+  // Verfall an der echten Uhr statt an Intervall-Ticks: ein geschlossener Tab
+  // hielt die Werte sonst künstlich hoch. Abwesenheit ist gedeckelt.
   useEffect(() => {
+    const stamp = () => { try { localStorage.setItem('cat_lastSeen', String(Date.now())); } catch {} };
+    try {
+      const lastSeen = Number(localStorage.getItem('cat_lastSeen'));
+      if (Number.isFinite(lastSeen) && lastSeen > 0) {
+        setHunger((h) => catchUp({ hunger: h, thirst: 100, lastSeen }).hunger);
+        setThirst((t) => catchUp({ hunger: 100, thirst: t, lastSeen }).thirst);
+      }
+    } catch {}
+    stamp();
+
     const id = setInterval(() => {
-      setHunger((v) => clamp01(v - 1));
-      setThirst((v) => clamp01(v - 1));
-    }, 30000); // every 30s -1%
-    return () => clearInterval(id);
+      setHunger((v) => decayOver(v, 60000));
+      setThirst((v) => decayOver(v, 60000));
+      stamp();
+    }, 60000);
+    return () => { clearInterval(id); stamp(); };
   }, []);
   // Placement state
   const [placing, setPlacing] = useState(null); // { kind: 'food'|'water', fill:number, cost:number, label:string, emoji:string }
@@ -186,6 +208,18 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       }
     } catch {}
   }, []);
+
+  const zustand = conditionOf(hunger, thirst);
+
+  // Wenn es der Katze schlecht geht, meldet sie sich – vorher liefen Hunger und
+  // Durst wirkungslos gegen null, ohne dass irgendetwas darauf reagierte.
+  const bedarfsSprueche = useMemo(() => {
+    const list = [];
+    if (hunger < 40) list.push('Mails, mein Napf ist leer… 🍽️', 'Mails, ein Häppchen? Bitte?');
+    if (thirst < 40) list.push('Mails, ich hätte gern Wasser. 💧', 'Mails, so trocken hier…');
+    if (hunger < 15 || thirst < 15) list.push('Mails, mir ist ganz flau. 🙀', 'Mails, ich schaff heut nix mehr…');
+    return list;
+  }, [hunger, thirst]);
 
   const messages = useMemo(
     () => [
@@ -337,7 +371,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         if (lastCoinsRef.current - start >= 5){
           stopQuest();
           setCoinCount(v=>v+3);
-          setCoinWallet(v=>v+3);
           setMessage('Bonus +3!');
           setTimeout(()=>setMessage(null),1500);
         }
@@ -454,7 +487,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   };
 
   const showRandomMessage = () => {
-    const msg = messages[Math.floor(Math.random() * messages.length)];
+    // Bei Bedarf melden sich Hunger und Durst bevorzugt, sonst der normale Plausch
+    const pool = bedarfsSprueche.length > 0 && Math.random() < 0.7 ? bedarfsSprueche : messages;
+    const msg = pool[Math.floor(Math.random() * pool.length)];
     setMessage(msg);
     setBubbleSize('normal');
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
@@ -542,8 +577,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           if (active.kind === 'food' || active.kind === 'water') {
             // consume
             if (placedItem && placedItem.id === active.id) {
-              if (active.kind === 'food') setHunger((v) => clamp01(v + (placedItem.fill || 0)));
-              if (active.kind === 'water') setThirst((v) => clamp01(v + (placedItem.fill || 0)));
+              if (active.kind === 'food') setHunger((v) => feed(v, placedItem.fill || 0));
+              if (active.kind === 'water') setThirst((v) => feed(v, placedItem.fill || 0));
               setPlacedItem(null);
             }
             setInternalPlay(null);
@@ -666,9 +701,10 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     // spawn coin pop
     const coinId = Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-  const add = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
-  setCoinCount((c) => c + add);
-  setCoinWallet((c) => c + add);
+  // Eine schwache Katze sammelt nichts mehr – hier wirkt ihr Zustand.
+  const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
+  const add = coinsFor(basis, hunger, thirst);
+  if (add > 0) setCoinCount((c) => c + add);
     // cleanup coin after animation (~900ms)
     setTimeout(() => {
       setCoins((prev) => prev.filter((c) => c.id !== coinId));
@@ -709,58 +745,44 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   setTreats((prev) => prev.filter((t) => t.id !== id));
     const coinId = 'tc' + Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-  const add = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
-  setCoinCount((c) => c + add);
-  setCoinWallet((c) => c + add);
+  // Eine schwache Katze sammelt nichts mehr – hier wirkt ihr Zustand.
+  const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
+  const add = coinsFor(basis, hunger, thirst);
+  if (add > 0) setCoinCount((c) => c + add);
     setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
   };
 
-  // Persist coin count: read from cookie/localStorage; write to both
+  // Kontostand laden (Cookie hat Vorrang, dann localStorage)
   useEffect(() => {
+    const readInt = (key) => {
+      const c = getCookie(key);
+      if (c != null && !Number.isNaN(parseInt(c, 10))) return parseInt(c, 10);
+      const saved = localStorage.getItem(key);
+      return saved != null ? (parseInt(saved, 10) || 0) : null;
+    };
     try {
-      const c = getCookie('cat_coinCount');
-      if (c != null) {
-        const n = parseInt(c, 10);
-        if (!Number.isNaN(n)) { setCoinCount(n); setCoinsLoaded(true); return; }
-      }
-      const saved = localStorage.getItem('cat_coinCount');
-      if (saved != null) setCoinCount(parseInt(saved, 10) || 0);
-      setCoinsLoaded(true);
+      const stand = readInt('cat_coinCount') ?? 0;
+      const gipfel = readInt('cat_coinPeak');
+      setCoinCount(stand);
+      // Ohne gespeicherten Höchststand zählt der bisherige Stand als Höchststand,
+      // damit beim Umstieg nichts wieder zugesperrt wird.
+      setCoinPeak(Math.max(gipfel ?? 0, stand));
     } catch {}
+    setCoinsLoaded(true);
   }, []);
+
   useEffect(() => {
     if (!coinsLoaded) return;
     try { localStorage.setItem('cat_coinCount', String(coinCount)); } catch {}
     setCookie('cat_coinCount', String(coinCount));
+    setCoinPeak((p) => (coinCount > p ? coinCount : p));
   }, [coinCount, coinsLoaded]);
 
-  // Wallet: load after coins loaded (seed from lifetime if absent on first run)
   useEffect(() => {
-    if (!coinsLoaded || walletLoaded) return;
-    try {
-      const c = getCookie('cat_coinWallet');
-      if (c != null) {
-        const n = parseInt(c, 10);
-        if (!Number.isNaN(n)) { setCoinWallet(n); setWalletLoaded(true); return; }
-      }
-      const saved = localStorage.getItem('cat_coinWallet');
-      if (saved != null) {
-        setCoinWallet(parseInt(saved, 10) || 0);
-        setWalletLoaded(true);
-        return;
-      }
-      // Seed: if no wallet persisted, initialize with current lifetime coins
-      setCoinWallet(coinCount);
-      setWalletLoaded(true);
-    } catch {
-      setWalletLoaded(true);
-    }
-  }, [coinsLoaded, walletLoaded, coinCount]);
-  useEffect(() => {
-    if (!walletLoaded) return;
-    try { localStorage.setItem('cat_coinWallet', String(coinWallet)); } catch {}
-    setCookie('cat_coinWallet', String(coinWallet));
-  }, [coinWallet, walletLoaded]);
+    if (!coinsLoaded) return;
+    try { localStorage.setItem('cat_coinPeak', String(coinPeak)); } catch {}
+    setCookie('cat_coinPeak', String(coinPeak));
+  }, [coinPeak, coinsLoaded]);
 
   // Placement click handler
   useEffect(() => {
@@ -797,8 +819,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     { key: 'treat', label: 'Leckerli', emoji: '🐟', cost: 1, fill: 10 },
   ];
   const startPlaceFood = (opt) => {
-    if (!debugUi && coinWallet < opt.cost) { setMessage('Nicht genug Kaufmünzen'); setTimeout(()=>setMessage(null), 1000); return; }
-    if (!debugUi) setCoinWallet((c) => Math.max(0, c - opt.cost));
+    if (!debugUi && coinCount < opt.cost) { setMessage('Nicht genug Münzen'); setTimeout(()=>setMessage(null), 1000); return; }
+    if (!debugUi) setCoinCount((c) => Math.max(0, c - opt.cost));
     setPlacing({ kind: 'food', fill: opt.fill, cost: opt.cost, label: opt.label, emoji: opt.emoji });
   };
   const startPlaceWater = () => {
@@ -807,7 +829,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
 
   // Trigger fireworks once when reaching 100 coins
   useEffect(() => {
-    if (coinCount >= 100 && !fwStartedRef.current && !fwDone) {
+    if (coinPeak >= 100 && !fwStartedRef.current && !fwDone) {
       fwStartedRef.current = true;
       setFwDone(true);
       // persist that fireworks already shown
@@ -877,13 +899,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
 
   // Unlock flags and availability
   const unlocked = {
-    coinShower: debugUi || coinCount >= 30,
-    treats: debugUi || coinCount >= 45,
-    feed: debugUi || coinCount >= 50,
-    x2: debugUi || coinCount >= 60,
-    laser: debugUi || coinCount >= 75,
-    shell: debugUi || coinCount >= 90,
-    magnet: debugUi || coinCount >= 120,
+    coinShower: debugUi || coinPeak >= 30,
+    treats: debugUi || coinPeak >= 45,
+    feed: debugUi || coinPeak >= 50,
+    x2: debugUi || coinPeak >= 60,
+    laser: debugUi || coinPeak >= 75,
+    shell: debugUi || coinPeak >= 90,
+    magnet: debugUi || coinPeak >= 120,
   };
   const hasAnyUnlocked = Object.values(unlocked).some(Boolean);
   const unlockItems = [
@@ -913,15 +935,15 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         >
           <span className="coin-ico">🪙</span>
           <span className="coin-num">{coinCount}</span>
-          {(debugUi || coinCount >= 50) && (
-            <span className="coin-wallet" title="Kaufmünzen">💼 {coinWallet}</span>
-          )}
           {x2Active && <span className="fx-badge">x2</span>}
           {magnetActive && <span className="fx-badge">🧲</span>}
-          {(debugUi || coinCount >= 50) && (
+          {(debugUi || coinPeak >= 50) && (
             <>
-              <span className="pet-stat" title="Hunger">🍽️ {Math.round(hunger)}%</span>
-              <span className="pet-stat" title="Durst">💧 {Math.round(thirst)}%</span>
+              <span className={`pet-condition ${zustand.key}`} title={`Zustand: ${zustand.label}`}>
+                {zustand.emoji} {zustand.label}
+              </span>
+              <span className={`pet-stat ${hunger < 15 ? 'kritisch' : ''}`} title="Hunger">🍽️ {Math.round(hunger)}%</span>
+              <span className={`pet-stat ${thirst < 15 ? 'kritisch' : ''}`} title="Durst">💧 {Math.round(thirst)}%</span>
             </>
           )}
           {hasAnyUnlocked && (
@@ -952,9 +974,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
           <div className="gimmick-title">Freischaltungen</div>
           <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
-            {(debugUi ? unlockItems : unlockItems.filter(it => coinCount >= it.thr)).map(it => (
+            {(debugUi ? unlockItems : unlockItems.filter(it => coinPeak >= it.thr)).map(it => (
               <div key={it.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--surface)' }}>
-                <span style={{ fontWeight: 600 }}>{coinCount >= it.thr ? '✅' : '🔒'} {it.label}</span>
+                <span style={{ fontWeight: 600 }}>{coinPeak >= it.thr ? '✅' : '🔒'} {it.label}</span>
                 <span style={{ color: 'var(--muted)' }}>{it.thr} 🪙</span>
               </div>
             ))}
@@ -1096,7 +1118,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         </div>
       )}
       <div
-        className={`cat-sprite ${play ? 'running' : 'idle'}`}
+        className={`cat-sprite ${play ? 'running' : 'idle'} ${zustand.key}`}
         
         style={{ top: pos.top, left: pos.left }}
         aria-hidden
@@ -1123,7 +1145,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         <ErrorBoundary label="Das Hütchenspiel">
           <ShellGame
             onClose={() => setShellOpen(false)}
-            onResult={(add) => { setCoinCount((c) => c + add); setCoinWallet((c)=> c + add); }}
+            onResult={(add) => setCoinCount((c) => c + add)}
+            streak={shellStreak}
+            onStreak={setShellStreak}
           />
         </ErrorBoundary>
       )}

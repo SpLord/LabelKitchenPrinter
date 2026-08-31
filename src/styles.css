@@ -1261,3 +1261,31 @@ input:focus-visible {
   border-top: 1px solid var(--border);
 }
 .icon-picker-custom input { flex: 1; min-width: 0; text-align: center; font-size: 1.1rem; }
+
+/* ==========================================
+   🐱 Zustand der Katze in der Münzleiste
+   ========================================== */
+
+.pet-condition {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.14);
+  color: #166534;
+}
+.pet-condition.normal  { background: rgba(99, 102, 241, 0.12); color: #3730a3; }
+.pet-condition.traege  { background: rgba(245, 158, 11, 0.18); color: #92400e; }
+.pet-condition.schwach { background: rgba(239, 68, 68, 0.18);  color: #991b1b; }
+
+.pet-stat.kritisch {
+  color: #991b1b;
+  font-weight: 700;
+}
+
+/* Eine schwache Katze bewegt sich sichtbar müder. */
+.cat-sprite.schwach { filter: grayscale(0.45) brightness(0.95); }
+.cat-sprite.traege  { filter: saturate(0.8); }

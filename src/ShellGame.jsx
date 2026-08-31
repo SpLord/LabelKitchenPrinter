@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
   ShellGame Overlay (Hütchenspiel)
   - props:
     - onClose(): void
-    - onResult(addCoins: number): void  (award coins)
+    - onResult(addCoins: number): void   Münzen gutschreiben
+    - streak: number                     bisherige Siegesserie (überlebt die Runde)
+    - onStreak(next: number): void       neue Serie melden
+
+  Die Serie lag früher im lokalen State dieser Komponente. Da sie 1,8 s nach
+  jeder Runde ausgehängt wird, war der Fortschritt damit jedes Mal weg: Streak
+  blieb 0, Level 1, der 4. Becher tauchte nie auf.
 */
 
 // ─── Audio Utility ────────────────────────────────────────────────────────────
@@ -51,9 +57,9 @@ function playLose() {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function ShellGame({ onClose, onResult }) {
-  // cups array: supports 3 or 4 cups depending on difficulty
-  const [numCups, setNumCups] = useState(3);
+export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
+  // Ab drei Siegen in Folge wird mit vier Bechern gespielt
+  const [numCups, setNumCups] = useState(() => (streak >= 3 ? 4 : 3));
 
   // order[cupIdx] = slotIdx  (which slot each cup is currently at)
   const [order, setOrder] = useState(() => Array.from({length: numCups}, (_, i) => i));
@@ -67,16 +73,16 @@ export default function ShellGame({ onClose, onResult }) {
   const [message, setMessage] = useState('');
   const [flashClass, setFlashClass] = useState(''); // 'win' | 'lose'
 
-  // streak & difficulty
-  const [streak, setStreak] = useState(0);
-  const [speed, setSpeed] = useState(280); // ms per swap
+  // Tempo steigt mit der Serie
+  const startTempo = Math.max(120, 280 - streak * 30);
+  const [speed, setSpeed] = useState(startTempo);
 
   // level display (speed < 200 → level 2)
   const level = speed < 200 ? 2 : 1;
 
   const runningRef = useRef(false);
   const swapsRef = useRef(0);
-  const speedRef = useRef(280);
+  const speedRef = useRef(startTempo);
 
   // Slot X positions (3 or 4 cups)
   const slots = useMemo(() => {
@@ -149,6 +155,7 @@ export default function ShellGame({ onClose, onResult }) {
     if (win) {
       playWin();
       const newStreak = streak + 1;
+      onStreak && onStreak(newStreak);
       if (newStreak >= 3) {
         // Streak bonus
         setMessage(`🔥 ${newStreak}x Streak! Richtig! +5 Bonus-Münzen!`);
@@ -157,7 +164,6 @@ export default function ShellGame({ onClose, onResult }) {
         setMessage('🎉 Richtig! +3 Münzen');
         onResult(3);
       }
-      setStreak(newStreak);
       setFlashClass('win');
       // Increase difficulty
       const nextSpeed = Math.max(120, speedRef.current - 30);
@@ -172,7 +178,7 @@ export default function ShellGame({ onClose, onResult }) {
       playLose();
       setMessage('😢 Knapp daneben! +1 Münze');
       onResult(1);
-      setStreak(0);
+      onStreak && onStreak(0);
       setFlashClass('lose');
     }
 
@@ -180,7 +186,7 @@ export default function ShellGame({ onClose, onResult }) {
       setFlashClass('');
       onClose();
     }, 1800);
-  }, [stage, prizeCup, onResult, onClose, streak, numCups]);
+  }, [stage, prizeCup, onResult, onClose, onStreak, streak, numCups]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   const cups = Array.from({ length: numCups }, (_, i) => i);
