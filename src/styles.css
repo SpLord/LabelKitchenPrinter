@@ -869,13 +869,13 @@ input:focus-visible {
 
 /* Nicht-blockierende Druckfehler-Meldung (ersetzt alert()) */
 .print-error {
-  position: fixed;
-  top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 60;
-  max-width: min(90vw, 32rem);
-  display: inline-flex;
+  /* Bewusst im Fluss statt fixiert: zentriert und fixiert legte sie sich auf
+     schmalen Bildschirmen über Münzanzeige, Status und Editor-Knopf. */
+  margin: 0 auto 0.75rem;
+  max-width: min(100%, 40rem);
+  display: flex;
+  justify-content: center;
+  text-align: center;
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 1rem;
@@ -900,8 +900,12 @@ input:focus-visible {
   z-index: 55;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  /* Rechtsbündig: die linke obere Ecke gehört der Münzanzeige der Katze
+     (.coin-counter, position:fixed) – dort lag der Status vorher drunter. */
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-height: 60px;
   padding: 0.5rem 0.25rem;
   margin-bottom: 0.5rem;
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(248, 250, 252, 0.72));
@@ -1143,3 +1147,9 @@ input:focus-visible {
 /* Editor: 48px-Touchziele fressen Breite – Spalten entsprechend weiter,
    sonst werden lange Namen wie "Schweineschnitzel" abgeschnitten. */
 .editor-groups { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
+
+/* Auf schmalen Geräten passen Münzanzeige, Status und Editor-Knopf nicht in
+   eine Zeile – dann rutscht der Leisteninhalt unter die Münzanzeige. */
+@media (max-width: 900px) {
+  .app-bar { padding-top: 52px; }
+}

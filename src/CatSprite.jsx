@@ -282,10 +282,20 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Milestone triggers on coin thresholds (once per session)
   const lastCoinsRef = useRef(0);
   const questIntervalRef = useRef(null);
+  const milestonesPrimedRef = useRef(false);
   useEffect(()=>{
     if (!coinsLoaded) return;
     const c = coinCount;
-    const mark = (key, fn) => { if (!unlockedRef.current[key] && c >= Number(key)) { unlockedRef.current[key]=true; fn&&fn(); } };
+
+    // Beim ersten Lauf nach dem Laden werden bereits erreichte Meilensteine nur
+    // vorgemerkt, nicht ausgelöst. Sonst feuerten bei einem gespeicherten Stand
+    // von z. B. 1410 Münzen sämtliche Effekte gleichzeitig – bei jedem Reload.
+    const primed = milestonesPrimedRef.current;
+    const mark = (key, fn) => {
+      if (unlockedRef.current[key] || c < Number(key)) return;
+      unlockedRef.current[key] = true;
+      if (primed) fn && fn();
+    };
     // 5 sparkles when collecting up to 10
     mark(5, triggerSparkles);
     mark(10, ()=> setMessage('Miau!'));
@@ -295,6 +305,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     // 35: quest (simple bonus if +5 coins in 60s)
   if (!unlockedRef.current['35'] && c>=35){
       unlockedRef.current['35']=true;
+      // Beim Vormerk-Lauf keine Quest starten – nur die Schwelle als erledigt merken
+      if (primed) {
       const start = coinCount;
       const t0 = Date.now();
       const stopQuest = () => {
@@ -314,6 +326,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           setTimeout(()=>setMessage(null),1500);
         }
       }, 500);
+      }
     }
     mark(40, ()=> { setX2Active(true); setTimeout(()=> setX2Active(false), 10000); });
     // 50 crown already handled by render
@@ -331,6 +344,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     mark(500, ()=> triggerConfetti(true));
     // 750 / 1000 handled via panel unlocks (we already have panel)
     lastCoinsRef.current = c;
+    milestonesPrimedRef.current = true;
   }, [coinCount, coinsLoaded]);
   // Trigger a short coin shower animation (drops temporary coins from the top)
   const triggerCoinShower = () => {

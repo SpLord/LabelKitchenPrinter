@@ -247,11 +247,6 @@ export default function App() {
         />
         <PlayOverlay play={play} setPlay={setPlay} />
       </ErrorBoundary>
-      {error && (
-        <div className="print-error" role="alert" onClick={() => setError(null)}>
-          ⚠️ {error}
-        </div>
-      )}
       {editorOpen && (
         <ErrorBoundary label="Der Etiketten-Editor">
           <LabelEditor
@@ -276,6 +271,11 @@ export default function App() {
           ✏️ Etiketten bearbeiten
         </button>
       </header>
+      {error && (
+        <div className="print-error" role="alert" onClick={() => setError(null)}>
+          ⚠️ {error}
+        </div>
+      )}
 
       <div className="main-layout">
         <aside className="side-rail">
