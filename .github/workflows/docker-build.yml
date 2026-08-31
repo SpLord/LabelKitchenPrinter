@@ -36,6 +36,9 @@ jobs:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Zum Nachziehen des deploy-Branches am Ende des Jobs
+    permissions:
+      contents: write
     env:
       IMAGE_NAME: splord/labelkitchen
 
@@ -66,3 +69,11 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}
+
+      # Portainer beobachtet den deploy-Branch, nicht main. Er wird erst hier
+      # nachgezogen – also nachdem das Image wirklich in der Registry liegt.
+      # Vorher pollte Portainer main im Minutentakt und erwischte den Commit
+      # gelegentlich, bevor das Image fertig war: dann wurde der alte Stand
+      # ausgerollt und der Commit als erledigt vermerkt, ohne Selbstheilung.
+      - name: Deploy-Branch nachziehen
+        run: git push origin HEAD:refs/heads/deploy
