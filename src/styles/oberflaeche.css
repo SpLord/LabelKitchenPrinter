@@ -465,8 +465,105 @@ input:focus-visible {
 .side-rail .input-group input { max-width: none; }
 
 
-/* Auf schmalen Geräten passen Münzanzeige, Status und Editor-Knopf nicht in
-   eine Zeile – dann rutscht der Leisteninhalt unter die Münzanzeige. */
-@media (max-width: 900px) {
+/* Münzanzeige (fixiert, oben links, bis rund 380px breit) und Leisteninhalt
+   teilen sich die erste Zeile. Reicht die Breite nicht, rutscht die Leiste
+   darunter. Schwelle gerechnet: 380 Münzanzeige + Status, Druckerauswahl und
+   Editor-Knopf mit Abständen ergeben rund 1140px – 1200 lässt Luft. */
+@media (max-width: 1200px) {
   .app-bar { padding-top: 52px; }
+}
+
+/* ==========================================
+   🖨 Druckerauswahl und Stückzahl
+   ========================================== */
+
+.drucker-wahl {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.drucker-wahl-text { color: var(--muted); }
+.drucker-wahl select {
+  min-height: 40px;
+  max-width: 14rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font: inherit;
+  color: var(--text);
+}
+
+.anzahl-wahl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+}
+.anzahl-titel { font-size: 0.9rem; font-weight: 600; color: var(--muted); }
+.anzahl-steuerung { display: flex; align-items: center; gap: 0.75rem; }
+
+.anzahl-knopf {
+  /* Grosszügig: wird mit fettigen Fingern getroffen */
+  min-width: 56px;
+  min-height: 56px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.anzahl-knopf:disabled { opacity: 0.35; cursor: not-allowed; }
+@media (hover: hover) {
+  .anzahl-knopf:not(:disabled):hover { background: #f1f5f9; }
+}
+
+.anzahl-wert {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.anzahl-zurueck {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* Auf jedem Etiketten-Knopf sichtbar, damit niemand versehentlich 10 druckt */
+.anzahl-marke {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }

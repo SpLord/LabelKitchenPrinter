@@ -9,11 +9,17 @@ import CatSprite from './CatSprite.jsx';
 import PlayOverlay from './PlayOverlay.jsx';
 import LabelEditor from './LabelEditor.jsx';
 import { loadGroups, saveGroups } from './labels/store.js';
+import {
+  KEY_DRUCKER, MAX_ANZAHL, MIN_ANZAHL,
+  begrenzeAnzahl, druckParameter, druckerNamen, waehleDrucker,
+} from './print/drucker.js';
 
 export default function App() {
   const [input, setInput] = useState('');
   const [printerStatus, setPrinterStatus] = useState('checking');
   const [printerName, setPrinterName] = useState(null);
+  const [drucker, setDrucker] = useState([]);          // alle gefundenen
+  const [anzahl, setAnzahl] = useState(MIN_ANZAHL);    // Etiketten je Druck
   const [previewSrc, setPreviewSrc] = useState(null);
   const [play, setPlay] = useState(null); // toy target for cat
   const [laserMode, setLaserMode] = useState(false);
@@ -31,6 +37,8 @@ export default function App() {
 
   // Aktuelle Spielzeugposition – von PlayOverlay geschrieben, von der Katze gelesen
   const toyPosRef = useRef(null);
+
+  const merkeDruckerRef = useRef(() => {});
 
   const errorTimerRef = useRef(null);
   const previewTimerRef = useRef(null);
@@ -73,6 +81,11 @@ export default function App() {
       setPrinterName(null);
     };
 
+    const merkeDrucker = (name) => {
+      try { localStorage.setItem(KEY_DRUCKER, name); } catch { /* gesperrt */ }
+    };
+    merkeDruckerRef.current = merkeDrucker;
+
     const tryInitDymo = () => {
       if (cancelled) return;
 
@@ -88,12 +101,17 @@ export default function App() {
 
       try {
         framework.init();
-        const printers = framework.getPrinters();
+        const namen = druckerNamen(framework.getPrinters());
         if (cancelled) return;
-        if (printers && printers.length > 0) {
+        if (namen.length > 0) {
           setPrinterStatus('online');
-          setPrinterName(printers[0].name);
+          setDrucker(namen);
+          // Die gemerkte Wahl gewinnt, solange das Gerät angeschlossen ist.
+          let gemerkt = null;
+          try { gemerkt = localStorage.getItem(KEY_DRUCKER); } catch { /* gesperrt */ }
+          setPrinterName((bisher) => waehleDrucker(namen, bisher ?? gemerkt));
         } else {
+          setDrucker([]);
           goOffline();
         }
       } catch (err) {
@@ -201,7 +219,13 @@ export default function App() {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
         label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
-        label.print(printerName || "DYMO LabelWriter 450");
+
+        const ziel = printerName || "DYMO LabelWriter 450";
+        const { xml, wiederholungen } = druckParameter(framework, anzahl);
+        for (let i = 0; i < wiederholungen; i += 1) {
+          if (xml) label.print(ziel, xml);
+          else label.print(ziel);
+        }
       })
       .catch(err => showError('Fehler beim Drucken: ' + err.message));
   };
@@ -272,6 +296,20 @@ export default function App() {
             <span className="offline">❌ Kein Drucker gefunden</span>
           )}
         </div>
+        {drucker.length > 1 && (
+          <label className="drucker-wahl">
+            <span className="drucker-wahl-text">Drucker</span>
+            <select
+              value={printerName ?? ''}
+              onChange={(e) => {
+                setPrinterName(e.target.value);
+                merkeDruckerRef.current(e.target.value);
+              }}
+            >
+              {drucker.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
+        )}
         <button className="edit-toggle" onClick={() => setEditorOpen(true)}>
           ✏️ Etiketten bearbeiten
         </button>
@@ -303,6 +341,30 @@ export default function App() {
             <div className="date-current">
               📅 {selectedDate.toLocaleDateString("de-DE")}
             </div>
+          </div>
+
+          <div className="anzahl-wahl">
+            <span className="anzahl-titel">Etiketten je Druck</span>
+            <div className="anzahl-steuerung">
+              <button
+                className="anzahl-knopf"
+                onClick={() => setAnzahl((n) => begrenzeAnzahl(n - 1))}
+                disabled={anzahl <= MIN_ANZAHL}
+                aria-label="Eines weniger"
+              >−</button>
+              <span className="anzahl-wert" aria-live="polite">{anzahl}</span>
+              <button
+                className="anzahl-knopf"
+                onClick={() => setAnzahl((n) => begrenzeAnzahl(n + 1))}
+                disabled={anzahl >= MAX_ANZAHL}
+                aria-label="Eines mehr"
+              >+</button>
+            </div>
+            {anzahl > MIN_ANZAHL && (
+              <button className="anzahl-zurueck" onClick={() => setAnzahl(MIN_ANZAHL)}>
+                zurück auf 1
+              </button>
+            )}
           </div>
 
           <div className="input-group">
@@ -340,6 +402,7 @@ export default function App() {
                     disabled={printerStatus !== 'online'}
                   >
                     {name}
+                    {anzahl > MIN_ANZAHL && <span className="anzahl-marke">×{anzahl}</span>}
                   </button>
                 ))}
               </div>
