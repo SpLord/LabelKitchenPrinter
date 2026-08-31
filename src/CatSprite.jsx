@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import ShellGame from './ShellGame.jsx';
 
 const VARIANTS = [
@@ -105,13 +106,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
   const [message, setMessage] = useState(null);
   const [bubbleSize, setBubbleSize] = useState('normal');
-  const [trumpetActive, setTrumpetActive] = useState(false);
-  const [spray, setSpray] = useState(null); // water spray particles
-  const [spraying, setSpraying] = useState(false);
-  const [puddles, setPuddles] = useState([]); // accumulated water spots
-  const [waterProgress, setWaterProgress] = useState(0); // 0..1 visual fill toward half screen
-  const sprayIntervalRef = useRef(null);
-  const sprayedAreaRef = useRef(0);
   const catSize = useMemo(() => ({ w: 120, h: 120 }), []);
   const hideTimeout = useRef(null);
   const dirRef = useRef(1); // 1 right, -1 left
@@ -126,7 +120,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const [coinsLoaded, setCoinsLoaded] = useState(false);
   const [walletLoaded, setWalletLoaded] = useState(false);
   const [fireworks, setFireworks] = useState([]);
-  const [fwShown, setFwShown] = useState(false); // legacy, kept for safety
   const [fwDone, setFwDone] = useState(false);   // persisted: prevent re-trigger after reload
   const fwIntervalRef = useRef(null);
   const fwStartedRef = useRef(false);
@@ -140,8 +133,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const [rainbowDots, setRainbowDots] = useState([]); // trail dots
   const [confetti, setConfetti] = useState([]); // small bursts
   const [paradeActive, setParadeActive] = useState(false); // emoji banner
-  const [capeVisible, setCapeVisible] = useState(false);
-  const [goldOutlineActive, setGoldOutlineActive] = useState(false);
   const unlockedRef = useRef({});
   // Treats mini-game
   const [treats, setTreats] = useState([]); // {id,x,y,vy,kind}
@@ -173,7 +164,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Cookie helpers for session persistence (fallback to localStorage)
   const getCookie = (name) => {
     try {
-      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/\+^])/g, '\\$1') + '=([^;]*)'));
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
       return m ? decodeURIComponent(m[1]) : null;
     } catch { return null; }
   };
@@ -273,7 +264,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     setTimeout(()=> setRainbowDots([]), ms+800);
   };
   const triggerConfetti = (strong=false) => {
-    const vw = window.innerWidth||1200, vh = window.innerHeight||800;
+    const vw = window.innerWidth||1200;
     const n = strong? 120: 40;
     const parts = Array.from({ length: n }).map((_,i)=>({ id:'cf'+Date.now()+i, x: Math.random()*vw, y: -20-Math.random()*60, c: `hsl(${Math.floor(Math.random()*360)}deg 90% 60%)`, d: 800+Math.random()*800 }));
     setConfetti((prev)=> prev.concat(parts));
@@ -287,11 +278,10 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     setParadeActive(true);
     setTimeout(()=> setParadeActive(false), 1200);
   };
-  const showCape = () => { setCapeVisible(true); setTimeout(()=> setCapeVisible(false), 5000); };
-  const startGoldOutline = () => { setGoldOutlineActive(true); setTimeout(()=> setGoldOutlineActive(false), 10000); };
 
   // Milestone triggers on coin thresholds (once per session)
   const lastCoinsRef = useRef(0);
+  const questIntervalRef = useRef(null);
   useEffect(()=>{
     if (!coinsLoaded) return;
     const c = coinCount;
@@ -307,9 +297,22 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       unlockedRef.current['35']=true;
       const start = coinCount;
       const t0 = Date.now();
-      const int = setInterval(()=>{
-        if (Date.now()-t0>60000){ clearInterval(int); return; }
-    if (coinCount - start >= 5){ setCoinCount(v=>v+3); setCoinWallet(v=>v+3); clearInterval(int); setMessage('Bonus +3!'); setTimeout(()=>setMessage(null),1500);} 
+      const stopQuest = () => {
+        if (questIntervalRef.current) clearInterval(questIntervalRef.current);
+        questIntervalRef.current = null;
+      };
+      stopQuest();
+      questIntervalRef.current = setInterval(()=>{
+        if (Date.now()-t0>60000){ stopQuest(); return; }
+        // lastCoinsRef statt der eingefrorenen coinCount-Closure – sonst ist die
+        // Differenz immer 0 und der Bonus konnte nie ausgelöst werden.
+        if (lastCoinsRef.current - start >= 5){
+          stopQuest();
+          setCoinCount(v=>v+3);
+          setCoinWallet(v=>v+3);
+          setMessage('Bonus +3!');
+          setTimeout(()=>setMessage(null),1500);
+        }
       }, 500);
     }
     mark(40, ()=> { setX2Active(true); setTimeout(()=> setX2Active(false), 10000); });
@@ -318,11 +321,10 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     mark(70, ()=> { startShake(); setMessage('Super Miau!'); setTimeout(()=> setMessage(null), 800); });
     mark(75, startParade);
     mark(80, triggerFootprints);
-    mark(90, showCape);
+    // 90 / 200: Umhang + Gold-Outline entfernt – setzten State, den nichts gerendert hat
     // 100 fireworks handled separately
     mark(110, ()=> triggerConfetti(true));
     mark(150, ()=> triggerConfetti(true));
-    mark(200, startGoldOutline);
     // 250 deluxe crown handled via CSS shimmer
     mark(300, ()=> { setMessage('Miau Miau Miau!'); setTimeout(()=> setMessage(null), 1200); });
     mark(400, ()=> triggerConfetti(false));
@@ -330,15 +332,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     // 750 / 1000 handled via panel unlocks (we already have panel)
     lastCoinsRef.current = c;
   }, [coinCount, coinsLoaded]);
-  const showTrumpet = () => {
-    setTrumpetActive(true);
-    setBubbleSize('big');
-    setMessage('Töröö!');
-    if (hideTimeout.current) clearTimeout(hideTimeout.current);
-    hideTimeout.current = setTimeout(() => { setMessage(null); setTrumpetActive(false); }, 1800);
-    setTimeout(() => { onCatch && onCatch(); }, 900);
-  };
-
   // Trigger a short coin shower animation (drops temporary coins from the top)
   const triggerCoinShower = () => {
     const vw = window.innerWidth || 1200;
@@ -446,18 +439,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     hideTimeout.current = setTimeout(() => setMessage(null), 12000);
   };
 
-  // (no trunk anchor needed; no water effects)
-
-  const triggerSpray = () => {
-    // Water removed: just trumpet, keep elephant look during message
-    setTrumpetActive(true);
-    setBubbleSize('big');
-    setMessage('Töröö!');
-    if (hideTimeout.current) clearTimeout(hideTimeout.current);
-    hideTimeout.current = setTimeout(() => { setMessage(null); setTrumpetActive(false); }, 1800);
-    setTimeout(() => { onCatch && onCatch(); }, 900);
-  };
-
   useEffect(() => {
     // First position on mount, variant rotation, speech scheduling
     moveCat();
@@ -510,8 +491,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         const targetY = active.y - catSize.h / 2;
         let dx = targetX - p.left;
         let dy = targetY - p.top;
-        let edgeSeverity = 0; // 0..1 how close to an edge
-        // Edge repulsion off (elephant removed)
         const dist = Math.hypot(dx, dy);
         // update facing direction (no rotation)
         dirRef.current = dx < 0 ? -1 : 1;
@@ -851,6 +830,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     }
   }, [coinCount, fwDone]);
   useEffect(() => () => { if (fwIntervalRef.current) clearInterval(fwIntervalRef.current); }, []);
+  useEffect(() => () => { if (questIntervalRef.current) clearInterval(questIntervalRef.current); }, []);
 
   // Reset attempts when a new play starts (elephant removed)
   useEffect(() => {
@@ -1110,10 +1090,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       )}
   {/* Menü über der Katze entfernt – Bedienung nur über das obere Gimmick-Menü */}
   {shellOpen && (
-        <ShellGame
-          onClose={() => setShellOpen(false)}
-          onResult={(add) => { setCoinCount((c) => c + add); setCoinWallet((c)=> c + add); }}
-        />
+        <ErrorBoundary label="Das Hütchenspiel">
+          <ShellGame
+            onClose={() => setShellOpen(false)}
+            onResult={(add) => { setCoinCount((c) => c + add); setCoinWallet((c)=> c + add); }}
+          />
+        </ErrorBoundary>
       )}
       </div>
     </>

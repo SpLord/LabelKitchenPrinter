@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /*
   ShellGame Overlay (Hütchenspiel)
@@ -22,7 +22,7 @@ function playTone(freq, duration, type = 'sine', gainVal = 0.18) {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration / 1000);
     osc.onended = () => ctx.close();
-  } catch (_) { /* ignore – audio not available */ }
+  } catch { /* ignore – audio not available */ }
 }
 
 function playWin() {
@@ -47,7 +47,7 @@ function playLose() {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.4);
     osc.onended = () => ctx.close();
-  } catch (_) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -58,16 +58,14 @@ export default function ShellGame({ onClose, onResult }) {
   // order[cupIdx] = slotIdx  (which slot each cup is currently at)
   const [order, setOrder] = useState(() => Array.from({length: numCups}, (_, i) => i));
 
-  // prize cup index (useRef – stable per mount, not a computed value)
-  const prizeCupRef = useRef(Math.floor(Math.random() * 3));
-  const prizeCup = prizeCupRef.current;
+  // prize cup index – stabil für die laufende Runde, aber immer innerhalb von numCups
+  const [prizeCup, setPrizeCup] = useState(() => Math.floor(Math.random() * numCups));
 
   // stage: 'peek' | 'shuffle' | 'choose' | 'result'
   const [stage, setStage] = useState('peek');
 
   const [message, setMessage] = useState('');
   const [flashClass, setFlashClass] = useState(''); // 'win' | 'lose'
-  const [pickedCup, setPickedCup] = useState(null);
 
   // streak & difficulty
   const [streak, setStreak] = useState(0);
@@ -84,6 +82,11 @@ export default function ShellGame({ onClose, onResult }) {
   const slots = useMemo(() => {
     if (numCups === 4) return [-210, -70, 70, 210];
     return [-140, 0, 140];
+  }, [numCups]);
+
+  // Wächst das Feld (3 → 4 Becher), muss der Gewinnbecher gültig bleiben
+  useEffect(() => {
+    setPrizeCup((prev) => (prev < numCups ? prev : Math.floor(Math.random() * numCups)));
   }, [numCups]);
 
   // ── Peek → Shuffle ──────────────────────────────────────────────────────────
@@ -125,7 +128,7 @@ export default function ShellGame({ onClose, onResult }) {
       if (swapsRef.current < targetSwaps) {
         setTimeout(doSwap, speedRef.current);
       } else {
-        setTimeout(() => setStage('choose'), 300);
+        setTimeout(() => { if (runningRef.current) setStage('choose'); }, 300);
       }
     };
 
@@ -141,32 +144,27 @@ export default function ShellGame({ onClose, onResult }) {
     if (stage !== 'choose') return;
     const win = cupIdx === prizeCup;
 
-    setPickedCup(cupIdx);
     setStage('result');
 
     if (win) {
       playWin();
-      setStreak(prev => {
-        const newStreak = prev + 1;
-        if (newStreak >= 3) {
-          // Streak bonus
-          setMessage(`🔥 ${newStreak}x Streak! Richtig! +5 Bonus-Münzen!`);
-          onResult(5);
-        } else {
-          setMessage('🎉 Richtig! +3 Münzen');
-          onResult(3);
-        }
-        return newStreak;
-      });
+      const newStreak = streak + 1;
+      if (newStreak >= 3) {
+        // Streak bonus
+        setMessage(`🔥 ${newStreak}x Streak! Richtig! +5 Bonus-Münzen!`);
+        onResult(5);
+      } else {
+        setMessage('🎉 Richtig! +3 Münzen');
+        onResult(3);
+      }
+      setStreak(newStreak);
       setFlashClass('win');
       // Increase difficulty
-      setSpeed(prev => {
-        const next = Math.max(120, prev - 30);
-        speedRef.current = next;
-        return next;
-      });
+      const nextSpeed = Math.max(120, speedRef.current - 30);
+      speedRef.current = nextSpeed;
+      setSpeed(nextSpeed);
       // Unlock 4th cup after 3 wins
-      if (streak >= 2 && numCups < 4) {
+      if (newStreak >= 3 && numCups < 4) {
         setNumCups(4);
         setOrder(Array.from({length: 4}, (_, i) => i));
       }
@@ -182,7 +180,7 @@ export default function ShellGame({ onClose, onResult }) {
       setFlashClass('');
       onClose();
     }, 1800);
-  }, [stage, prizeCup, onResult, onClose, streak]);
+  }, [stage, prizeCup, onResult, onClose, streak, numCups]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   const cups = Array.from({ length: numCups }, (_, i) => i);
@@ -200,11 +198,8 @@ export default function ShellGame({ onClose, onResult }) {
     };
   };
 
-  const showCoin = (cupIdx) => {
-    if (stage === 'peek' && cupIdx === prizeCup) return true;
-    if (stage === 'result') return true; // show under all in result
-    return false;
-  };
+  const showCoin = (cupIdx) =>
+    (stage === 'peek' || stage === 'result') && cupIdx === prizeCup;
 
   return (
     <div className="shell-overlay" role="dialog" aria-modal="true" aria-label="Hütchenspiel">
