@@ -784,32 +784,20 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     setCookie('cat_coinPeak', String(coinPeak));
   }, [coinPeak, coinsLoaded]);
 
-  // Placement click handler
+  // Platzieren läuft über eine eigene Ebene (siehe .place-overlay im Markup).
+  // Vorher hing ein document-weiter Handler daran, der Klicks innerhalb von
+  // .main-layout verwarf – seit dem Layout-Umbau sind das 61% des Fensters,
+  // auf dem Tablet praktisch die ganze Fläche. Füttern war damit unmöglich,
+  // und weil der Handler alle Klicks abfing, reagierte danach gar nichts mehr.
   useEffect(() => {
     if (!placing) return;
     setSuppressSpawn && setSuppressSpawn(true);
-    const onClick = (e) => {
-      // block other click handlers (prevents toy spawn)
-      e.preventDefault();
-      e.stopPropagation();
-      // ignore clicks inside panels or cat
-      if (
-        e.target.closest('.gimmick-panel') ||
-        e.target.closest('.gimmick-toggle') ||
-        e.target.closest('.status-indicator') ||
-        e.target.closest('.main-layout')
-      ) return;
-      const x = e.clientX; const y = e.clientY;
-      const id = 'pi' + Date.now();
-      const item = { id, kind: placing.kind, x, y, emoji: placing.emoji, fill: placing.fill };
-      setPlacedItem(item);
-      setInternalPlay({ id, kind: placing.kind, x, y });
-      setPlacing(null);
-      // release suppression after this event cycle
-      setTimeout(() => { setSuppressSpawn && setSuppressSpawn(false); }, 0);
+    const onKey = (e) => { if (e.key === 'Escape') cancelPlacing(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      setSuppressSpawn && setSuppressSpawn(false);
     };
-    document.addEventListener('click', onClick, true);
-    return () => { document.removeEventListener('click', onClick, true); setSuppressSpawn && setSuppressSpawn(false); };
   }, [placing, setSuppressSpawn]);
 
   // Food options (cost fills hunger); water fills thirst, free
@@ -820,11 +808,32 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   ];
   const startPlaceFood = (opt) => {
     if (!debugUi && coinCount < opt.cost) { setMessage('Nicht genug Münzen'); setTimeout(()=>setMessage(null), 1000); return; }
-    if (!debugUi) setCoinCount((c) => Math.max(0, c - opt.cost));
+    // Abgebucht wird erst, wenn das Futter wirklich liegt – vorher gingen die
+    // Münzen beim Abbrechen verloren.
+    setPanelOpen(false);
     setPlacing({ kind: 'food', fill: opt.fill, cost: opt.cost, label: opt.label, emoji: opt.emoji });
   };
   const startPlaceWater = () => {
+    setPanelOpen(false);
     setPlacing({ kind: 'water', fill: 30, cost: 0, label: 'Wasser', emoji: '💧' });
+  };
+
+  const cancelPlacing = () => {
+    setPlacing(null);
+    setSuppressSpawn && setSuppressSpawn(false);
+  };
+
+  const doPlace = (x, y) => {
+    if (!placing) return;
+    if (!debugUi && placing.cost > 0) {
+      if (coinCount < placing.cost) { cancelPlacing(); return; }
+      setCoinCount((c) => Math.max(0, c - placing.cost));
+    }
+    const id = 'pi' + Date.now();
+    setPlacedItem({ id, kind: placing.kind, x, y, emoji: placing.emoji, fill: placing.fill });
+    setInternalPlay({ id, kind: placing.kind, x, y });
+    setPlacing(null);
+    setTimeout(() => { setSuppressSpawn && setSuppressSpawn(false); }, 0);
   };
 
   // Trigger fireworks once when reaching 100 coins
@@ -1149,6 +1158,23 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       )}
   {/* Menü über der Katze entfernt – Bedienung nur über das obere Gimmick-Menü */}
       </div>
+
+      {/* Platzieren: eine eigene Ebene über allem, damit jede Stelle des
+          Bildschirms getroffen werden kann. */}
+      {placing && (
+        <div
+          className="place-overlay"
+          onClick={(e) => { e.stopPropagation(); doPlace(e.clientX, e.clientY); }}
+        >
+          <div className="place-hint" onClick={(e) => e.stopPropagation()}>
+            <span>
+              {placing.emoji} <strong>{placing.label}</strong> hinstellen – tippe auf die Stelle
+              {placing.cost > 0 && <> · {placing.cost} 🪙</>}
+            </span>
+            <button className="place-cancel" onClick={cancelPlacing}>Abbrechen</button>
+          </div>
+        </div>
+      )}
 
       {/* Bewusst ausserhalb von .cat-sprite: dessen cat-float-Animation erzeugt
           einen Bezugsrahmen, wodurch das Brett an der Katze klebte statt mittig

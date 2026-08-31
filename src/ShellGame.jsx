@@ -119,10 +119,11 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak, bal
   // ── Peek → Shuffle ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (balance < STAKE) return;
-    // Show peek for 1.5s then start shuffle
+    // 1,5 s waren zu knapp, um sich den Becher zu merken – zumal der Deckel
+    // erst 260 ms zum Anheben braucht.
     const peekTimer = setTimeout(() => {
       setStage('shuffle');
-    }, 1500);
+    }, 2400);
     return () => clearTimeout(peekTimer);
   }, []);
 
@@ -214,13 +215,9 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak, bal
   const getCupStyle = (cupIdx) => {
     const slotIdx = order[cupIdx] ?? cupIdx;
     const x = slots[slotIdx] ?? 0;
-    const isWinner = stage === 'result' && cupIdx === prizeCup;
-    const translateY = isWinner ? -40 : 0;
     return {
-      transform: `translateX(${x}px) translateY(${translateY}px)`,
-      transition: stage === 'peek'
-        ? 'none'
-        : `transform 220ms ease-in-out`,
+      transform: `translateX(${x}px)`,
+      transition: stage === 'peek' ? 'none' : 'transform 220ms ease-in-out',
     };
   };
 
@@ -258,6 +255,9 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak, bal
                   'cup',
                   stage === 'shuffle' ? 'disabled' : '',
                   isWinner ? 'winner' : '',
+                  // Beim Merken und beim Aufdecken hebt sich der Deckel, damit
+                  // die Münze darunter tatsächlich zu sehen ist.
+                  showCoin(i) ? 'lifted' : '',
                 ].filter(Boolean).join(' ')}
                 style={getCupStyle(i)}
                 onClick={() => onPick(i)}
