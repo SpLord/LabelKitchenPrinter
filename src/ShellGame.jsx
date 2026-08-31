@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
   ShellGame Overlay (Hütchenspiel)
   - props:
     - onClose(): void
-    - onResult(addCoins: number): void   Münzen gutschreiben
+    - onResult(delta: number): void      Münzen gutschreiben (negativ = Einsatz)
+    - balance: number                    aktueller Kontostand
     - streak: number                     bisherige Siegesserie (überlebt die Runde)
     - onStreak(next: number): void       neue Serie melden
 
@@ -57,7 +58,13 @@ function playLose() {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
+// Einsatz und Auszahlung. Vorher stand "Einsatz: 5" nur da, abgezogen wurde
+// nichts – und ein Treffer brachte 3, ein Fehlgriff sogar noch 1.
+export const STAKE = 5;
+const PAYOUT = { 3: 15, 4: 20 };
+const STREAK_BONUS = 5;
+
+export default function ShellGame({ onClose, onResult, streak = 0, onStreak, balance = 0 }) {
   // Ab drei Siegen in Folge wird mit vier Bechern gespielt
   const [numCups, setNumCups] = useState(() => (streak >= 3 ? 4 : 3));
 
@@ -95,8 +102,23 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
     setPrizeCup((prev) => (prev < numCups ? prev : Math.floor(Math.random() * numCups)));
   }, [numCups]);
 
+  // ── Einsatz ─────────────────────────────────────────────────────────────────
+  const stakePaidRef = useRef(false);
+  useEffect(() => {
+    if (stakePaidRef.current) return;   // StrictMode ruft Effekte doppelt auf
+    stakePaidRef.current = true;
+    if (balance < STAKE) {
+      setMessage(`Zu wenig Münzen – ${STAKE} 🪙 nötig.`);
+      setStage('result');
+      const t = setTimeout(onClose, 1800);
+      return () => clearTimeout(t);
+    }
+    onResult(-STAKE);
+  }, [balance, onResult, onClose]);
+
   // ── Peek → Shuffle ──────────────────────────────────────────────────────────
   useEffect(() => {
+    if (balance < STAKE) return;
     // Show peek for 1.5s then start shuffle
     const peekTimer = setTimeout(() => {
       setStage('shuffle');
@@ -156,14 +178,13 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
       playWin();
       const newStreak = streak + 1;
       onStreak && onStreak(newStreak);
-      if (newStreak >= 3) {
-        // Streak bonus
-        setMessage(`🔥 ${newStreak}x Streak! Richtig! +5 Bonus-Münzen!`);
-        onResult(5);
-      } else {
-        setMessage('🎉 Richtig! +3 Münzen');
-        onResult(3);
-      }
+      const gewinn = (PAYOUT[numCups] ?? PAYOUT[3]) + (newStreak >= 3 ? STREAK_BONUS : 0);
+      setMessage(
+        newStreak >= 3
+          ? `🔥 ${newStreak}x Serie! Richtig! +${gewinn} Münzen`
+          : `🎉 Richtig! +${gewinn} Münzen`,
+      );
+      onResult(gewinn);
       setFlashClass('win');
       // Increase difficulty
       const nextSpeed = Math.max(120, speedRef.current - 30);
@@ -176,8 +197,7 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
       }
     } else {
       playLose();
-      setMessage('😢 Knapp daneben! +1 Münze');
-      onResult(1);
+      setMessage(`😢 Knapp daneben – ${STAKE} 🪙 futsch.`);
       onStreak && onStreak(0);
       setFlashClass('lose');
     }
@@ -216,7 +236,9 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
           🎩 Hütchenspiel
           {level >= 2 && <span className="shell-level"> Level 2 🚀</span>}
           {streak >= 2 && <span className="shell-streak"> 🔥 {streak}x Streak!</span>}
-          <span className="shell-bet"> 🪙 Gewinn: {streak >= 2 ? '5' : '3'}</span>
+          <span className="shell-bet">
+            {' '}🪙 Einsatz {STAKE} · Gewinn {(PAYOUT[numCups] ?? PAYOUT[3]) + (streak >= 2 ? STREAK_BONUS : 0)}
+          </span>
         </div>
         <div className="shell-sub">
           {stage === 'peek'  && 'Merke dir, wo die Münze ist!'}
@@ -226,7 +248,6 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak }) {
         </div>
 
         {/* Cup Area */}
-        <div style={{textAlign:'center', marginBottom:'8px', fontSize:'1rem', opacity:0.85}}>Einsatz: {level === 2 ? 10 : 5} 🪙</div>
         <div className={`shell-area cups-${numCups}`}>
           {cups.map((i) => {
             const isWinner = stage === 'result' && i === prizeCup;

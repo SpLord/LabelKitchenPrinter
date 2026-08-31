@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBoundary from './ErrorBoundary.jsx';
-import ShellGame from './ShellGame.jsx';
+import ShellGame, { STAKE as SHELL_STAKE } from './ShellGame.jsx';
 import { catchUp, clampNeed, coinsFor, conditionOf, decayOver, feed } from './cat/needs.js';
 
 const VARIANTS = [
@@ -1012,7 +1012,14 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
             </>
           )}
           {unlocked.shell && (
-            <button onClick={() => setShellOpen(true)}>Hütchenspiel</button>
+            <button onClick={() => {
+              if (!debugUi && coinCount < SHELL_STAKE) {
+                setMessage(`Für das Hütchenspiel brauchst du ${SHELL_STAKE} 🪙`);
+                setTimeout(() => setMessage(null), 2000);
+                return;
+              }
+              setShellOpen(true);
+            }}>Hütchenspiel ({SHELL_STAKE} 🪙)</button>
           )}
           {unlocked.x2 && (
             <button onClick={() => { setX2Active(true); setTimeout(() => setX2Active(false), 10000); }}>x2 Coins (10s)</button>
@@ -1151,9 +1158,10 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         <ErrorBoundary label="Das Hütchenspiel">
           <ShellGame
             onClose={() => setShellOpen(false)}
-            onResult={(add) => setCoinCount((c) => c + add)}
+            onResult={(delta) => setCoinCount((c) => Math.max(0, c + delta))}
             streak={shellStreak}
             onStreak={setShellStreak}
+            balance={coinCount}
           />
         </ErrorBoundary>
       )}
