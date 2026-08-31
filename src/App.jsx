@@ -278,9 +278,43 @@ export default function App() {
       </header>
 
       <div className="main-layout">
-        <div className="preview-section">
-          {previewSrc && <img src={previewSrc} alt="Vorschau" />}
-        </div>
+        <aside className="side-rail">
+          <div className={`preview-section ${previewSrc ? '' : 'empty'}`}>
+            {previewSrc
+              ? <img src={previewSrc} alt="Vorschau" />
+              : <span className="preview-hint">Vorschau</span>}
+          </div>
+
+          <div className="date-section">
+            <DatePicker
+              selected={selectedDate}
+              onChange={(date) => {
+                setSelectedDate(date);
+                generatePreview(input);
+              }}
+              inline
+              calendarClassName="custom-datepicker"
+            />
+            <div className="date-current">
+              📅 {selectedDate.toLocaleDateString("de-DE")}
+            </div>
+          </div>
+
+          <div className="input-group">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                schedulePreview(e.target.value);
+              }}
+              placeholder="Individueller Text"
+            />
+            <button onClick={() => printLabel(input)} disabled={printerStatus !== 'online'}>
+              Drucken
+            </button>
+          </div>
+        </aside>
 
         <div className="button-section">
           {groups.map((group) => (
@@ -313,37 +347,7 @@ export default function App() {
           )}
         </div>
 
-        <div className="input-group full-width">
-    <input
-      type="text"
-      value={input}
-      onChange={(e) => {
-        setInput(e.target.value);
-        schedulePreview(e.target.value);
-      }}
-      placeholder="Individueller Text"
-    />
-    <button onClick={() => printLabel(input)} disabled={printerStatus !== 'online'}>
-      Drucken
-    </button>
-  </div>
-
-
-        <div className="date-section">
-          <DatePicker
-            selected={selectedDate}
-            onChange={(date) => {
-              setSelectedDate(date);
-              generatePreview(input);
-            }}
-            inline
-            calendarClassName="custom-datepicker"
-          />
-          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
-            📅 Gewähltes Datum: {selectedDate.toLocaleDateString("de-DE")}
-          </div>
-        </div>
-      </div>
+              </div>
 
       <div className="version-badge" title={`Build: ${__BUILD_TIME__}`}>
         v{__APP_VERSION__}
