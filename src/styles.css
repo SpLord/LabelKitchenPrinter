@@ -35,7 +35,7 @@ body {
     radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.14), transparent 50%),
     radial-gradient(1000px 500px at 100% 10%, rgba(34, 197, 94, 0.12), transparent 50%),
     linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
-  padding: 2rem 1.5rem 3rem;
+  padding: 0.75rem 1rem 1.5rem;
 }
 
 h1 {
@@ -96,7 +96,6 @@ h1 {
 @keyframes rainbow-fade { from { opacity: 1;} to { opacity:0;} }
 .emoji-parade { position: fixed; top: 8px; left: -40%; right: 0; text-align: center; z-index: 68; font-size: 20px; animation: parade-move 1.2s linear forwards; }
 @keyframes parade-move { from { transform: translateX(-40%);} to { transform: translateX(40%);} }
-.cat-cape { position: absolute; top: 20px; right: -6px; font-size: 18px; transform: rotate(-8deg); }
 .cat-body.gold { box-shadow: 0 0 0 3px rgba(255,215,0,0.8), 0 0 12px rgba(255,215,0,0.9); border-radius: 12px; }
 
 /* ==========================
@@ -562,12 +561,25 @@ h1 {
 
 .main-layout {
   display: grid;
-  grid-template-columns: 1fr 1.4fr; /* links: Vorschau+Datum, rechts: Buttons */
-  grid-template-rows: auto auto auto; /* Zeilen: Preview, Date, Input */
-  gap: 2rem;
+  /* Schmale Seitenspalte (Vorschau + Datum), Rest gehört den Etiketten */
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 1rem;
   align-items: start;
-  margin: 1rem auto 0;
-  max-width: 1200px;
+  margin: 0.5rem auto 0;
+  max-width: none;   /* vorher 1200px – verschenkte auf breiten Monitoren die halbe Fläche */
+  width: 100%;
+}
+
+/* Auf schmalen Tablets untereinander statt gequetscht nebeneinander */
+@media (max-width: 900px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+  .main-layout > * {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
 }
 
 /* =========================
@@ -683,21 +695,15 @@ h1 {
 
 .button-section {
   display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
-  gap: 1.25rem;
+  /* auto-fill statt fester 3 Spalten: nutzt jede Monitorbreite aus */
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
   align-items: start;
 }
 
 /* Platzierung: rechts, über 2 Zeilen strecken */
 .button-section { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
 
-.button-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  flex: 1;
-  min-width: 0;
-}
 
 /* ==============================
    🎯 Button-Gruppen (Box + Titel)
@@ -747,11 +753,17 @@ h1 {
   box-shadow: 0 8px 18px rgba(79, 70, 229, 0.25);
   cursor: pointer;
   touch-action: manipulation;
+  min-height: 52px;          /* Touch-Ziel, auch mit Handschuh treffbar */
+  min-width: 0;              /* vorher 140px – sprengte enge Rasterzellen */
   transition: transform 120ms ease, box-shadow 150ms ease, filter 150ms ease, background 150ms ease;
 }
 
-/* Kleiner vertikaler Abstand zwischen Buttons */
-.button-group button + button { margin-top: 0.5rem; }
+/* Innerhalb einer Gruppe: bei genug Platz mehrspaltig */
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
 
 @media (hover: hover) {
   .button-group button:hover,
@@ -866,4 +878,233 @@ input:focus-visible {
     grid-column: 1 / -1;
   }
   .status-indicator { left: 1rem; right: auto; }
+}
+
+/* Nicht-blockierende Druckfehler-Meldung (ersetzt alert()) */
+.print-error {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: min(90vw, 32rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #7f1d1d;
+  background: rgba(254, 242, 242, 0.95);
+  border: 1px solid rgba(185, 28, 28, 0.3);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+/* =====================================
+   🧭 Kopfleiste: Status + Editor-Zugang
+   ===================================== */
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.25rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(248, 250, 252, 0.72));
+  backdrop-filter: blur(10px);
+}
+
+/* Status sitzt jetzt in der Leiste, nicht mehr frei über dem Layout */
+.app-bar .status-indicator {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.edit-toggle {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0.65rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 120ms ease, box-shadow 150ms ease;
+}
+
+@media (hover: hover) {
+  .edit-toggle:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+}
+.edit-toggle:active { transform: translateY(0); }
+
+.group-count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(99, 102, 241, 0.12);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.button-section-empty {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem;
+}
+
+/* ==========================
+   🔖 Versionsnummer (u. re.)
+   ========================== */
+
+.version-badge {
+  position: fixed;
+  right: 0.6rem;
+  bottom: 0.4rem;
+  z-index: 30;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  opacity: 0.65;
+  pointer-events: none;
+  user-select: text;
+}
+
+/* ==========================
+   ✏️ Etiketten-Editor
+   ========================== */
+
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+
+.editor-panel {
+  width: min(1400px, 100%);
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.editor-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+
+.editor-header h2 { margin: 0; font-size: 1.35rem; }
+.editor-header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.editor-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.editor-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.editor-group-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem; }
+.editor-group-tools { display: flex; gap: 0.25rem; margin-left: auto; }
+
+.editor-icon-input { width: 3.2rem; text-align: center; font-size: 1.2rem; }
+.editor-group-name { flex: 1; min-width: 0; font-weight: 700; font-size: 1.05rem; }
+
+.editor-entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.editor-entry { display: flex; align-items: center; gap: 0.25rem; }
+.editor-entry input { flex: 1; min-width: 0; }
+.editor-empty { color: var(--muted); font-size: 0.9rem; padding: 0.4rem 0; }
+
+.editor-add { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+.editor-add input { flex: 1; min-width: 0; }
+
+.editor-footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.editor-footer input { flex: 1; min-width: 0; max-width: 320px; }
+
+.editor-panel input {
+  min-height: 48px;              /* Touch-Ziel */
+  padding: 0.5rem 0.7rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.editor-btn {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.editor-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+@media (hover: hover) {
+  .editor-btn:not(:disabled):hover { background: #f1f5f9; border-color: rgba(15, 23, 42, 0.2); }
+}
+
+.editor-btn.icon { padding: 0.5rem; font-size: 1.05rem; }
+.editor-btn.ghost { background: transparent; }
+.editor-btn.primary {
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-600) 100%);
+  border-color: rgba(67, 56, 202, 0.35);
+  color: #fff;
+}
+.editor-btn.danger {
+  background: var(--danger);
+  border-color: rgba(185, 28, 28, 0.4);
+  color: #fff;
 }

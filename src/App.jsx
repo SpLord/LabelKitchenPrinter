@@ -1,29 +1,14 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 import './styles.css';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import CatSprite from './CatSprite.jsx';
 import PlayOverlay from './PlayOverlay.jsx';
-
-const labelGroups = {
-  Fleisch: ['Steak', 'Filet', 'Steak Streifen', 'Filet Streifen', 'Kalbschnitzel','Schweineschnitzel'],
-  Saucen: ['Portweinsauce', 'Trüffelmajo', 'Cocktailsauce', 'Scharfe Majo'],
-  Fond: ['Fleischfond', 'Gemüsefond'],
-  Dressing: ['Himbeerdressing', 'Balsamicodressing'],
-  Salat: ['Fregola', 'Rote Beete', 'Fregola Gemüse'],
-  Menü: ['Lachs', 'Schmorjuis', 'USBeef', 'Parmesanschaum', 'Sherryschaum'],
-};
-
-const groupIcons = {
-  Fleisch: '🥩',
-  Fond: '🍲',
-  Saucen: '🧂',
-  Dressing: '🥗',
-  Salat: '🥬',
-  Menü: '🍽️',
-};
+import LabelEditor from './LabelEditor.jsx';
+import { loadGroups, saveGroups } from './labels/store.js';
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -34,13 +19,40 @@ export default function App() {
   const [laserMode, setLaserMode] = useState(false);
   const [laserDragging, setLaserDragging] = useState(false);
   const [suppressSpawn, setSuppressSpawn] = useState(false);
+  const [error, setError] = useState(null);
+  const [groups, setGroups] = useState(loadGroups);
+  const [editorOpen, setEditorOpen] = useState(false);
 
+  // Änderungen im Editor sofort persistieren
+  const updateGroups = (next) => {
+    setGroups(next);
+    if (!saveGroups(next)) showError('Etiketten konnten nicht gespeichert werden.');
+  };
+
+  const errorTimerRef = useRef(null);
+  const previewTimerRef = useRef(null);
+
+  // Nicht-blockierende Fehlermeldung (ersetzt alert() – blockiert den Küchenbetrieb nicht)
+  const showError = (msg) => {
+    setError(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setError(null), 6000);
+  };
+
+  useEffect(() => () => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+  }, []);
+
+  // Vor 5 Uhr zählt der Tag noch zur vorherigen Schicht
   const getEffectiveDate = () => {
     const now = new Date();
-    const cutoff = new Date();
+    const cutoff = new Date(now);
     cutoff.setHours(5, 0, 0, 0);
-    if (now < cutoff) now.setDate(now.getDate() - 1);
-    return now;
+    if (now >= cutoff) return now;
+    const previous = new Date(now);
+    previous.setDate(previous.getDate() - 1);
+    return previous;
   };
 
   const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
@@ -48,32 +60,56 @@ export default function App() {
 
   // Druckerstatus prüfen (DYMO)
   useEffect(() => {
+    let cancelled = false;
+    let retryTimer = null;
+    let missingFrameworkPolls = 0;
+    const GRACE_POLLS = 4; // ~20 s Karenz, bevor wir 'offline' melden
+
+    const goOffline = () => {
+      setPrinterStatus('offline');
+      setPrinterName(null);
+    };
+
     const tryInitDymo = () => {
+      if (cancelled) return;
+
+      // Das Framework wird per <script> geladen und kann später auftauchen als React.
+      // Früher gab es hier kein Polling – der Status blieb dann für immer auf 'checking'.
+      const framework = window?.dymo?.label?.framework;
+      if (!framework) {
+        missingFrameworkPolls += 1;
+        if (missingFrameworkPolls > GRACE_POLLS) goOffline();
+        return;
+      }
+      missingFrameworkPolls = 0;
+
       try {
-        dymo.label.framework.init();
-        const printers = dymo.label.framework.getPrinters();
+        framework.init();
+        const printers = framework.getPrinters();
+        if (cancelled) return;
         if (printers && printers.length > 0) {
           setPrinterStatus('online');
           setPrinterName(printers[0].name);
         } else {
-          setPrinterStatus('offline');
-          setPrinterName(null);
+          goOffline();
         }
       } catch (err) {
-        if (err.message?.includes("service discovery is in progress")) {
-          setTimeout(tryInitDymo, 500);
+        if (cancelled) return;
+        if (err?.message?.includes('service discovery is in progress')) {
+          retryTimer = setTimeout(tryInitDymo, 500);
         } else {
-          setPrinterStatus('offline');
-          setPrinterName(null);
+          goOffline();
         }
       }
     };
 
-    if (window?.dymo?.label?.framework) {
-      tryInitDymo();
-      const interval = setInterval(tryInitDymo, 5000);
-      return () => clearInterval(interval);
-    }
+    tryInitDymo();
+    const interval = setInterval(tryInitDymo, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, []);
 
   // Global click to spawn toy when clicking on background areas
@@ -94,6 +130,9 @@ export default function App() {
         e.target.closest('.react-datepicker__month-container') ||
         e.target.closest('.react-datepicker__day') ||
         e.target.closest('.react-datepicker__navigation') ||
+        e.target.closest('.app-bar') ||
+        e.target.closest('.editor-overlay') ||
+        e.target.closest('.version-badge') ||
         e.target.closest('.cat-sprite')
       ) return;
       // viewport click position
@@ -141,29 +180,42 @@ export default function App() {
       // BATCAT-Modus: keine Drucke
       return;
     }
-    if (!text) return alert('Bitte Text eingeben.');
+    if (!text) return showError('Bitte Text eingeben.');
+
+    const framework = window?.dymo?.label?.framework;
+    if (!framework) {
+      setPrinterStatus('offline');
+      return showError('Drucker-Framework nicht geladen – bitte Seite neu laden.');
+    }
 
     fetch('/labels/Label_32x57.label')
-      .then(res => res.text())
+      .then(res => {
+        if (!res.ok) throw new Error(`Label-Vorlage nicht ladbar (HTTP ${res.status})`);
+        return res.text();
+      })
       .then(labelXml => {
-        const label = dymo.label.framework.openLabelXml(labelXml);
+        const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
         label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
         label.print(printerName || "DYMO LabelWriter 450");
       })
-      .catch(err => alert("Fehler beim Drucken: " + err.message));
+      .catch(err => showError('Fehler beim Drucken: ' + err.message));
   };
 
   const generatePreview = (text) => {
-    if (!text || !window.dymo?.label?.framework) {
+    const framework = window?.dymo?.label?.framework;
+    if (!text || !framework) {
       setPreviewSrc(null);
       return;
     }
 
     fetch('/labels/Label_32x57.label')
-      .then(res => res.text())
+      .then(res => {
+        if (!res.ok) throw new Error('Label-Vorlage nicht ladbar');
+        return res.text();
+      })
       .then(labelXml => {
-        const label = dymo.label.framework.openLabelXml(labelXml);
+        const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
         label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
         const base64 = label.render();
@@ -172,29 +224,58 @@ export default function App() {
       .catch(() => setPreviewSrc(null));
   };
 
+  // Tippen erzeugte pro Zeichen einen fetch + DYMO-Render – jetzt entprellt
+  const schedulePreview = (text) => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(() => generatePreview(text), 250);
+  };
+
   return (
     <>
-      <CatSprite
-        play={play}
-        onCatch={() => setPlay(null)}
-        debugUi={debugUi}
-        laserMode={laserMode}
-        onToggleLaser={() => {
-          setLaserMode((v) => !v);
-          if (laserMode) setPlay((p) => (p && p.kind === 'laser' ? null : p));
-        }}
-  setSuppressSpawn={setSuppressSpawn}
-      />
-      <PlayOverlay play={play} setPlay={setPlay} />
-      <div className="status-indicator">
-        {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}
-        {printerStatus === 'online' && (
-          <span className="online">✅ Drucker bereit: {printerName}</span>
-        )}
-        {printerStatus === 'offline' && (
-          <span className="offline">❌ Kein Drucker gefunden</span>
-        )}
-      </div>
+      {/* Spielerei isoliert: stürzt sie ab, druckt die App trotzdem weiter */}
+      <ErrorBoundary label="Die Katze" silent>
+        <CatSprite
+          play={play}
+          onCatch={() => setPlay(null)}
+          debugUi={debugUi}
+          laserMode={laserMode}
+          onToggleLaser={() => {
+            setLaserMode((v) => !v);
+            if (laserMode) setPlay((p) => (p && p.kind === 'laser' ? null : p));
+          }}
+          setSuppressSpawn={setSuppressSpawn}
+        />
+        <PlayOverlay play={play} setPlay={setPlay} />
+      </ErrorBoundary>
+      {error && (
+        <div className="print-error" role="alert" onClick={() => setError(null)}>
+          ⚠️ {error}
+        </div>
+      )}
+      {editorOpen && (
+        <ErrorBoundary label="Der Etiketten-Editor">
+          <LabelEditor
+            groups={groups}
+            onChange={updateGroups}
+            onClose={() => setEditorOpen(false)}
+          />
+        </ErrorBoundary>
+      )}
+
+      <header className="app-bar">
+        <div className="status-indicator">
+          {printerStatus === 'checking' && <span>🔄 Drucker wird erkannt…</span>}
+          {printerStatus === 'online' && (
+            <span className="online">✅ Drucker bereit: {printerName}</span>
+          )}
+          {printerStatus === 'offline' && (
+            <span className="offline">❌ Kein Drucker gefunden</span>
+          )}
+        </div>
+        <button className="edit-toggle" onClick={() => setEditorOpen(true)}>
+          ✏️ Etiketten bearbeiten
+        </button>
+      </header>
 
       <div className="main-layout">
         <div className="preview-section">
@@ -202,13 +283,17 @@ export default function App() {
         </div>
 
         <div className="button-section">
-          <div className="button-column">
-            {['Fleisch', 'Fond'].map((group) => (
-              <div key={group} className="button-group">
-                <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
-                {labelGroups[group].map((name, idx) => (
+          {groups.map((group) => (
+            <div key={group.id} className="button-group">
+              <h3>
+                <span className="group-icon" aria-hidden="true">{group.icon}</span>
+                {group.name}
+                <span className="group-count">{group.entries.length}</span>
+              </h3>
+              <div className="button-grid">
+                {group.entries.map((name, idx) => (
                   <button
-                    key={idx}
+                    key={`${group.id}-${idx}`}
                     onClick={() => {
                       printLabel(name);
                       generatePreview(name);
@@ -219,57 +304,22 @@ export default function App() {
                   </button>
                 ))}
               </div>
-            ))}
-          </div>
-
-          <div className="button-column">
-            {['Saucen', 'Dressing'].map((group) => (
-              <div key={group} className="button-group">
-                <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
-                {labelGroups[group].map((name, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      printLabel(name);
-                      generatePreview(name);
-                    }}
-                    disabled={printerStatus !== 'online'}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <div className="button-column">
-            {['Salat', 'Menü'].map((group) => (
-              <div key={group} className="button-group">
-                <h3><span className="group-icon" aria-hidden="true">{groupIcons[group] || '🏷️'}</span>{group}</h3>
-                {labelGroups[group].map((name, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      printLabel(name);
-                      generatePreview(name);
-                    }}
-                    disabled={printerStatus !== 'online'}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
+            </div>
+          ))}
+          {groups.length === 0 && (
+            <p className="button-section-empty">
+              Keine Etiketten angelegt – über &bdquo;Etiketten bearbeiten&quot; hinzufügen.
+            </p>
+          )}
         </div>
 
-<div className="input-group full-width">
+        <div className="input-group full-width">
     <input
       type="text"
       value={input}
       onChange={(e) => {
         setInput(e.target.value);
-        generatePreview(e.target.value);
+        schedulePreview(e.target.value);
       }}
       placeholder="Individueller Text"
     />
@@ -293,6 +343,10 @@ export default function App() {
             📅 Gewähltes Datum: {selectedDate.toLocaleDateString("de-DE")}
           </div>
         </div>
+      </div>
+
+      <div className="version-badge" title={`Build: ${__BUILD_TIME__}`}>
+        v{__APP_VERSION__}
       </div>
     </>
   );
