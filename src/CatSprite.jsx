@@ -85,6 +85,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Stabile Referenz: das ganze wachstum-Objekt als Abhängigkeit würde die
   // Verfolgungsschleife bei jedem Freundschaftspunkt neu starten.
   const { naeherKommen } = wachstum;
+
+
   // Placement state
   const [placing, setPlacing] = useState(null); // { kind: 'food'|'water', fill:number, cost:number, label:string, emoji:string }
   const [placedItem, setPlacedItem] = useState(null); // { id, kind, x, y, emoji, fill }

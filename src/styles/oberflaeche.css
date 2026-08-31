@@ -345,9 +345,9 @@ input:focus-visible {
   z-index: 55;
   display: flex;
   align-items: center;
-  /* Rechtsbündig: die linke obere Ecke gehört der Münzanzeige der Katze
-     (.coin-counter, position:fixed) – dort lag der Status vorher drunter. */
-  justify-content: flex-end;
+  /* Rechtsbündig über margin-left:auto statt justify-content:flex-end: bei
+     flex-end läuft zu breiter Inhalt nach links über. */
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 0.75rem;
   min-height: 60px;
@@ -465,17 +465,18 @@ input:focus-visible {
 .side-rail .input-group input { max-width: none; }
 
 
-/* Münzanzeige (fixiert, oben links) und Leisteninhalt teilen sich die erste
-   Zeile. Reicht die Breite nicht, rutscht die Leiste darunter.
+/*
+  Die Münzanzeige der Katze liegt fixiert oben links und wächst mit dem
+  Spielstand: Zustand, drei Werte, Lebensphase und Herzen. Ihre Breite hängt
+  damit an Inhalt UND Schriftrendering – auf dem Rechner der CI fiel sie
+  anders aus als lokal, und feste Umbruchschwellen sind daran zweimal
+  gescheitert.
 
-   Schwelle gerechnet: die Münzanzeige ist mit Zustand, Werten, Lebensphase und
-   Herzen auf rund 580px gewachsen; Status, Druckerauswahl und Editor-Knopf
-   brauchen mit Abständen zusammen rund 750px. Ab etwa 1345px wird es eng,
-   1400 lässt Luft. Wächst die Leiste weiter, schlägt der Überlappungstest in
-   e2e/oberflaeche.spec.js an. */
-@media (max-width: 1400px) {
-  .app-bar { padding-top: 52px; }
-}
+  Deshalb sitzt die Kopfleiste jetzt grundsätzlich darunter statt daneben.
+  Kostet oben rund 50 Pixel, kann dafür nie wieder überlappen – egal wie breit
+  die Münzanzeige noch wird.
+*/
+.app-bar { padding-top: 52px; }
 
 /* ==========================================
    🖨 Druckerauswahl und Stückzahl

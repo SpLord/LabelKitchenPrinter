@@ -112,3 +112,30 @@ test('auch mit zwei Druckern bleibt die Leiste frei', async ({ page }) => {
   }
   expect(kaputt, `Überlappungen:\n${kaputt.join('\n')}`).toEqual([]);
 });
+
+/*
+  Der eigentliche Beweis: nicht "bei diesen Breiten passt es zufällig", sondern
+  "die Leiste weicht aus, egal wie breit die Münzanzeige wird". Auf dem
+  Testrechner der CI war sie durch anderes Schriftrendering breiter als lokal –
+  feste Pixelschwellen sind daran gescheitert.
+*/
+test('die Leiste weicht auch einer ungewöhnlich breiten Münzanzeige aus', async ({ page }) => {
+  await grundaufbau(page, ['DYMO Küche', 'DYMO Bar']);
+  await page.goto('/');
+  await page.waitForSelector('.status-indicator .online');
+
+  const kaputt = [];
+  for (const zusatz of [0, 120, 260, 420]) {
+    await page.evaluate((px) => {
+      const el = document.querySelector('.coin-counter');
+      el.style.minWidth = px ? `${el.getBoundingClientRect().width + px}px` : '';
+    }, zusatz);
+    for (const breite of [1920, 1440, 1280, 1100]) {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await page.waitForTimeout(150);
+      const treffer = await ueberlappungen(page, SCHWEBEND);
+      if (treffer.length) kaputt.push(`+${zusatz}px bei ${breite}px: ${treffer.join(', ')}`);
+    }
+  }
+  expect(kaputt, `Überlappungen:\n${kaputt.join('\n')}`).toEqual([]);
+});
