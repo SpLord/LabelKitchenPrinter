@@ -3,8 +3,9 @@ import IconPicker from './labels/IconPicker.jsx';
 import { downloadBackup, readBackup } from './labels/backup.js';
 import {
   addEntry, addGroup, moveEntry, moveGroup, removeEntry, removeGroup,
-  renameEntry, renameGroup, resetGroups, setGroupIcon,
+  renameEntry, renameGroup, resetGroups, setEntryTage, setGroupIcon,
 } from './labels/store.js';
+import { MAX_TAGE, verwendbarBis } from './print/etikett.js';
 
 /*
   Editor für die Etiketten-Buttons.
@@ -98,6 +99,9 @@ export default function LabelEditor({ groups, onChange, onClose }) {
         <p className="editor-hint">
           Änderungen werden sofort in diesem Browser gespeichert. Für ein anderes Gerät
           oder als Sicherung die Datei über „Sichern“ ablegen.
+          <br />
+          Im Feld <strong>T</strong> steht die Haltbarkeit in Tagen. Ist es gefüllt, trägt
+          das Etikett zusätzlich ein Verwendbar-bis; bleibt es leer, ändert sich nichts.
         </p>
 
         <div className="editor-groups">
@@ -144,7 +148,7 @@ export default function LabelEditor({ groups, onChange, onClose }) {
                   <li key={`${group.id}-${index}`} className="editor-entry">
                     {isConfirming('entry', group.id, index) ? (
                       <div className="editor-confirm" role="alertdialog">
-                        <span><strong>{entry}</strong> löschen?</span>
+                        <span><strong>{entry.name}</strong> löschen?</span>
                         <button className="editor-btn danger"
                                 onClick={() => { onChange(removeEntry(groups, group.id, index)); cancel(); }}>
                           Ja, löschen
@@ -154,17 +158,33 @@ export default function LabelEditor({ groups, onChange, onClose }) {
                     ) : (
                       <>
                         <input
-                          value={entry}
+                          value={entry.name}
                           onChange={(e) => onChange(renameEntry(groups, group.id, index, e.target.value))}
                           aria-label={`Etikett ${index + 1} in ${group.name}`}
                         />
+                        <label className="haltbar-feld" title={
+                          entry.tage
+                            ? `Verwendbar bis ${verwendbarBis(new Date(), entry.tage).toLocaleDateString('de-DE')}`
+                            : 'Leer lassen: dann steht nur das Herstelldatum auf dem Etikett'
+                        }>
+                          <input
+                            type="number"
+                            min="1"
+                            max={MAX_TAGE}
+                            value={entry.tage ?? ''}
+                            placeholder="–"
+                            onChange={(e) => onChange(setEntryTage(groups, group.id, index, e.target.value))}
+                            aria-label={`Haltbarkeit von ${entry.name} in Tagen`}
+                          />
+                          <span aria-hidden="true">T</span>
+                        </label>
                         <button className="editor-btn icon" onClick={() => onChange(moveEntry(groups, group.id, index, -1))}
                                 disabled={index === 0} aria-label="Nach oben">↑</button>
                         <button className="editor-btn icon" onClick={() => onChange(moveEntry(groups, group.id, index, 1))}
                                 disabled={index === group.entries.length - 1} aria-label="Nach unten">↓</button>
                         <button className="editor-btn icon danger-ghost"
                                 onClick={() => setConfirming({ type: 'entry', groupId: group.id, index })}
-                                aria-label={`${entry} löschen`} title="Etikett löschen">🗑</button>
+                                aria-label={`${entry.name} löschen`} title="Etikett löschen">🗑</button>
                       </>
                     )}
                   </li>

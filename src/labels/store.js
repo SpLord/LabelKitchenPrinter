@@ -1,4 +1,5 @@
 import { DEFAULT_GROUPS, FALLBACK_ICON } from './defaults.js';
+import { putzeTage } from '../print/etikett.js';
 
 /*
   Persistenz + unveränderliche Operationen auf den Etiketten-Gruppen.
@@ -15,13 +16,28 @@ const MAX_NAME_LENGTH = 60;
 const cleanText = (value) =>
   typeof value === 'string' ? value.trim().slice(0, MAX_NAME_LENGTH) : '';
 
+/*
+  Ein Eintrag ist { name, tage }. Frühere Fassungen speicherten nur den Namen
+  als Zeichenkette – die werden hier still übernommen, damit bestehende Listen
+  auf den Geräten nicht verloren gehen.
+*/
+const cleanEntry = (raw) => {
+  if (typeof raw === 'string') {
+    const name = cleanText(raw);
+    return name ? { name, tage: null } : null;
+  }
+  if (!raw || typeof raw !== 'object') return null;
+  const name = cleanText(raw.name);
+  return name ? { name, tage: putzeTage(raw.tage) } : null;
+};
+
 const cleanGroup = (raw, index) => {
   if (!raw || typeof raw !== 'object') return null;
   const name = cleanText(raw.name);
   if (!name) return null;
 
   const entries = Array.isArray(raw.entries)
-    ? raw.entries.map(cleanText).filter(Boolean)
+    ? raw.entries.map(cleanEntry).filter(Boolean)
     : [];
 
   return {
@@ -41,11 +57,11 @@ export const parseGroups = (raw) => {
 export const loadGroups = () => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return DEFAULT_GROUPS;
-    return parseGroups(JSON.parse(stored)) ?? DEFAULT_GROUPS;
+    if (!stored) return resetGroups();
+    return parseGroups(JSON.parse(stored)) ?? resetGroups();
   } catch (err) {
     console.warn('[labels] Gespeicherte Gruppen unlesbar, nutze Standard:', err);
-    return DEFAULT_GROUPS;
+    return resetGroups();
   }
 };
 
@@ -88,22 +104,31 @@ export const moveGroup = (groups, groupId, direction) => {
   return next;
 };
 
-export const addEntry = (groups, groupId, name) => {
-  const entry = cleanText(name);
-  if (!entry) return groups;
+export const addEntry = (groups, groupId, name, tage = null) => {
+  const bezeichnung = cleanText(name);
+  if (!bezeichnung) return groups;
   return mapGroup(groups, groupId, (group) =>
-    group.entries.includes(entry) ? group : { ...group, entries: [...group.entries, entry] },
+    group.entries.some((e) => e.name === bezeichnung)
+      ? group
+      : { ...group, entries: [...group.entries, { name: bezeichnung, tage: putzeTage(tage) }] },
   );
 };
 
 export const renameEntry = (groups, groupId, index, name) => {
-  const entry = cleanText(name);
-  if (!entry) return groups;
+  const bezeichnung = cleanText(name);
+  if (!bezeichnung) return groups;
   return mapGroup(groups, groupId, (group) => ({
     ...group,
-    entries: group.entries.map((existing, i) => (i === index ? entry : existing)),
+    entries: group.entries.map((e, i) => (i === index ? { ...e, name: bezeichnung } : e)),
   }));
 };
+
+/* Haltbarkeit in Tagen; leer bedeutet: kein Verwendbar-bis aufs Etikett. */
+export const setEntryTage = (groups, groupId, index, tage) =>
+  mapGroup(groups, groupId, (group) => ({
+    ...group,
+    entries: group.entries.map((e, i) => (i === index ? { ...e, tage: putzeTage(tage) } : e)),
+  }));
 
 export const removeEntry = (groups, groupId, index) =>
   mapGroup(groups, groupId, (group) => ({
@@ -120,4 +145,5 @@ export const moveEntry = (groups, groupId, index, direction) =>
     return { ...group, entries };
   });
 
-export const resetGroups = () => DEFAULT_GROUPS;
+/* Auslieferungszustand, durch dieselbe Normalisierung wie geladene Daten. */
+export const resetGroups = () => parseGroups(DEFAULT_GROUPS) ?? [];

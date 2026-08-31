@@ -13,6 +13,7 @@ import {
   KEY_DRUCKER, MAX_ANZAHL, MIN_ANZAHL,
   begrenzeAnzahl, druckParameter, druckerNamen, waehleDrucker,
 } from './print/drucker.js';
+import { datumsText, verwendbarBis } from './print/etikett.js';
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -197,7 +198,7 @@ export default function App() {
   }, [laserMode, laserDragging]);
 
 
-  const printLabel = (text) => {
+  const printLabel = (text, tage = null) => {
     if (debugUi) {
       // BATCAT-Modus: keine Drucke
       return;
@@ -218,7 +219,7 @@ export default function App() {
       .then(labelXml => {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
-        label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
+        label.setObjectText("Datum", datumsText(selectedDate, tage));
 
         const ziel = printerName || "DYMO LabelWriter 450";
         const { xml, wiederholungen } = druckParameter(framework, anzahl);
@@ -230,7 +231,7 @@ export default function App() {
       .catch(err => showError('Fehler beim Drucken: ' + err.message));
   };
 
-  const generatePreview = (text) => {
+  const generatePreview = (text, tage = null) => {
     const framework = window?.dymo?.label?.framework;
     if (!text || !framework) {
       setPreviewSrc(null);
@@ -245,7 +246,7 @@ export default function App() {
       .then(labelXml => {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
-        label.setObjectText("Datum", selectedDate.toLocaleDateString("de-DE"));
+        label.setObjectText("Datum", datumsText(selectedDate, tage));
         const base64 = label.render();
         setPreviewSrc(`data:image/png;base64,${base64}`);
       })
@@ -392,16 +393,20 @@ export default function App() {
                 <span className="group-count">{group.entries.length}</span>
               </h3>
               <div className="button-grid">
-                {group.entries.map((name, idx) => (
+                {group.entries.map((eintrag, idx) => (
                   <button
                     key={`${group.id}-${idx}`}
                     onClick={() => {
-                      printLabel(name);
-                      generatePreview(name);
+                      printLabel(eintrag.name, eintrag.tage);
+                      generatePreview(eintrag.name, eintrag.tage);
                     }}
                     disabled={printerStatus !== 'online'}
+                    title={eintrag.tage
+                      ? `${eintrag.tage} Tage haltbar – verwendbar bis ${verwendbarBis(selectedDate, eintrag.tage).toLocaleDateString('de-DE')}`
+                      : undefined}
                   >
-                    {name}
+                    {eintrag.name}
+                    {eintrag.tage ? <span className="haltbar-marke">{eintrag.tage} T</span> : null}
                     {anzahl > MIN_ANZAHL && <span className="anzahl-marke">×{anzahl}</span>}
                   </button>
                 ))}

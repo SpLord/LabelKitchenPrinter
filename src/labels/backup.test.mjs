@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildBackup, backupFileName, readBackup } from './backup.js';
-import { DEFAULT_GROUPS } from './defaults.js';
+import { resetGroups } from './store.js';
+
+const DEFAULT_GROUPS = resetGroups();
 
 test('backup: Runde Export → Import erhält die Gruppen', () => {
   const text = JSON.stringify(buildBackup(DEFAULT_GROUPS));
@@ -40,7 +42,7 @@ test('backup: säubert beim Import (Validierung greift)', () => {
   const r = readBackup(JSON.stringify({ groups: [{ name: '  Test  ', entries: [1, null, ' Steak '] }] }));
   assert.ok(r.ok);
   assert.equal(r.groups[0].name, 'Test');
-  assert.deepEqual(r.groups[0].entries, ['Steak']);
+  assert.deepEqual(r.groups[0].entries, [{ name: 'Steak', tage: null }]);
 });
 
 test('backup: Dateiname enthält das Datum', () => {
