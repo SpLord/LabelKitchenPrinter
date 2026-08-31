@@ -19,7 +19,7 @@ const VARIANTS = [
   { name: 'snow', body: '#f8fafc', stroke: '#334155', accent: '#a3e635', pattern: 'spots', patternColor: '#a3e635' },
 ];
 
-function CatVariant({ index, active }) {
+function CatVariant({ index, active, zubehoer = {} }) {
   const v = VARIANTS[index % VARIANTS.length];
   const earTilt = index % 2 === 0 ? '' : 'rotate(-6 60 40)';
   const earTiltR = index % 2 === 0 ? '' : 'rotate(6 120 42)';
@@ -87,6 +87,43 @@ function CatVariant({ index, active }) {
         <path d="M75 108 q5 6 10 0" stroke={v.stroke} strokeWidth="4" fill="none" strokeLinecap="round" />
         <path d="M52 95 h18 M52 103 h18 M52 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
         <path d="M90 95 h18 M90 103 h18 M90 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
+
+        {/* Gekauftes Zubehör aus dem Katzenladen. Kopf: Kreis bei 80/85 r=40,
+            Augen bei 65/85 und 95/85, Ohren oben zwischen y 25 und 60. */}
+        {zubehoer.halsband && (
+          <g className="kz-halsband">
+            <path d="M52 116 q28 16 56 0" fill="none" stroke={v.accent} strokeWidth="9" strokeLinecap="round" />
+            <circle cx="80" cy="126" r="6" fill="#fbbf24" stroke={v.stroke} strokeWidth="2.5" />
+          </g>
+        )}
+        {zubehoer.brille && (
+          <g className="kz-brille" fill="none" stroke={v.stroke} strokeWidth="4">
+            <circle cx="65" cy="85" r="13" fill="rgba(255,255,255,0.35)" />
+            <circle cx="95" cy="85" r="13" fill="rgba(255,255,255,0.35)" />
+            <path d="M78 85 h4" strokeLinecap="round" />
+            <path d="M52 82 l-9 -4" strokeLinecap="round" />
+          </g>
+        )}
+        {zubehoer.schal && (
+          <g className="kz-schal">
+            <path d="M48 118 q32 20 64 2 l3 12 q-34 19 -70 -2 Z" fill="#ef4444" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
+            <path d="M104 132 l10 26 l-13 4 l-6 -26 Z" fill="#dc2626" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
+          </g>
+        )}
+        {zubehoer.hut && (
+          <g className="kz-hut">
+            <path d="M46 40 h60" stroke={v.stroke} strokeWidth="6" strokeLinecap="round" />
+            <rect x="58" y="6" width="36" height="34" rx="3" fill="#1f2937" stroke={v.stroke} strokeWidth="5" />
+            <rect x="58" y="28" width="36" height="8" fill="#dc2626" />
+          </g>
+        )}
+        {zubehoer.schleife && (
+          <g className="kz-schleife">
+            <path d="M112 44 l-16 -10 v20 Z" fill="#fb7185" stroke={v.stroke} strokeWidth="3.5" strokeLinejoin="round" />
+            <path d="M112 44 l16 -10 v20 Z" fill="#fb7185" stroke={v.stroke} strokeWidth="3.5" strokeLinejoin="round" />
+            <circle cx="112" cy="44" r="5" fill="#f43f5e" stroke={v.stroke} strokeWidth="3" />
+          </g>
+        )}
 
         {/* Paws */}
         <ellipse className="cat-paw cat-paw-1" cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />

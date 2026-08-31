@@ -4,6 +4,8 @@ import ShellGame, { STAKE as SHELL_STAKE } from './ShellGame.jsx';
 import { coinsFor } from './cat/needs.js';
 import useCatNeeds from './cat/useCatNeeds.js';
 import useCatCoins from './cat/useCatCoins.js';
+import useKatzenladen from './cat/useKatzenladen.js';
+import Katzenladen from './cat/Katzenladen.jsx';
 import { getCookie, setCookie } from './cat/storage.js';
 
 import CatVariant, { VARIANTS } from './cat/CatVariant.jsx';
@@ -70,6 +72,11 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const [showUnlocks, setShowUnlocks] = useState(false);
   // Hunger und Durst inklusive Verfall und Persistenz (src/cat/useCatNeeds.js)
   const { hunger, thirst, zustand, fuettern, traenken } = useCatNeeds();
+
+  // Katzenladen: Besitz und angelegtes Zubehör (src/cat/useKatzenladen.js)
+  const meldeRef = useRef(() => {});
+  const laden = useKatzenladen(coinCount, setCoinCount, (text) => meldeRef.current(text));
+  const [ladenOffen, setLadenOffen] = useState(false);
   // Placement state
   const [placing, setPlacing] = useState(null); // { kind: 'food'|'water', fill:number, cost:number, label:string, emoji:string }
   const [placedItem, setPlacedItem] = useState(null); // { id, kind, x, y, emoji, fill }
@@ -787,6 +794,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     { key: 'magnet', label: 'Magnet', thr: 120 },
   ];
 
+  meldeRef.current = (text) => {
+    if (!text) return;
+    setMessage(text);
+    setTimeout(() => setMessage(null), 1800);
+  };
+
   // Ref aktuell halten (jeder Render)
   aktuelleRef.current = { moveCat, pickSafePosition, showRandomMessage };
 
@@ -844,6 +857,16 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           )}
         </div>
       )}
+      {ladenOffen && (
+        <Katzenladen
+          muenzen={coinCount}
+          besitz={laden.besitz}
+          angelegt={laden.angelegt}
+          onKaufen={laden.kaufeUndLege}
+          onUmschalten={laden.umschalten}
+          onClose={() => setLadenOffen(false)}
+        />
+      )}
       {showUnlocks && (
         <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
           <div className="gimmick-title">Freischaltungen</div>
@@ -864,6 +887,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         <div className="gimmick-panel top" onClick={(e) => e.stopPropagation()}>
           <div className="gimmick-title">Gimmicks</div>
           <button onClick={() => { setPanelOpen(false); setShowUnlocks(true); }}>📜 Freischaltungen</button>
+          <button onClick={() => { setPanelOpen(false); setLadenOffen(true); }}>🛍️ Katzenladen</button>
           {unlocked.coinShower && (
             <button onClick={triggerCoinShower}>Coin‑Shower</button>
           )}
@@ -1011,7 +1035,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     >
       <div className="cat-float">
         <div ref={bodyRef} className="cat-body" style={{ transform: `scaleX(${flip})` }}>
-          <CatVariant index={variant} active={!!play} />
+          <CatVariant index={laden.fellVariante ?? variant} active={!!play} zubehoer={laden.angelegt} />
         </div>
       </div>
       {/* Crown after 50 coins */}
