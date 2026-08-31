@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import ShellGame, { STAKE as SHELL_STAKE } from './ShellGame.jsx';
-import { coinsFor } from './cat/needs.js';
+import { FREUDE_LECKERLI, FREUDE_SPIEL, FREUDE_STREICHELN, MEDIZIN_PREIS, bedarf, ertrag } from './cat/tamagotchi.js';
 import useCatNeeds from './cat/useCatNeeds.js';
 import useCatCoins from './cat/useCatCoins.js';
 import useKatzenladen from './cat/useKatzenladen.js';
@@ -71,7 +71,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   }, [shellStreak]);
   const [showUnlocks, setShowUnlocks] = useState(false);
   // Hunger und Durst inklusive Verfall und Persistenz (src/cat/useCatNeeds.js)
-  const { hunger, thirst, zustand, fuettern, traenken } = useCatNeeds();
+  const { hunger, thirst, freude, krank, zustand, schlaeft: schlaeftGerade, fuettern, traenken, erfreuen, heilen } = useCatNeeds(droppings.length);
 
   // Katzenladen: Besitz und angelegtes Zubehör (src/cat/useKatzenladen.js)
   const meldeRef = useRef(() => {});
@@ -98,12 +98,16 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Wenn es der Katze schlecht geht, meldet sie sich – vorher liefen Hunger und
   // Durst wirkungslos gegen null, ohne dass irgendetwas darauf reagierte.
   const bedarfsSprueche = useMemo(() => {
-    const list = [];
-    if (hunger < 40) list.push('Mails, mein Napf ist leer… 🍽️', 'Mails, ein Häppchen? Bitte?');
-    if (thirst < 40) list.push('Mails, ich hätte gern Wasser. 💧', 'Mails, so trocken hier…');
-    if (hunger < 15 || thirst < 15) list.push('Mails, mir ist ganz flau. 🙀', 'Mails, ich schaff heut nix mehr…');
-    return list;
-  }, [hunger, thirst]);
+    const was = bedarf({ hunger, thirst, freude, haeufchen: droppings.length, krank });
+    const nach = {
+      krank:      ['Mails, mir ist gar nicht gut… 🤒', 'Mails, ich brauch was aus der Apotheke.'],
+      hunger:     ['Mails, mein Napf ist leer… 🍽️', 'Mails, ein Häppchen? Bitte?'],
+      durst:      ['Mails, ich hätte gern Wasser. 💧', 'Mails, so trocken hier…'],
+      langeweile: ['Mails, mir ist langweilig… 🥱', 'Mails, spielst du kurz mit mir?'],
+      dreck:      ['Mails, hier liegt was rum. 🧹', 'Mails, magst du mal aufräumen?'],
+    };
+    return was.flatMap((k) => nach[k] ?? []);
+  }, [hunger, thirst, freude, krank, droppings.length]);
 
   const messages = useMemo(
     () => [
@@ -386,6 +390,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   }, [bedarfsSprueche, messages]);
 
   const showPurr = () => {
+    erfreuen(FREUDE_STREICHELN);
     const msg = purrs[Math.floor(Math.random() * purrs.length)];
     setMessage(msg);
     setBubbleSize('normal');
@@ -598,10 +603,11 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     // spawn coin pop
     const coinId = Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-  // Eine schwache Katze sammelt nichts mehr – hier wirkt ihr Zustand.
+  // Schlafende, kranke oder schwache Katzen sammeln nichts; glückliche doppelt.
   const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
-  const add = coinsFor(basis, hunger, thirst);
+  const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
+  erfreuen(FREUDE_SPIEL);
     // cleanup coin after animation (~900ms)
     setTimeout(() => {
       setCoins((prev) => prev.filter((c) => c.id !== coinId));
@@ -610,6 +616,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
 
   // Treats spawn: falling snacks to click for bonus coins
   const startTreats = () => {
+    erfreuen(FREUDE_LECKERLI);
     const vw = window.innerWidth || 1200;
     const batch = Array.from({ length: 10 }).map((_, i) => ({
       id: 't' + Date.now() + i,
@@ -642,10 +649,11 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   setTreats((prev) => prev.filter((t) => t.id !== id));
     const coinId = 'tc' + Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
-  // Eine schwache Katze sammelt nichts mehr – hier wirkt ihr Zustand.
+  // Schlafende, kranke oder schwache Katzen sammeln nichts; glückliche doppelt.
   const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
-  const add = coinsFor(basis, hunger, thirst);
+  const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
+  erfreuen(FREUDE_SPIEL);
     setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
   };
 
@@ -831,6 +839,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
               </span>
               <span className={`pet-stat ${hunger < 15 ? 'kritisch' : ''}`} title="Hunger">🍽️ {Math.round(hunger)}%</span>
               <span className={`pet-stat ${thirst < 15 ? 'kritisch' : ''}`} title="Durst">💧 {Math.round(thirst)}%</span>
+              <span className={`pet-stat ${freude < 25 ? 'kritisch' : ''}`} title="Zufriedenheit">💛 {Math.round(freude)}%</span>
             </>
           )}
           {hasAnyUnlocked && (
@@ -888,6 +897,20 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           <div className="gimmick-title">Gimmicks</div>
           <button onClick={() => { setPanelOpen(false); setShowUnlocks(true); }}>📜 Freischaltungen</button>
           <button onClick={() => { setPanelOpen(false); setLadenOffen(true); }}>🛍️ Katzenladen</button>
+          {krank && (
+            <button onClick={() => {
+              if (!debugUi && coinCount < MEDIZIN_PREIS) {
+                setMessage(`Medizin kostet ${MEDIZIN_PREIS} 🪙`);
+                setTimeout(() => setMessage(null), 1800);
+                return;
+              }
+              if (!debugUi) setCoinCount((c) => Math.max(0, c - MEDIZIN_PREIS));
+              heilen();
+              setPanelOpen(false);
+              setMessage('Schon viel besser! 😺');
+              setTimeout(() => setMessage(null), 2000);
+            }}>🩹 Medizin ({MEDIZIN_PREIS} 🪙)</button>
+          )}
           {unlocked.coinShower && (
             <button onClick={triggerCoinShower}>Coin‑Shower</button>
           )}
@@ -1025,6 +1048,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       <div
         ref={catRef}
         className={`cat-sprite ${play ? 'running' : 'idle'} ${zustand.key}`}
+        data-schlaeft={schlaeftGerade ? 'ja' : 'nein'}
         style={{ transform: `translate3d(${pos.left}px, ${pos.top}px, 0)` }}
         aria-hidden
         role="button"

@@ -17,14 +17,15 @@ test('eine Währung, kein zweites Konto mehr', async ({ page }) => {
 });
 
 test('Hunger und Durst bestimmen den Zustand', async ({ page }) => {
-  await mitStand(page, { cat_hunger: 95, cat_thirst: 95 });
+  await mitStand(page, { cat_hunger: 95, cat_thirst: 95, cat_freude: 50 });
   await expect(page.locator('.pet-condition')).toContainText('munter');
 
-  await mitStand(page, { cat_hunger: 8, cat_thirst: 8 });
+  await mitStand(page, { cat_hunger: 8, cat_thirst: 8, cat_freude: 8 });
   await expect(page.locator('.pet-condition')).toContainText('schwach');
   // Eine schwache Katze wird sichtbar matter und die Werte rot
   expect(await page.locator('.cat-sprite.schwach').count()).toBe(1);
-  expect(await page.locator('.pet-stat.kritisch').count()).toBe(2);
+  // Hunger, Durst und Zufriedenheit – seit der Tamagotchi-Erweiterung drei Werte
+  expect(await page.locator('.pet-stat.kritisch').count()).toBe(3);
 });
 
 test('Ausgeben sperrt keine Freischaltung wieder zu', async ({ page }) => {

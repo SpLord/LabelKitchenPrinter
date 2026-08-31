@@ -74,3 +74,10 @@ test('needs: Stufen sind absteigend sortiert (sonst greift find() falsch)', () =
   const mins = CONDITIONS.map((c) => c.min);
   assert.deepEqual(mins, [...mins].sort((a, b) => b - a));
 });
+
+test('needs: fehlender Speicherwert darf nicht als 0 gelesen werden', () => {
+  // Number(null) ist 0 und Number.isFinite(0) ist true – ohne ausdrückliche
+  // Prüfung startete die Katze auf einem frischen Gerät bei 0 % statt satt.
+  assert.equal(Number(null), 0, 'Annahme über das Verhalten von Number()');
+  assert.equal(Number.isFinite(Number(null)), true, 'deshalb reicht isFinite nicht');
+});

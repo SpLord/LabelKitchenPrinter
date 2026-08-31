@@ -610,3 +610,15 @@
 .gimmick-panel .laden-knopf.getragen { background: var(--accent); color: #052e16; border-color: rgba(5,46,22,0.25); }
 
 .laden-hinweis { margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--muted); }
+
+/* Schlafende Katze: ruhiger, nicht abgeschaltet */
+.cat-sprite[data-schlaeft="ja"] .cat-float { animation-duration: 6s; }
+.cat-sprite[data-schlaeft="ja"] .cat-svg { --tail-dur: 5s; --paw-dur: 4s; --ear-dur: 9s; }
+.cat-sprite[data-schlaeft="ja"] .cat-eye { animation: none; transform: scaleY(0.12); }
+.cat-sprite[data-schlaeft="ja"] { filter: saturate(0.75) brightness(0.97); }
+
+/* Kranke Katze */
+.cat-sprite.krank { filter: grayscale(0.55) brightness(0.95); }
+.pet-condition.krank      { background: rgba(239, 68, 68, 0.2);   color: #991b1b; }
+.pet-condition.schlaeft   { background: rgba(99, 102, 241, 0.14); color: #3730a3; }
+.pet-condition.gluecklich { background: rgba(234, 179, 8, 0.22);  color: #854d0e; }
