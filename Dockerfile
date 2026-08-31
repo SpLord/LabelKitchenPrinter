@@ -20,9 +20,13 @@ RUN npm run lint && npm test && npm run build
 # ── Produktions-Image ─────────────────────────────────────────────────────────
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Optional: eigene Nginx-Konfiguration
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Ablage für die gemeinsamen Etiketten. Wird als Volume gemountet; die
+# Rechte aus dem Image werden beim ersten Anlegen übernommen, damit der
+# nginx-Arbeitsprozess hineinschreiben darf.
+RUN mkdir -p /var/lib/labelkitchen/.tmp \
+    && chown -R nginx:nginx /var/lib/labelkitchen
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

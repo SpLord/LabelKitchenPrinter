@@ -8,7 +8,7 @@ import ErrorBoundary from './ErrorBoundary.jsx';
 import CatSprite from './CatSprite.jsx';
 import PlayOverlay from './PlayOverlay.jsx';
 import LabelEditor from './LabelEditor.jsx';
-import { loadGroups, saveGroups } from './labels/store.js';
+import useEtiketten from './labels/useEtiketten.js';
 import {
   KEY_DRUCKER, MAX_ANZAHL, MIN_ANZAHL,
   begrenzeAnzahl, druckParameter, druckerNamen, waehleDrucker,
@@ -27,14 +27,7 @@ export default function App() {
   const [laserDragging, setLaserDragging] = useState(false);
   const [suppressSpawn, setSuppressSpawn] = useState(false);
   const [error, setError] = useState(null);
-  const [groups, setGroups] = useState(loadGroups);
   const [editorOpen, setEditorOpen] = useState(false);
-
-  // Änderungen im Editor sofort persistieren
-  const updateGroups = (next) => {
-    setGroups(next);
-    if (!saveGroups(next)) showError('Etiketten konnten nicht gespeichert werden.');
-  };
 
   // Aktuelle Spielzeugposition – von PlayOverlay geschrieben, von der Katze gelesen
   const toyPosRef = useRef(null);
@@ -50,6 +43,9 @@ export default function App() {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     errorTimerRef.current = setTimeout(() => setError(null), 6000);
   };
+
+  // Etiketten lokal und geteilt (src/labels/useEtiketten.js)
+  const { groups, zustand: speicherZustand, aendern: updateGroups } = useEtiketten(showError);
 
   useEffect(() => () => {
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
@@ -283,6 +279,7 @@ export default function App() {
             groups={groups}
             onChange={updateGroups}
             onClose={() => setEditorOpen(false)}
+            speicherZustand={speicherZustand}
           />
         </ErrorBoundary>
       )}

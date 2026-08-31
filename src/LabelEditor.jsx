@@ -14,7 +14,7 @@ import { MAX_TAGE, verwendbarBis } from './print/etikett.js';
     - onChange(nextGroups): void   (Aufrufer persistiert)
     - onClose(): void
 */
-export default function LabelEditor({ groups, onChange, onClose }) {
+export default function LabelEditor({ groups, onChange, onClose, speicherZustand = 'lokal' }) {
   const [newEntry, setNewEntry] = useState({});   // { [groupId]: string }
   const [newGroupName, setNewGroupName] = useState('');
   const [confirming, setConfirming] = useState(null); // { type, groupId, index }
@@ -96,9 +96,14 @@ export default function LabelEditor({ groups, onChange, onClose }) {
 
         {notice && <p className="editor-notice" role="status">{notice}</p>}
 
+        <p className={`editor-speicher ${speicherZustand}`}>
+          {speicherZustand === 'geteilt' && <>🌐 Änderungen gelten für <strong>alle Geräte</strong>.</>}
+          {speicherZustand === 'nurLokal' && <>📴 Server nicht erreichbar – Änderungen bleiben <strong>nur auf diesem Gerät</strong> und werden beim nächsten Speichern nachgereicht.</>}
+          {speicherZustand === 'lokal' && <>⏳ Verbinde mit dem gemeinsamen Speicher…</>}
+        </p>
+
         <p className="editor-hint">
-          Änderungen werden sofort in diesem Browser gespeichert. Für ein anderes Gerät
-          oder als Sicherung die Datei über „Sichern“ ablegen.
+          Als Sicherung oder für ein Gerät ohne Netz die Datei über „Sichern“ ablegen.
           <br />
           Im Feld <strong>T</strong> steht die Haltbarkeit in Tagen. Ist es gefüllt, trägt
           das Etikett zusätzlich ein Verwendbar-bis; bleibt es leer, ändert sich nichts.

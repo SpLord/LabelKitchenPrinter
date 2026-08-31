@@ -7,3 +7,9 @@ services:
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-7077}:80"
+    volumes:
+      # Gemeinsame Etikettenliste, überlebt Updates und Gerätewechsel
+      - etiketten:/var/lib/labelkitchen
+
+volumes:
+  etiketten:

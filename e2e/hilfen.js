@@ -55,6 +55,13 @@ export const echtesDymoBlocken = (page) =>
     status: 200, contentType: 'application/javascript', body: '/* im Test ersetzt */',
   }));
 
+/* Grundaufbau für Tests, die die rohe page brauchen (eigene Routen o. ä.). */
+export const grundaufbau = async (page, drucker = ['DYMO Küche'], kannKopien = true) => {
+  await echtesDymoBlocken(page);
+  await page.addInitScript(dymoFaelschen(), [drucker, kannKopien, PNG]);
+  await page.addInitScript(spielstand(), STAND_SATT);
+};
+
 export const test = basis.extend({
   seite: async ({ page }, benutze) => {
     await echtesDymoBlocken(page);
