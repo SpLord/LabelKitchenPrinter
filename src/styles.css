@@ -1153,3 +1153,111 @@ input:focus-visible {
 @media (max-width: 900px) {
   .app-bar { padding-top: 52px; }
 }
+
+/* =========================================
+   ✏️ Editor: Löschabfrage, Symbolauswahl
+   ========================================= */
+
+/* Vorher wechselte nur das Icon von 🗑 auf ✓ – das hat niemand als
+   "zweiter Klick nötig" gelesen. Jetzt steht die Frage im Klartext. */
+.editor-confirm {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  color: #7f1d1d;
+  font-size: 0.95rem;
+}
+.editor-confirm > span { flex: 1 1 8rem; min-width: 0; }
+.editor-confirm strong { word-break: break-word; }
+
+.editor-btn.danger-ghost { color: #b91c1c; }
+@media (hover: hover) {
+  .editor-btn.danger-ghost:not(:disabled):hover {
+    background: #fef2f2;
+    border-color: rgba(185, 28, 28, 0.35);
+  }
+}
+
+.editor-hint {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.editor-notice {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+/* Symbolauswahl */
+.icon-picker { position: relative; flex: 0 0 auto; }
+
+.icon-picker-trigger {
+  width: 3.2rem;
+  min-height: 48px;
+  font-size: 1.4rem;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+@media (hover: hover) {
+  .icon-picker-trigger:hover { background: #f1f5f9; border-color: rgba(15, 23, 42, 0.2); }
+}
+
+.icon-picker-popover {
+  position: absolute;
+  z-index: 210;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: min(21rem, 80vw);
+  padding: 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow-lg);
+}
+
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 0.25rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.icon-picker-choice {
+  min-height: 46px;
+  font-size: 1.3rem;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.icon-picker-choice.active { border-color: var(--primary); background: rgba(99, 102, 241, 0.12); }
+@media (hover: hover) {
+  .icon-picker-choice:hover { background: #f1f5f9; }
+}
+
+.icon-picker-custom {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.icon-picker-custom input { flex: 1; min-width: 0; text-align: center; font-size: 1.1rem; }
