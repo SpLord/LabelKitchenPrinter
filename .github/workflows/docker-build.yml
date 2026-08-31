@@ -45,6 +45,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # Volle Historie: sonst kann der Push auf deploy den Fast-Forward
+          # nicht belegen und wird abgelehnt (flacher Klon hat keine Vorgänger).
+          fetch-depth: 0
 
       - name: Set Docker Tag (commit hash + date)
         id: version
