@@ -1141,7 +1141,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         </div>
       )}
   {/* Menü über der Katze entfernt – Bedienung nur über das obere Gimmick-Menü */}
-  {shellOpen && (
+      </div>
+
+      {/* Bewusst ausserhalb von .cat-sprite: dessen cat-float-Animation erzeugt
+          einen Bezugsrahmen, wodurch das Brett an der Katze klebte statt mittig
+          auf dem Bildschirm zu stehen. Ausserdem trägt .cat-sprite aria-hidden,
+          was den Dialog für Screenreader unsichtbar gemacht hat. */}
+      {shellOpen && (
         <ErrorBoundary label="Das Hütchenspiel">
           <ShellGame
             onClose={() => setShellOpen(false)}
@@ -1151,7 +1157,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           />
         </ErrorBoundary>
       )}
-      </div>
     </>
   );
 }
