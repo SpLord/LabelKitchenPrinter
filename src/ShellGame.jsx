@@ -125,7 +125,7 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak, bal
       setStage('shuffle');
     }, 2400);
     return () => clearTimeout(peekTimer);
-  }, []);
+  }, [balance]);
 
   // ── Shuffle Loop ────────────────────────────────────────────────────────────
   useEffect(() => {

@@ -99,7 +99,9 @@ export default function PlayOverlay({ play, setPlay, posRef }) {
 
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [play?.id, play?.kind, posRef, setPlay]);
+    // play als Ganzes: seit die Position über den Ref läuft, ändert sich das
+    // Objekt nur noch beim Erscheinen und Verschwinden – kein Neustart pro Bild.
+  }, [play, posRef, setPlay]);
 
   if (!play) return null;
 

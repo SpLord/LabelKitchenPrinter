@@ -1,99 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import ShellGame, { STAKE as SHELL_STAKE } from './ShellGame.jsx';
-import { catchUp, clampNeed, coinsFor, conditionOf, decayOver, feed } from './cat/needs.js';
+import { coinsFor } from './cat/needs.js';
+import useCatNeeds from './cat/useCatNeeds.js';
+import useCatCoins from './cat/useCatCoins.js';
+import { getCookie, setCookie } from './cat/storage.js';
 
-const VARIANTS = [
-  { name: 'sand', body: '#f5d3b3', stroke: '#3b3b3b', accent: '#e08e79', pattern: 'none' },
-  { name: 'creme', body: '#f2e5cf', stroke: '#2f2f2f', accent: '#f59e0b', pattern: 'none' },
-  { name: 'blau', body: '#c7e0ff', stroke: '#1f2937', accent: '#60a5fa', pattern: 'stripes', patternColor: '#60a5fa' },
-  { name: 'rosa', body: '#ffd6e7', stroke: '#334155', accent: '#fb7185', pattern: 'spots', patternColor: '#fb7185' },
-  { name: 'ginger', body: '#fbbf24', stroke: '#3b2f17', accent: '#f59e0b', pattern: 'stripes', patternColor: '#d97706' },
-  { name: 'gray', body: '#cbd5e1', stroke: '#0f172a', accent: '#94a3b8', pattern: 'none' },
-  { name: 'tuxedo', body: '#111827', stroke: '#000000', accent: '#f3f4f6', pattern: 'tuxedo', patternColor: '#f3f4f6' },
-  { name: 'siam', body: '#e5d3b3', stroke: '#3b3b3b', accent: '#8b5e34', pattern: 'siam', patternColor: '#8b5e34' },
-  { name: 'calico', body: '#fff7ed', stroke: '#374151', accent: '#fb923c', pattern: 'patch', patternColor: '#fb923c' },
-  { name: 'snow', body: '#f8fafc', stroke: '#334155', accent: '#a3e635', pattern: 'spots', patternColor: '#a3e635' },
-];
-
-function CatVariant({ index, active }) {
-  const v = VARIANTS[index % VARIANTS.length];
-  const earTilt = index % 2 === 0 ? '' : 'rotate(-6 60 40)';
-  const earTiltR = index % 2 === 0 ? '' : 'rotate(6 120 42)';
-  // Blinzeln pro Katze leicht versetzt, damit nicht alle im Gleichtakt zwinkern
-  const blinkDelay = `${-(index % 5) * 1.3}s`;
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      width="100%"
-      height="100%"
-      className={`cat-svg ${active ? 'aktiv' : ''}`}
-      style={{ '--blink-delay': blinkDelay }}
-    >
-      <defs>
-        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.25" />
-        </filter>
-      </defs>
-      <path className="cat-tail" d="M158 118 c34 -6 52 16 40 40 s-34 14-44 2" fill="none" stroke={v.stroke} strokeWidth="8" strokeLinecap="round" />
-      <g filter="url(#shadow)">
-        {/* Body + Head */}
-        <ellipse cx="110" cy="120" rx="70" ry="55" fill={v.body} stroke={v.stroke} strokeWidth="6" />
-        <circle cx="80" cy="85" r="40" fill={v.body} stroke={v.stroke} strokeWidth="6" />
-        {/* Ears */}
-        <path className="cat-ear cat-ear-l" d="M55 56 L45 25 L75 45 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTilt} />
-        <path className="cat-ear cat-ear-r" d="M105 56 L135 25 L125 60 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" transform={earTiltR} />
-
-        {/* Patterns */}
-        {v.pattern === 'stripes' && (
-          <g stroke={v.patternColor} strokeWidth="4" opacity="0.55" strokeLinecap="round">
-            <path d="M120 95 q-16 10 -32 0" fill="none" />
-            <path d="M130 115 q-22 12 -44 0" fill="none" />
-            <path d="M95 70 q-8 6 -16 0" fill="none" />
-          </g>
-        )}
-        {v.pattern === 'spots' && (
-          <g fill={v.patternColor} opacity="0.5">
-            <circle cx="120" cy="110" r="10" />
-            <circle cx="95" cy="130" r="8" />
-            <circle cx="70" cy="78" r="6" />
-          </g>
-        )}
-        {v.pattern === 'tuxedo' && (
-          <path d="M110 80 q-40 50 0 80 q40-30 0-80" fill={v.patternColor} opacity="0.95" />
-        )}
-        {v.pattern === 'siam' && (
-          <g fill={v.patternColor} opacity="0.65">
-            <path d="M55 56 L45 25 L75 45 Z" />
-            <path d="M105 56 L135 25 L125 60 Z" />
-            <ellipse cx="60" cy="155" rx="16" ry="10" />
-            <ellipse cx="95" cy="165" rx="16" ry="10" />
-          </g>
-        )}
-        {v.pattern === 'patch' && (
-          <g fill={v.patternColor} opacity="0.6">
-            <path d="M78 60 q-16 8 -10 22 q16-6 10-22" />
-            <path d="M130 130 q-20 10 -8 24 q18-8 8-24" />
-          </g>
-        )}
-
-        {/* Eyes / Face */}
-        <circle className="cat-eye cat-eye-l" cx="65" cy="85" r="6" fill={v.stroke} />
-        <circle className="cat-eye cat-eye-r" cx="95" cy="85" r="6" fill={v.stroke} />
-        <polygon points="80,95 75,103 85,103" fill={v.accent} />
-        <path d="M75 108 q5 6 10 0" stroke={v.stroke} strokeWidth="4" fill="none" strokeLinecap="round" />
-        <path d="M52 95 h18 M52 103 h18 M52 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
-        <path d="M90 95 h18 M90 103 h18 M90 87 h18" stroke={v.stroke} strokeWidth="4" strokeLinecap="round" />
-
-        {/* Paws */}
-        <ellipse className="cat-paw cat-paw-1" cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
-        <ellipse className="cat-paw cat-paw-2" cx="95" cy="165" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
-      </g>
-    </svg>
-  );
-}
-
-
+import CatVariant, { VARIANTS } from './cat/CatVariant.jsx';
 export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser, setSuppressSpawn, toyPosRef }) {
   const [pos, setPos] = useState({ top: 20, left: 20 });
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * VARIANTS.length));
@@ -126,10 +39,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const [coins, setCoins] = useState([]); // ephemeral pop animations
   // Ein Kontostand statt der früheren Aufteilung in Lebenszeit- und Kaufmünzen:
   // die Trennung war nicht vermittelbar (1410 verdient, davon 2 ausgebbar).
-  const [coinCount, setCoinCount] = useState(0);
-  // Höchststand, damit Ausgeben nichts wieder zusperrt.
-  const [coinPeak, setCoinPeak] = useState(0);
-  const [coinsLoaded, setCoinsLoaded] = useState(false);
+  // Münzen inklusive Höchststand und Persistenz (src/cat/useCatCoins.js)
+  const { stand: coinCount, setStand: setCoinCount, gipfel: coinPeak, geladen: coinsLoaded } = useCatCoins();
   const [fireworks, setFireworks] = useState([]);
   const [fwDone, setFwDone] = useState(false);   // persisted: prevent re-trigger after reload
   const fwIntervalRef = useRef(null);
@@ -157,54 +68,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     try { localStorage.setItem('cat_shellStreak', String(shellStreak)); } catch {}
   }, [shellStreak]);
   const [showUnlocks, setShowUnlocks] = useState(false);
-  // Pet care
-  const [hunger, setHunger] = useState(() => {
-    const v = Number(localStorage.getItem('cat_hunger')); return Number.isFinite(v) ? clampNeed(v) : 80;
-  });
-  const [thirst, setThirst] = useState(() => {
-    const v = Number(localStorage.getItem('cat_thirst')); return Number.isFinite(v) ? clampNeed(v) : 80;
-  });
-  useEffect(()=>{ try{ localStorage.setItem('cat_hunger', String(hunger)); }catch{} }, [hunger]);
-  useEffect(()=>{ try{ localStorage.setItem('cat_thirst', String(thirst)); }catch{} }, [thirst]);
-  // Verfall an der echten Uhr statt an Intervall-Ticks: ein geschlossener Tab
-  // hielt die Werte sonst künstlich hoch. Abwesenheit ist gedeckelt.
-  useEffect(() => {
-    const stamp = () => { try { localStorage.setItem('cat_lastSeen', String(Date.now())); } catch {} };
-    try {
-      const lastSeen = Number(localStorage.getItem('cat_lastSeen'));
-      if (Number.isFinite(lastSeen) && lastSeen > 0) {
-        setHunger((h) => catchUp({ hunger: h, thirst: 100, lastSeen }).hunger);
-        setThirst((t) => catchUp({ hunger: 100, thirst: t, lastSeen }).thirst);
-      }
-    } catch {}
-    stamp();
-
-    const id = setInterval(() => {
-      setHunger((v) => decayOver(v, 60000));
-      setThirst((v) => decayOver(v, 60000));
-      stamp();
-    }, 60000);
-    return () => { clearInterval(id); stamp(); };
-  }, []);
+  // Hunger und Durst inklusive Verfall und Persistenz (src/cat/useCatNeeds.js)
+  const { hunger, thirst, zustand, fuettern, traenken } = useCatNeeds();
   // Placement state
   const [placing, setPlacing] = useState(null); // { kind: 'food'|'water', fill:number, cost:number, label:string, emoji:string }
   const [placedItem, setPlacedItem] = useState(null); // { id, kind, x, y, emoji, fill }
   const [internalPlay, setInternalPlay] = useState(null); // mirrors placed item for chase
 
-  // Cookie helpers for session persistence (fallback to localStorage)
-  const getCookie = (name) => {
-    try {
-      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
-      return m ? decodeURIComponent(m[1]) : null;
-    } catch { return null; }
-  };
-  const setCookie = (name, value, days = 30) => {
-    try {
-      const d = new Date();
-      d.setTime(d.getTime() + days*24*60*60*1000);
-      document.cookie = `${name}=${encodeURIComponent(value)}; path=/; expires=${d.toUTCString()}`;
-    } catch {}
-  };
 
   // Read persisted fireworks-done flag on mount
   useEffect(() => {
@@ -217,7 +87,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     } catch {}
   }, []);
 
-  const zustand = conditionOf(hunger, thirst);
 
   // Wenn es der Katze schlecht geht, meldet sie sich – vorher liefen Hunger und
   // Durst wirkungslos gegen null, ohne dass irgendetwas darauf reagierte.
@@ -281,31 +150,33 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     []
   );
 
-  const showCelebrate = () => {
+  const showCelebrate = useCallback(() => {
     const msg = celebrates[Math.floor(Math.random() * celebrates.length)];
     setBubbleSize('big');
     setMessage(msg);
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => setMessage(null), 3000);
     setTimeout(() => { onCatch && onCatch(); }, 900);
-  };
+  }, [celebrates, onCatch]);
 
   // Helpers to trigger visual effects
-  const triggerSparkles = () => {
+  const triggerSparkles = useCallback(() => {
     const cx = posRef.current.left + catSize.w / 2;
     const cy = posRef.current.top + catSize.h / 2;
     const parts = Array.from({ length: 14 }).map((_, i) => ({ id: 'sp'+Date.now()+i, x: cx + (Math.random()*80-40), y: cy + (Math.random()*60-30) }));
     setSparkles(parts);
     setTimeout(() => setSparkles([]), 1600);
-  };
-  const triggerFootprints = () => {
+  }, [catSize.w, catSize.h]);
+
+  const triggerFootprints = useCallback(() => {
     const baseX = posRef.current.left + catSize.w/2 - 20;
     const baseY = posRef.current.top + catSize.h - 10;
     const prints = Array.from({ length: 8 }).map((_, i) => ({ id: 'fp'+Date.now()+i, x: baseX + i*10, y: baseY + (i%2?6:-6) }));
     setFootprints(prints);
     setTimeout(() => setFootprints([]), 2000);
-  };
-  const startRainbowTrail = (ms=3000) => {
+  }, [catSize.w, catSize.h]);
+
+  const startRainbowTrail = useCallback((ms=3000) => {
     const start = Date.now();
     const id = setInterval(() => {
       const t = Date.now();
@@ -320,7 +191,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       });
     }, 60);
     setTimeout(()=> setRainbowDots([]), ms+800);
-  };
+  }, [catSize.w, catSize.h]);
   const triggerConfetti = (strong=false) => {
     const vw = window.innerWidth||1200;
     const n = strong? 120: 40;
@@ -402,7 +273,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     // 750 / 1000 handled via panel unlocks (we already have panel)
     lastCoinsRef.current = c;
     milestonesPrimedRef.current = true;
-  }, [coinCount, coinsLoaded]);
+  }, [coinCount, coinsLoaded, setCoinCount, triggerSparkles, triggerFootprints, startRainbowTrail]);
   // Trigger a short coin shower animation (drops temporary coins from the top)
   const triggerCoinShower = () => {
     const vw = window.innerWidth || 1200;
@@ -417,7 +288,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     return !(a.left > b.right || a.right < b.left || a.top > b.bottom || a.bottom < b.top);
   }
 
-  const pickSafePosition = () => {
+  const pickSafePosition = useCallback(() => {
     const margin = 16;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -484,17 +355,20 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       }
       return { top, left };
     }
-    // If all tries failed, return top-left of first area
+    // Wenn nichts frei war: linke obere Ecke des ersten Bereichs
     const a0 = areas[0];
     return { top: a0.yMin, left: a0.xMin };
-  };
+  }, [catSize.w, catSize.h]);
 
-  const moveCat = () => {
-    // only reposition when not playing
+  const moveCat = useCallback(() => {
+    // nur umsetzen, solange nicht gespielt wird
     if (!play) setPos(pickSafePosition());
-  };
+  }, [play, pickSafePosition]);
 
-  const showRandomMessage = () => {
+  // Immer die aktuelle Fassung, ohne dass Effekte davon abhängen müssen
+  const aktuelleRef = useRef({});
+
+  const showRandomMessage = useCallback(() => {
     // Bei Bedarf melden sich Hunger und Durst bevorzugt, sonst der normale Plausch
     const pool = bedarfsSprueche.length > 0 && Math.random() < 0.7 ? bedarfsSprueche : messages;
     const msg = pool[Math.floor(Math.random() * pool.length)];
@@ -502,7 +376,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     setBubbleSize('normal');
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => setMessage(null), 12000);
-  };
+  }, [bedarfsSprueche, messages]);
 
   const showPurr = () => {
     const msg = purrs[Math.floor(Math.random() * purrs.length)];
@@ -513,8 +387,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   };
 
   useEffect(() => {
-    // First position on mount, variant rotation, speech scheduling
-    moveCat();
+    // Erste Position, Fellwechsel, Sprechplan – läuft genau einmal
+    aktuelleRef.current.moveCat();
     // Change variant every ~3 hours
     const varId = setInterval(() => setVariant((v) => (v + 1) % VARIANTS.length), 10800000);
     // Random speech every 60–180s
@@ -522,13 +396,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     function scheduleSpeak() {
       const delay = 60000 + Math.floor(Math.random() * 120000); // 60-180s
       speakId = setTimeout(() => {
-        showRandomMessage();
+        aktuelleRef.current.showRandomMessage();
         scheduleSpeak();
       }, delay);
     }
     scheduleSpeak();
 
-    const onResize = () => setPos(pickSafePosition());
+    const onResize = () => setPos(aktuelleRef.current.pickSafePosition());
     window.addEventListener('resize', onResize);
     return () => {
       clearInterval(varId);
@@ -536,6 +410,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       if (hideTimeout.current) clearTimeout(hideTimeout.current);
       window.removeEventListener('resize', onResize);
     };
+    // Bewusst leer: der Effekt richtet einmalige Zeitpläne ein und greift über
+    // aktuelleRef auf die jeweils aktuellen Funktionen zu.
   }, []);
 
   // Reposition occasionally when idle (every 20s), but pause while chasing
@@ -544,7 +420,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     fn();
     const id = setInterval(fn, 20000);
     return () => clearInterval(id);
-  }, [play]);
+  }, [play, pickSafePosition]);
 
   /*
     Verfolgung. Die Position wird bewusst NICHT über React-State geführt:
@@ -593,8 +469,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       if (intersects) {
         if (active.kind === 'food' || active.kind === 'water') {
           if (placedItem && placedItem.id === active.id) {
-            if (active.kind === 'food') setHunger((v) => feed(v, placedItem.fill || 0));
-            if (active.kind === 'water') setThirst((v) => feed(v, placedItem.fill || 0));
+            if (active.kind === 'food') fuettern(placedItem.fill || 0);
+            if (active.kind === 'water') traenken(placedItem.fill || 0);
             setPlacedItem(null);
           }
           setInternalPlay(null);
@@ -633,7 +509,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [play, internalPlay, placedItem, catSize.w, catSize.h, onCatch, applyPos, applyFlip, toyPosRef]);
+  }, [play, internalPlay, placedItem, catSize.w, catSize.h, onCatch, applyPos, applyFlip,
+      toyPosRef, fuettern, traenken, showCelebrate]);
 
   // No water effects anymore
 
@@ -765,37 +642,12 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
   };
 
-  // Kontostand laden (Cookie hat Vorrang, dann localStorage)
-  useEffect(() => {
-    const readInt = (key) => {
-      const c = getCookie(key);
-      if (c != null && !Number.isNaN(parseInt(c, 10))) return parseInt(c, 10);
-      const saved = localStorage.getItem(key);
-      return saved != null ? (parseInt(saved, 10) || 0) : null;
-    };
-    try {
-      const stand = readInt('cat_coinCount') ?? 0;
-      const gipfel = readInt('cat_coinPeak');
-      setCoinCount(stand);
-      // Ohne gespeicherten Höchststand zählt der bisherige Stand als Höchststand,
-      // damit beim Umstieg nichts wieder zugesperrt wird.
-      setCoinPeak(Math.max(gipfel ?? 0, stand));
-    } catch {}
-    setCoinsLoaded(true);
-  }, []);
 
-  useEffect(() => {
-    if (!coinsLoaded) return;
-    try { localStorage.setItem('cat_coinCount', String(coinCount)); } catch {}
-    setCookie('cat_coinCount', String(coinCount));
-    setCoinPeak((p) => (coinCount > p ? coinCount : p));
-  }, [coinCount, coinsLoaded]);
 
-  useEffect(() => {
-    if (!coinsLoaded) return;
-    try { localStorage.setItem('cat_coinPeak', String(coinPeak)); } catch {}
-    setCookie('cat_coinPeak', String(coinPeak));
-  }, [coinPeak, coinsLoaded]);
+  const cancelPlacing = useCallback(() => {
+    setPlacing(null);
+    setSuppressSpawn && setSuppressSpawn(false);
+  }, [setSuppressSpawn]);
 
   // Platzieren läuft über eine eigene Ebene (siehe .place-overlay im Markup).
   // Vorher hing ein document-weiter Handler daran, der Klicks innerhalb von
@@ -811,7 +663,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
       document.removeEventListener('keydown', onKey);
       setSuppressSpawn && setSuppressSpawn(false);
     };
-  }, [placing, setSuppressSpawn]);
+  }, [placing, setSuppressSpawn, cancelPlacing]);
 
   // Food options (cost fills hunger); water fills thirst, free
   const FOOD_OPTIONS = [
@@ -829,11 +681,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const startPlaceWater = () => {
     setPanelOpen(false);
     setPlacing({ kind: 'water', fill: 30, cost: 0, label: 'Wasser', emoji: '💧' });
-  };
-
-  const cancelPlacing = () => {
-    setPlacing(null);
-    setSuppressSpawn && setSuppressSpawn(false);
   };
 
   const doPlace = (x, y) => {
@@ -902,7 +749,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         }
       }, 1000);
     }
-  }, [coinCount, fwDone]);
+    // coinPeak gehört dazu: der Effekt liest ihn, und seit Ausgeben möglich ist
+    // kann coinCount fallen, während der Höchststand die Schwelle hält.
+  }, [coinPeak, coinCount, fwDone]);
   useEffect(() => () => { if (fwIntervalRef.current) clearInterval(fwIntervalRef.current); }, []);
   useEffect(() => () => { if (questIntervalRef.current) clearInterval(questIntervalRef.current); }, []);
 
@@ -937,6 +786,9 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     { key: 'shell', label: 'Hütchenspiel', thr: 90 },
     { key: 'magnet', label: 'Magnet', thr: 120 },
   ];
+
+  // Ref aktuell halten (jeder Render)
+  aktuelleRef.current = { moveCat, pickSafePosition, showRandomMessage };
 
   return (
     <>
