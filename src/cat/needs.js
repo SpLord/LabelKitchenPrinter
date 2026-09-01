@@ -11,8 +11,21 @@
 export const NEED_MAX = 100;
 export const NEED_MIN = 0;
 
-/* Rund acht Stunden von satt auf leer – eine Schicht hält die Katze also durch. */
-export const DECAY_PER_HOUR = 12;
+/*
+  Verfall je Stunde.
+
+  War lange 12 – von satt auf leer in achteinhalb Stunden. Das hiess: wer
+  morgens fütterte, fand abends eine schwache Katze, und über Nacht wurde sie
+  krank. Rückmeldung aus der Küche: "so schnell ist keine Katze verhungert
+  oder verdurstet."
+
+  1,2 %/h heisst rund dreieinhalb Tage von voll auf leer. Die Zahl ist nicht
+  gegriffen, sondern eingegrenzt durch zwei Fälle in needs.test.mjs:
+  unter 1,42 muss sie liegen, damit eine satt zurückgelassene Katze das
+  Wochenende ohne Krankheit übersteht; über 0,83, damit Füttern überhaupt
+  nötig bleibt.
+*/
+export const DECAY_PER_HOUR = 1.2;
 
 /* Nach längerer Abwesenheit soll sie nicht völlig ausgehungert begrüßen. */
 export const MAX_OFFLINE_DECAY = 25;

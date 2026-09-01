@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CONDITIONS, MAX_OFFLINE_DECAY, catchUp, clampNeed, coinsFor,
+  CONDITIONS, DECAY_PER_HOUR, MAX_OFFLINE_DECAY, NEED_MAX, catchUp, clampNeed, coinsFor,
   conditionOf, conditionValue, decayOver, feed,
 } from './needs.js';
+import { KRANK_SCHWELLE } from './tamagotchi.js';
 
 test('needs: clampNeed hält 0..100 und fängt Unsinn ab', () => {
   assert.equal(clampNeed(150), 100);
@@ -46,9 +47,11 @@ test('needs: Münzgewinn ist nie negativ oder gebrochen', () => {
 });
 
 test('needs: Verfall entspricht der Zeit', () => {
-  assert.equal(decayOver(100, 3_600_000), 88);          // eine Stunde = 12
-  assert.equal(decayOver(100, 8 * 3_600_000), 4);       // acht Stunden
-  assert.equal(decayOver(10, 24 * 3_600_000), 0);       // nie unter 0
+  // Aus der Rate abgeleitet – die Zahl selbst wird oben von den beiden
+  // Betriebsfällen eingegrenzt, hier geht es nur um die Linearität.
+  assert.equal(decayOver(100, 3_600_000), 100 - DECAY_PER_HOUR);
+  assert.equal(decayOver(100, 8 * 3_600_000), 100 - 8 * DECAY_PER_HOUR);
+  assert.equal(decayOver(10, 400 * 3_600_000), 0);      // nie unter 0
   assert.equal(decayOver(50, 0), 50);
   assert.equal(decayOver(50, -100), 50);
 });
@@ -97,8 +100,10 @@ test('catchUp: Bremsfaktoren wirken auch über die Abwesenheit', () => {
     { hunger: 100, thirst: 100, lastSeen: jetzt - zweiStunden, hungerFaktor: 0.5, durstFaktor: 1 },
     jetzt,
   );
-  assert.equal(ohne.hunger, 76, '12 %/h über zwei Stunden');
-  assert.equal(mit.hunger, 88, 'halber Verfall');
+  // Aus der Konstante abgeleitet: eine feste Zahl müsste bei jeder
+  // Justierung der Rate mit angefasst werden und sagt nichts über die Regel.
+  assert.equal(ohne.hunger, 100 - 2 * DECAY_PER_HOUR, 'volle Rate über zwei Stunden');
+  assert.equal(mit.hunger, 100 - DECAY_PER_HOUR, 'halber Verfall');
   assert.equal(mit.thirst, ohne.thirst, 'ohne eigenen Faktor unverändert');
 });
 
@@ -109,4 +114,31 @@ test('catchUp: fehlende Faktoren ändern nichts', () => {
     catchUp({ hunger: 90, thirst: 80, lastSeen, hungerFaktor: 1, durstFaktor: 1 }, jetzt),
     catchUp({ hunger: 90, thirst: 80, lastSeen }, jetzt),
   );
+});
+
+/*
+  Wie streng darf der Verfall sein?
+
+  Die alte Rate von 12 %/h leerte eine volle Katze in achteinhalb Stunden –
+  zwischen Frühschicht und Feierabend. Rückmeldung aus der Küche: "so schnell
+  ist keine Katze verhungert oder verdurstet."
+
+  Der Massstab ist deshalb nicht eine Wunschzahl, sondern ein Fall aus dem
+  Betrieb: Freitagabend geht das Licht aus, Montagfrüh kommt jemand wieder.
+  Wer die Katze vorher satt zurücklässt, darf montags keine kranke vorfinden.
+*/
+const WOCHENENDE_H = 60;   // Fr 18:00 bis Mo 06:00
+
+test('Verfall: satt zurückgelassen übersteht die Katze ein Wochenende', () => {
+  const rest = decayOver(NEED_MAX, WOCHENENDE_H * 3_600_000);
+  assert.ok(
+    rest > KRANK_SCHWELLE,
+    `nach ${WOCHENENDE_H} h wären es ${rest} % – unter ${KRANK_SCHWELLE} % wird sie krank`,
+  );
+});
+
+test('Verfall: trotzdem spürbar – innerhalb eines Tages geht es merklich runter', () => {
+  const nachEinemTag = decayOver(NEED_MAX, 24 * 3_600_000);
+  assert.ok(nachEinemTag < 80, 'sonst müsste man nie füttern');
+  assert.ok(nachEinemTag > 50, 'aber auch nicht halb leer nach einem Tag');
 });

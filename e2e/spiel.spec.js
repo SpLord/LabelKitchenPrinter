@@ -1,4 +1,5 @@
 import { test, expect, dymoFaelschen, echtesDymoBlocken, menuepunkt, spielstand, STAND_SATT } from './hilfen.js';
+import { DECAY_PER_HOUR } from '../src/cat/needs.js';
 
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
@@ -37,10 +38,14 @@ test('Ausgeben sperrt keine Freischaltung wieder zu', async ({ page }) => {
 
 test('Abwesenheit zehrt, ist aber gedeckelt', async ({ page }) => {
   const stunden = (h) => Date.now() - h * 3600 * 1000;
-  await mitStand(page, { cat_hunger: 100, cat_thirst: 100, cat_lastSeen: stunden(1.5) });
+  // Aus der Rate abgeleitet statt fest eingetragen: die Rate wurde einmal
+  // gesenkt (12 auf 1,2) und dieser Test war die einzige Stelle, die es
+  // nicht mitbekam.
+  await mitStand(page, { cat_hunger: 100, cat_thirst: 100, cat_lastSeen: stunden(10) });
   const nachKurz = await page.evaluate(() => Number(localStorage.getItem('cat_hunger')));
-  expect(nachKurz).toBeGreaterThan(81);
-  expect(nachKurz).toBeLessThan(83);
+  const erwartet = 100 - 10 * DECAY_PER_HOUR;
+  expect(nachKurz).toBeGreaterThan(erwartet - 1);
+  expect(nachKurz).toBeLessThan(erwartet + 1);
 
   await mitStand(page, { cat_hunger: 100, cat_thirst: 100, cat_lastSeen: stunden(30 * 24) });
   // Nach dem Wochenende soll sie nicht völlig ausgehungert begrüssen
