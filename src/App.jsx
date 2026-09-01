@@ -223,6 +223,14 @@ export default function App() {
         if (ergebnis.rueckfall) {
           console.warn('[druck] Kopien-Parameter abgelehnt, einzeln gedruckt:', ergebnis.grund);
         }
+        if (ergebnis.offen > 0) {
+          // Wichtig ist die Zahl: der Rest muss nachgedruckt werden, nicht alles.
+          const gesamt = ergebnis.gedruckt + ergebnis.offen;
+          showError(
+            `Nur ${ergebnis.gedruckt} von ${gesamt} Etiketten gedruckt – ` +
+            `${ergebnis.offen} fehlen noch (${ergebnis.grund}).`
+          );
+        }
       })
       .catch(err => showError('Fehler beim Drucken: ' + (err?.message || err)));
   };

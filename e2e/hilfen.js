@@ -8,7 +8,7 @@ const PNG =
   nichts. Deshalb wird das Framework gefälscht – und protokolliert nebenbei
   jeden Druckauftrag, damit Stückzahl und Ziel prüfbar werden.
 */
-export const dymoFaelschen = (drucker = ['DYMO Küche'], kannKopien = true) => ([liste, kopien, png]) => {
+export const dymoFaelschen = (drucker = ['DYMO Küche'], kannKopien = true) => ([liste, kopien, png, scheitertAb]) => {
   window.__drucke = [];
   const framework = {
     init: () => {},
@@ -17,7 +17,14 @@ export const dymoFaelschen = (drucker = ['DYMO Küche'], kannKopien = true) => (
       const felder = {};
       return {
         setObjectText: (k, v) => { felder[k] = v; },
-        print: (ziel, params) => window.__drucke.push({ ziel, params: params ?? null, felder: { ...felder } }),
+        print: (ziel, params) => {
+          // Ab dem eingestellten Auftrag streiken – so lässt sich ein Abbruch
+          // mitten in der Serie prüfen, ohne einen echten Drucker zu quälen.
+          if (scheitertAb && window.__drucke.length + 1 >= scheitertAb) {
+            throw new Error('Print job failed');
+          }
+          window.__drucke.push({ ziel, params: params ?? null, felder: { ...felder } });
+        },
         render: () => png,
       };
     },
@@ -56,9 +63,9 @@ export const echtesDymoBlocken = (page) =>
   }));
 
 /* Grundaufbau für Tests, die die rohe page brauchen (eigene Routen o. ä.). */
-export const grundaufbau = async (page, drucker = ['DYMO Küche'], kannKopien = true) => {
+export const grundaufbau = async (page, drucker = ['DYMO Küche'], kannKopien = true, scheitertAb = 0) => {
   await echtesDymoBlocken(page);
-  await page.addInitScript(dymoFaelschen(), [drucker, kannKopien, PNG]);
+  await page.addInitScript(dymoFaelschen(), [drucker, kannKopien, PNG, scheitertAb]);
   await page.addInitScript(spielstand(), STAND_SATT);
 };
 

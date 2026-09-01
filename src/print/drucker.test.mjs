@@ -53,7 +53,7 @@ test('drucke: ein Exemplar ohne Parameter', () => {
   const rufe = [];
   const label = { print: (ziel, params) => rufe.push({ ziel, params: params ?? null }) };
   const r = drucke(label, 'D', {}, 1);
-  assert.deepEqual(r, { gedruckt: 1, rueckfall: false, grund: null });
+  assert.deepEqual(r, { gedruckt: 1, offen: 0, rueckfall: false, grund: null });
   assert.deepEqual(rufe, [{ ziel: 'D', params: null }]);
 });
 
@@ -101,4 +101,40 @@ test('drucke: Anzahl wird auch hier begrenzt', () => {
   const label = { print: () => { n += 1; } };
   drucke(label, 'D', {}, 999);
   assert.equal(n, MAX_ANZAHL);
+});
+
+/*
+  Der wunde Punkt beim Mehrfachdruck: bricht der Dienst nach ein paar
+  Etiketten ab, sind die ersten schon aus dem Gerät gelaufen. Wer nur
+  "Fehler beim Drucken" liest, druckt alles noch einmal – und hat die
+  Hälfte doppelt.
+*/
+test('drucke: Abbruch mitten in der Serie meldet, was schon heraus ist', () => {
+  let n = 0;
+  const label = {
+    print: () => {
+      n += 1;
+      if (n === 4) throw new Error('Print job failed');
+    },
+  };
+  const r = drucke(label, 'D', {}, 6);
+  assert.equal(r.gedruckt, 3, 'drei sind wirklich gedruckt');
+  assert.equal(r.offen, 3, 'drei fehlen noch');
+  assert.match(r.grund, /Print job failed/);
+});
+
+test('drucke: nach einem Abbruch wird nicht weiter gehämmert', () => {
+  let versuche = 0;
+  const label = { print: () => { versuche += 1; throw new Error('offline'); } };
+  const r = drucke(label, 'D', {}, 20);
+  assert.equal(versuche, 1, 'ein Fehlversuch genügt als Antwort');
+  assert.equal(r.gedruckt, 0);
+  assert.equal(r.offen, 20);
+});
+
+test('drucke: heiler Lauf meldet nichts Offenes', () => {
+  const label = { print: () => {} };
+  assert.equal(drucke(label, 'D', {}, 3).offen, 0);
+  const fw = { createLabelWriterPrintParamsXml: ({ copies }) => `<x><Copies>${copies}</Copies></x>` };
+  assert.equal(drucke(label, 'D', fw, 3).offen, 0);
 });

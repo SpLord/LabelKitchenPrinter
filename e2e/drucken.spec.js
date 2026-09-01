@@ -36,6 +36,29 @@ test.describe('Drucken', () => {
     await expect(seite.locator('.anzahl-wert')).toHaveText('1');
   });
 
+  /*
+    Der Fall, der in der Küche teuer wird: der Dienst bricht nach ein paar
+    Etiketten ab. Vorher stand nur "Fehler beim Drucken" da – wer den Auftrag
+    dann wiederholt, hat die ersten doppelt im Fach.
+  */
+  test('Abbruch mitten in der Serie nennt die Zahl der fertigen Etiketten', async ({ page }) => {
+    await echtesDymoBlocken(page);
+    // Kein Kopien-Parameter, damit einzeln gedruckt wird; ab dem 4. streikt er.
+    await page.addInitScript(dymoFaelschen(), [['DYMO Küche'], false, PNG, 4]);
+    await page.addInitScript(spielstand(), STAND_SATT);
+    await page.goto('/');
+    await page.waitForSelector('.status-indicator .online', { timeout: 15_000 });
+    for (let i = 0; i < 5; i += 1) await page.getByRole('button', { name: 'Eines mehr' }).click();
+    await page.getByRole('button', { name: /^Steak/ }).first().click();
+
+    const banner = page.locator('.print-error');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('3 von 6');
+    await expect(banner).toContainText('Print job failed');
+    // Nach dem Abbruch wird nicht weiter gegen das tote Gerät gedruckt
+    expect(await page.evaluate(() => window.__drucke.length)).toBe(3);
+  });
+
   test('ohne Kopien-Funktion wird mehrfach einzeln gedruckt', async ({ page }) => {
     await echtesDymoBlocken(page);
     await page.addInitScript(dymoFaelschen(), [['DYMO Küche'], false, PNG]);

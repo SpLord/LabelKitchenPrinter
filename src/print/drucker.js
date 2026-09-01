@@ -57,7 +57,11 @@ export const druckParameter = (framework, anzahl) => {
   Hauptsache, die Etiketten kommen heraus. Ein Fehlschlag im schnellen Weg darf
   nicht dazu führen, dass gar nichts gedruckt wird.
 
-  Gibt zurück, wie oft gedruckt wurde und ob der Rückfall nötig war.
+  Bricht der Dienst mitten in der Serie ab, wird sofort aufgehört statt
+  zwanzigmal gegen ein totes Gerät zu laufen. Zurück kommt, wie viele
+  Etiketten wirklich heraus sind und wie viele fehlen – denn die schon
+  gedruckten liegen im Ausgabefach, und wer den Auftrag blind wiederholt,
+  hat sie doppelt.
 */
 export const drucke = (label, ziel, framework, anzahl) => {
   const n = begrenzeAnzahl(anzahl);
@@ -67,7 +71,7 @@ export const drucke = (label, ziel, framework, anzahl) => {
   if (xml) {
     try {
       label.print(ziel, xml);
-      return { gedruckt: n, rueckfall: false, grund: null };
+      return { gedruckt: n, offen: 0, rueckfall: false, grund: null };
     } catch (err) {
       grund = err?.message || String(err);
     }
@@ -75,6 +79,19 @@ export const drucke = (label, ziel, framework, anzahl) => {
 
   // Ohne Parameter oder nach einem Fehlschlag: einzeln, dafür verlässlich.
   const mal = xml ? n : wiederholungen;
-  for (let i = 0; i < mal; i += 1) label.print(ziel);
-  return { gedruckt: mal, rueckfall: Boolean(xml), grund };
+  let gedruckt = 0;
+  for (let i = 0; i < mal; i += 1) {
+    try {
+      label.print(ziel);
+      gedruckt += 1;
+    } catch (err) {
+      return {
+        gedruckt,
+        offen: mal - gedruckt,
+        rueckfall: Boolean(xml),
+        grund: err?.message || String(err),
+      };
+    }
+  }
+  return { gedruckt, offen: 0, rueckfall: Boolean(xml), grund };
 };
