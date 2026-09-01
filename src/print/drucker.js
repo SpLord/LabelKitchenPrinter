@@ -34,16 +34,47 @@ export const begrenzeAnzahl = (wert) => {
   Druckparameter für mehrere Exemplare.
 
   Das DYMO-Framework kennt createLabelWriterPrintParamsXml; fehlt die Funktion
-  (ältere Fassung), liefern wir null und der Aufrufer druckt stattdessen
-  mehrfach einzeln.
+  oder wirft sie, liefern wir null und es wird mehrfach einzeln gedruckt.
 */
 export const druckParameter = (framework, anzahl) => {
   const n = begrenzeAnzahl(anzahl);
   if (n <= 1) return { xml: null, wiederholungen: 1 };
   try {
     if (typeof framework?.createLabelWriterPrintParamsXml === 'function') {
-      return { xml: framework.createLabelWriterPrintParamsXml({ copies: n }), wiederholungen: 1 };
+      const xml = framework.createLabelWriterPrintParamsXml({ copies: n });
+      // Leerer oder unbrauchbarer Rückgabewert wäre schlimmer als kein Parameter
+      if (typeof xml === 'string' && xml.includes('Copies')) return { xml, wiederholungen: 1 };
     }
   } catch { /* Fassung kennt die Funktion nicht – unten einzeln drucken */ }
   return { xml: null, wiederholungen: n };
+};
+
+/*
+  Tatsächlich drucken.
+
+  Der Kopien-Parameter ist der saubere Weg, aber nicht jede Fassung des
+  DYMO-Dienstes nimmt ihn an. Scheitert er, wird stattdessen einzeln gedruckt –
+  Hauptsache, die Etiketten kommen heraus. Ein Fehlschlag im schnellen Weg darf
+  nicht dazu führen, dass gar nichts gedruckt wird.
+
+  Gibt zurück, wie oft gedruckt wurde und ob der Rückfall nötig war.
+*/
+export const drucke = (label, ziel, framework, anzahl) => {
+  const n = begrenzeAnzahl(anzahl);
+  const { xml, wiederholungen } = druckParameter(framework, n);
+  let grund = null;
+
+  if (xml) {
+    try {
+      label.print(ziel, xml);
+      return { gedruckt: n, rueckfall: false, grund: null };
+    } catch (err) {
+      grund = err?.message || String(err);
+    }
+  }
+
+  // Ohne Parameter oder nach einem Fehlschlag: einzeln, dafür verlässlich.
+  const mal = xml ? n : wiederholungen;
+  for (let i = 0; i < mal; i += 1) label.print(ziel);
+  return { gedruckt: mal, rueckfall: Boolean(xml), grund };
 };

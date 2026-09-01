@@ -11,7 +11,7 @@ import LabelEditor from './LabelEditor.jsx';
 import useEtiketten from './labels/useEtiketten.js';
 import {
   KEY_DRUCKER, MAX_ANZAHL, MIN_ANZAHL,
-  begrenzeAnzahl, druckParameter, druckerNamen, waehleDrucker,
+  begrenzeAnzahl, drucke, druckerNamen, waehleDrucker,
 } from './print/drucker.js';
 import { datumsText, verwendbarBis } from './print/etikett.js';
 
@@ -218,13 +218,13 @@ export default function App() {
         label.setObjectText("Datum", datumsText(selectedDate, tage));
 
         const ziel = printerName || "DYMO LabelWriter 450";
-        const { xml, wiederholungen } = druckParameter(framework, anzahl);
-        for (let i = 0; i < wiederholungen; i += 1) {
-          if (xml) label.print(ziel, xml);
-          else label.print(ziel);
+        // Scheitert der Kopien-Parameter, wird einzeln gedruckt statt gar nicht
+        const ergebnis = drucke(label, ziel, framework, anzahl);
+        if (ergebnis.rueckfall) {
+          console.warn('[druck] Kopien-Parameter abgelehnt, einzeln gedruckt:', ergebnis.grund);
         }
       })
-      .catch(err => showError('Fehler beim Drucken: ' + err.message));
+      .catch(err => showError('Fehler beim Drucken: ' + (err?.message || err)));
   };
 
   const generatePreview = (text, tage = null) => {

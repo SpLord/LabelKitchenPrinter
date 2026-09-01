@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_ANZAHL, begrenzeAnzahl, druckParameter, druckerNamen, waehleDrucker } from './drucker.js';
+import { MAX_ANZAHL, begrenzeAnzahl, druckParameter, drucke, druckerNamen, waehleDrucker } from './drucker.js';
 
 test('drucker: Namen aus der Framework-Antwort', () => {
   assert.deepEqual(druckerNamen([{ name: 'A' }, { name: 'B' }]), ['A', 'B']);
@@ -32,8 +32,11 @@ test('druckParameter: eine Kopie braucht nichts Besonderes', () => {
 });
 
 test('druckParameter: nutzt das Framework, wenn es Kopien kann', () => {
-  const fw = { createLabelWriterPrintParamsXml: ({ copies }) => `<params copies="${copies}"/>` };
-  assert.deepEqual(druckParameter(fw, 4), { xml: '<params copies="4"/>', wiederholungen: 1 });
+  // So sieht es im echten Framework aus: <LabelWriterPrintParams><Copies>N</Copies>
+  const fw = { createLabelWriterPrintParamsXml: ({ copies }) =>
+    `<LabelWriterPrintParams><Copies>${copies}</Copies></LabelWriterPrintParams>` };
+  assert.deepEqual(druckParameter(fw, 4), {
+    xml: '<LabelWriterPrintParams><Copies>4</Copies></LabelWriterPrintParams>', wiederholungen: 1 });
 });
 
 test('druckParameter: fällt auf mehrfaches Drucken zurück', () => {
@@ -44,4 +47,58 @@ test('druckParameter: fällt auf mehrfaches Drucken zurück', () => {
 
 test('druckParameter: begrenzt auch hier', () => {
   assert.equal(druckParameter({}, 500).wiederholungen, MAX_ANZAHL);
+});
+
+test('drucke: ein Exemplar ohne Parameter', () => {
+  const rufe = [];
+  const label = { print: (ziel, params) => rufe.push({ ziel, params: params ?? null }) };
+  const r = drucke(label, 'D', {}, 1);
+  assert.deepEqual(r, { gedruckt: 1, rueckfall: false, grund: null });
+  assert.deepEqual(rufe, [{ ziel: 'D', params: null }]);
+});
+
+test('drucke: mehrere über den Kopien-Parameter', () => {
+  const rufe = [];
+  const label = { print: (ziel, params) => rufe.push({ ziel, params: params ?? null }) };
+  const fw = { createLabelWriterPrintParamsXml: ({ copies }) => `<x><Copies>${copies}</Copies></x>` };
+  const r = drucke(label, 'D', fw, 4);
+  assert.equal(r.gedruckt, 4);
+  assert.equal(r.rueckfall, false);
+  assert.equal(rufe.length, 1, 'ein Aufruf genügt');
+  assert.match(rufe[0].params, /<Copies>4<\/Copies>/);
+});
+
+test('drucke: wirft der Kopien-Weg, wird einzeln gedruckt statt gar nicht', () => {
+  const rufe = [];
+  const label = {
+    print: (ziel, params) => {
+      // Der Dienst nimmt den Parameter nicht an
+      if (params) throw new Error('printParams abgelehnt');
+      rufe.push(ziel);
+    },
+  };
+  const fw = { createLabelWriterPrintParamsXml: ({ copies }) => `<x><Copies>${copies}</Copies></x>` };
+  const r = drucke(label, 'D', fw, 3);
+  assert.equal(r.gedruckt, 3, 'die Etiketten kommen trotzdem heraus');
+  assert.equal(r.rueckfall, true);
+  assert.match(r.grund, /abgelehnt/);
+  assert.deepEqual(rufe, ['D', 'D', 'D']);
+});
+
+test('drucke: unbrauchbarer Parameter-Rückgabewert wird verworfen', () => {
+  const rufe = [];
+  const label = { print: (ziel, params) => rufe.push(params ?? null) };
+  for (const kaputt of [() => '', () => null, () => '<x/>', () => { throw new Error('x'); }]) {
+    rufe.length = 0;
+    const r = drucke(label, 'D', { createLabelWriterPrintParamsXml: kaputt }, 3);
+    assert.equal(r.gedruckt, 3);
+    assert.deepEqual(rufe, [null, null, null], 'einzeln, ohne Parameter');
+  }
+});
+
+test('drucke: Anzahl wird auch hier begrenzt', () => {
+  let n = 0;
+  const label = { print: () => { n += 1; } };
+  drucke(label, 'D', {}, 999);
+  assert.equal(n, MAX_ANZAHL);
 });

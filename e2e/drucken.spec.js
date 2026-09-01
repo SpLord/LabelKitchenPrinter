@@ -83,3 +83,40 @@ test.describe('Druckerauswahl', () => {
     await expect(page.locator('.status-indicator')).toContainText('DYMO Küche', { timeout: 15_000 });
   });
 });
+
+test('scheitert der Kopien-Parameter, wird trotzdem gedruckt', async ({ page }) => {
+  await echtesDymoBlocken(page);
+  // Ein Dienst, der printParams ablehnt – genau der gemeldete Fall
+  await page.addInitScript((png) => {
+    window.__drucke = [];
+    const framework = {
+      init: () => {},
+      getPrinters: () => [{ name: 'DYMO Küche' }],
+      createLabelWriterPrintParamsXml: ({ copies }) =>
+        `<LabelWriterPrintParams><Copies>${copies}</Copies></LabelWriterPrintParams>`,
+      openLabelXml: () => ({
+        setObjectText: () => {},
+        print: (ziel, params) => {
+          if (params) throw new Error('printParams abgelehnt');
+          window.__drucke.push({ ziel, params: null });
+        },
+        render: () => png,
+      }),
+    };
+    Object.defineProperty(window, 'dymo', {
+      configurable: true, writable: true, value: { label: { framework } },
+    });
+  }, 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+  await page.addInitScript(spielstand(), STAND_SATT);
+  await page.goto('/');
+  await page.waitForSelector('.status-indicator .online');
+
+  await page.getByRole('button', { name: 'Eines mehr' }).click();
+  await page.getByRole('button', { name: 'Eines mehr' }).click();
+  await page.getByRole('button', { name: /^Steak/ }).first().click();
+
+  const drucke = await warteAufDrucke(page, 3);
+  expect(drucke.every((d) => d.params === null)).toBe(true);
+  // Und keine Fehlermeldung an den Anwender – die Etiketten kamen ja heraus
+  expect(await page.locator('.print-error').count()).toBe(0);
+});
