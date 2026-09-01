@@ -6,6 +6,7 @@ import useCatNeeds from './cat/useCatNeeds.js';
 import useCatCoins from './cat/useCatCoins.js';
 import useKatzenladen from './cat/useKatzenladen.js';
 import useWachstum from './cat/useWachstum.js';
+import Erklaerung from './cat/Erklaerung.jsx';
 import { FREUNDSCHAFT_FUETTERN, FREUNDSCHAFT_SPIELEN, FREUNDSCHAFT_STREICHELN } from './cat/wachstum.js';
 import Katzenladen from './cat/Katzenladen.jsx';
 import { getCookie, setCookie } from './cat/storage.js';
@@ -72,13 +73,18 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     try { localStorage.setItem('cat_shellStreak', String(shellStreak)); } catch {}
   }, [shellStreak]);
   const [showUnlocks, setShowUnlocks] = useState(false);
-  // Hunger und Durst inklusive Verfall und Persistenz (src/cat/useCatNeeds.js)
-  const { hunger, thirst, freude, krank, zustand, schlaeft: schlaeftGerade, fuettern, traenken, erfreuen, heilen } = useCatNeeds(droppings.length);
-
-  // Katzenladen: Besitz und angelegtes Zubehör (src/cat/useKatzenladen.js)
+  /*
+    Der Laden steht bewusst VOR den Bedürfnissen: die gekaufte Ausstattung
+    (Futterautomat, Trinkbrunnen, Kratzbaum, Kuschelhöhle) bremst deren
+    Verfall, useCatNeeds braucht die Wirkung also schon beim Aufruf.
+  */
   const meldeRef = useRef(() => {});
   const laden = useKatzenladen(coinCount, setCoinCount, (text) => meldeRef.current(text));
   const [ladenOffen, setLadenOffen] = useState(false);
+  const [erklaerungOffen, setErklaerungOffen] = useState(false);
+
+  // Hunger und Durst inklusive Verfall und Persistenz (src/cat/useCatNeeds.js)
+  const { hunger, thirst, freude, krank, zustand, schlaeft: schlaeftGerade, fuettern, traenken, erfreuen, heilen } = useCatNeeds(droppings.length, laden.wirkung);
 
   // Lebensphase und Freundschaft (src/cat/useWachstum.js)
   const wachstum = useWachstum(zustand.key, (text) => meldeRef.current(text));
@@ -629,7 +635,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     const coinId = Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
   // Schlafende, kranke oder schwache Katzen sammeln nichts; glückliche doppelt.
-  const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
+  // Glückspfote aus dem Laden zahlt dauerhaft eine Münze mehr je Fund
+  const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0) + laden.wirkung.muenzBonus;
   const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
   erfreuen(FREUDE_AUFRAEUMEN);
@@ -675,7 +682,8 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     const coinId = 'tc' + Date.now() + Math.random();
     setCoins((prev) => prev.concat({ id: coinId, x, y }));
   // Schlafende, kranke oder schwache Katzen sammeln nichts; glückliche doppelt.
-  const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
+  // Glückspfote aus dem Laden zahlt dauerhaft eine Münze mehr je Fund
+  const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0) + laden.wirkung.muenzBonus;
   const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
     setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
@@ -857,20 +865,33 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
           {x2Active && <span className="fx-badge">x2</span>}
           {magnetActive && <span className="fx-badge">🧲</span>}
           {(debugUi || coinPeak >= 50) && (
-            <>
-              <span className={`pet-condition ${zustand.key}`} title={`Zustand: ${zustand.label}`}>
+            /*
+              Die ganze Leiste ist ein Knopf: sie zeigt sechs Zahlen, deren
+              Bedeutung nirgends stand ("bei den Herzen hab ich keine Ahnung").
+              Ein Klick öffnet die Erklärung.
+            */
+            <button
+              className="pet-leiste"
+              title="Was bedeutet das? Antippen für die Erklärung"
+              aria-label="Erklärung der Anzeige öffnen"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPanelOpen(false);
+                setShowUnlocks(false);
+                setErklaerungOffen((v) => !v);
+              }}
+            >
+              <span className={`pet-condition ${zustand.key}`}>
                 {zustand.emoji} {zustand.label}
               </span>
-              <span className={`pet-stat ${hunger < 15 ? 'kritisch' : ''}`} title="Hunger">🍽️ {Math.round(hunger)}%</span>
-              <span className={`pet-stat ${thirst < 15 ? 'kritisch' : ''}`} title="Durst">💧 {Math.round(thirst)}%</span>
-              <span className={`pet-stat ${freude < 25 ? 'kritisch' : ''}`} title="Zufriedenheit">💛 {Math.round(freude)}%</span>
-              <span
-                className="pet-phase"
-                title={`${wachstum.phase.name} · ${wachstum.tage} gepflegte Tage · Freundschaft ${wachstum.freundschaft} von 100`}
-              >
+              <span className={`pet-stat ${hunger < 15 ? 'kritisch' : ''}`}>🍽️ {Math.round(hunger)}%</span>
+              <span className={`pet-stat ${thirst < 15 ? 'kritisch' : ''}`}>💧 {Math.round(thirst)}%</span>
+              <span className={`pet-stat ${freude < 25 ? 'kritisch' : ''}`}>💛 {Math.round(freude)}%</span>
+              <span className="pet-phase">
                 {wachstum.phase.name} {'❤️'.repeat(wachstum.herzen)}{'🤍'.repeat(5 - wachstum.herzen)}
               </span>
-            </>
+              <span className="pet-hilfe" aria-hidden="true">❓</span>
+            </button>
           )}
           {hasAnyUnlocked && (
             <button
@@ -895,6 +916,19 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
             >📜</button>
           )}
         </div>
+      )}
+      {erklaerungOffen && (
+        <Erklaerung
+          hunger={hunger}
+          thirst={thirst}
+          freude={freude}
+          zustand={zustand}
+          schlaeftGerade={schlaeftGerade}
+          krank={krank}
+          wachstum={wachstum}
+          besitz={laden.besitz}
+          onClose={() => setErklaerungOffen(false)}
+        />
       )}
       {ladenOffen && (
         <Katzenladen

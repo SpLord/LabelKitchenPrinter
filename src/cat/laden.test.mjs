@@ -2,11 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ALLE, FELLE, ZUBEHOER, ablegen, angelegtesFell, anlegen, artikel,
-  fortschritt, istAngelegt, istFell, kaufen, putzeBesitz,
+  AUSSTATTUNG, effekte, fortschritt, istAngelegt, istAusstattung, istFell, kaufen, putzeBesitz,
 } from './laden.js';
+import { VARIANTS } from './felle.js';
 
 test('laden: Katalog ist schlüssig', () => {
-  assert.equal(ALLE.length, FELLE.length + ZUBEHOER.length);
+  assert.equal(ALLE.length, FELLE.length + ZUBEHOER.length + AUSSTATTUNG.length);
   assert.equal(new Set(ALLE.map((a) => a.id)).size, ALLE.length, 'Kennungen doppelt');
   assert.ok(ALLE.every((a) => a.preis > 0 && Number.isInteger(a.preis)));
   // Der Laden muss deutlich über den heutigen Stand von rund 1410 hinausreichen
@@ -15,7 +16,8 @@ test('laden: Katalog ist schlüssig', () => {
 });
 
 test('laden: Fellvarianten zeigen auf gültige Indizes', () => {
-  assert.ok(FELLE.every((f) => Number.isInteger(f.variante) && f.variante >= 0 && f.variante < 10));
+  // Ein zu grosser Index wickelt still auf ein falsches Fell um – deshalb hart
+  assert.ok(FELLE.every((f) => Number.isInteger(f.variante) && f.variante >= 0 && f.variante < VARIANTS.length));
   assert.equal(new Set(FELLE.map((f) => f.variante)).size, FELLE.length, 'Variante doppelt vergeben');
 });
 
@@ -83,4 +85,52 @@ test('laden: istFell trennt die Kategorien', () => {
   assert.equal(istFell('fell-blau'), true);
   assert.equal(istFell('hut'), false);
   assert.equal(artikel('hut').preis, 1800);
+});
+
+// ── Ausstattung: Artikel, die wirklich etwas tun ────────────────────────────
+
+test('laden: Ausstattung gehört zum Katalog und ist kein Fell', () => {
+  assert.ok(AUSSTATTUNG.length >= 5, 'genug Ziele für einen langen Atem');
+  assert.equal(ALLE.length, FELLE.length + ZUBEHOER.length + AUSSTATTUNG.length);
+  assert.ok(AUSSTATTUNG.every((a) => !istFell(a.id)));
+  assert.ok(AUSSTATTUNG.every((a) => istAusstattung(a.id)));
+  // Jeder Ausstattungsartikel muss erklären, was er bewirkt – sonst kauft ihn niemand
+  assert.ok(AUSSTATTUNG.every((a) => typeof a.wirkung === 'string' && a.wirkung.length > 10));
+});
+
+test('laden: ohne Besitz ändert Ausstattung nichts', () => {
+  assert.deepEqual(effekte([]), {
+    hungerFaktor: 1, durstFaktor: 1, freudeFaktor: 1, schlafErholung: false, muenzBonus: 0,
+  });
+  assert.deepEqual(effekte(null), effekte([]), 'kaputter Speicher darf nicht durchschlagen');
+});
+
+test('laden: gekaufte Ausstattung wirkt sofort und dauerhaft', () => {
+  assert.equal(effekte(['futterautomat']).hungerFaktor, 0.75);
+  assert.equal(effekte(['trinkbrunnen']).durstFaktor, 0.75);
+  assert.equal(effekte(['kratzbaum']).freudeFaktor, 0.7);
+  assert.equal(effekte(['kuschelhoehle']).schlafErholung, true);
+  assert.equal(effekte(['glueckspfote']).muenzBonus, 1);
+});
+
+test('laden: Ausstattung wirkt unabhängig voneinander', () => {
+  const e = effekte(['futterautomat', 'kratzbaum', 'glueckspfote']);
+  assert.equal(e.hungerFaktor, 0.75);
+  assert.equal(e.durstFaktor, 1, 'nicht Gekauftes bleibt wirkungslos');
+  assert.equal(e.freudeFaktor, 0.7);
+  assert.equal(e.muenzBonus, 1);
+});
+
+test('laden: Ausstattung wird nicht an- und abgelegt, sie läuft einfach', () => {
+  // Ein Kratzbaum steht im Raum – man zieht ihn nicht an
+  const angelegt = anlegen(['kratzbaum'], {}, 'kratzbaum');
+  assert.deepEqual(angelegt, {}, 'kein Anlegen');
+  assert.equal(istAngelegt({}, 'kratzbaum'), true, 'gekauft heisst aktiv');
+});
+
+test('laden: jede Fellvariante zeigt auf einen wirklich vorhandenen Eintrag', () => {
+  for (const f of FELLE) {
+    assert.ok(VARIANTS[f.variante], `${f.id} zeigt auf Index ${f.variante}, den es nicht gibt`);
+  }
+  assert.equal(new Set(FELLE.map((f) => f.variante)).size, FELLE.length);
 });

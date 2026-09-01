@@ -1,16 +1,18 @@
 import { test, expect, grundaufbau, menuepunkt } from './hilfen.js';
+import { ALLE } from '../src/cat/laden.js';
 
-const mitMuenzen = async (page, stand) => {
+const mitMuenzen = async (page, stand, weitere = {}) => {
   await grundaufbau(page);
-  await page.addInitScript((n) => {
+  await page.addInitScript(([n, extra]) => {
     try {
       localStorage.setItem('cat_coinCount', String(n));
       localStorage.setItem('cat_coinPeak', '1410');
+      for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, String(v));
       // Nicht aufräumen: das Skript läuft auch beim Reload und würde den
       // gerade getätigten Kauf wieder löschen. Jeder Test hat ohnehin ein
       // frisches Profil.
     } catch { /* gesperrt */ }
-  }, stand);
+  }, [stand, weitere]);
   await page.goto('/');
   await page.waitForSelector('.status-indicator .online');
   (await menuepunkt(page, /Katzenladen/)).click();
@@ -71,5 +73,59 @@ test('der Laden reicht weit über den heutigen Stand hinaus', async ({ page }) =
   await mitMuenzen(page, 1410);
   const gesperrt = await page.locator('.laden-knopf:disabled').count();
   expect(gesperrt).toBeGreaterThan(0);
-  await expect(page.locator('.laden-stand')).toContainText('von 12');
+  // Aus dem Katalog abgeleitet: eine feste Zahl hier veraltet beim ersten
+  // neuen Artikel und behauptet dann etwas Falsches.
+  await expect(page.locator('.laden-stand')).toContainText(`von ${ALLE.length}`);
+});
+
+// ── Ausstattung: die Artikel, die wirklich etwas tun ────────────────────────
+
+test('Ausstattung erklärt ihre Wirkung, statt nur einen Preis zu zeigen', async ({ page }) => {
+  await mitMuenzen(page, 3000);
+  const zeile = page.locator('.laden-zeile', { hasText: 'Futterautomat' });
+  await expect(zeile).toContainText('Der Hunger fällt ein Viertel langsamer');
+  // Ohne diesen Satz wäre der Unterschied zu einem Halsband nicht erkennbar
+  await expect(page.locator('.laden-zeile', { hasText: 'Kuschelhöhle' }))
+    .toContainText('Nachts erholt sie sich');
+});
+
+test('gekaufte Ausstattung läuft von selbst und wird nicht angelegt', async ({ page }) => {
+  await mitMuenzen(page, 3000);
+  const zeile = page.locator('.laden-zeile', { hasText: 'Kratzbaum' });
+  await zeile.locator('.laden-knopf').click();
+
+  await expect(stand(page)).resolves.toBe(3000 - 1200);
+  // Kein "anlegen"-Knopf: ein Kratzbaum steht im Raum, man zieht ihn nicht an
+  await expect(zeile.locator('.laden-knopf')).toHaveCount(0);
+  await expect(zeile.locator('.laden-aktiv')).toHaveText(/aktiv/);
+
+  await page.reload();
+  await page.waitForSelector('.status-indicator .online');
+  (await menuepunkt(page, /Katzenladen/)).click();
+  await expect(page.locator('.laden-zeile', { hasText: 'Kratzbaum' }).locator('.laden-aktiv'))
+    .toBeVisible();
+});
+
+test('die Glückspfote bringt bei jedem Fund eine Münze mehr', async ({ page }) => {
+  // Nicht auf genau 0 herunterkaufen: unter einer Münze verschwindet die
+  // ganze Anzeige, und der Test hätte nichts mehr zum Ablesen.
+  /*
+    Zustand festnageln: satt und zufrieden ist die Katze "glücklich" und
+    verdoppelt jeden Fund ohnehin. Dann wäre nicht zu erkennen, ob die
+    zusätzliche Münze von der Pfote kommt oder von der guten Laune.
+    Mit 60/60/50 steht sie auf "zufrieden", Faktor genau 1.
+  */
+  await mitMuenzen(page, 2700, { cat_hunger: 60, cat_thirst: 60, cat_freude: 50 });
+  await page.locator('.laden-zeile', { hasText: 'Glückspfote' }).locator('.laden-knopf').click();
+  await expect(stand(page)).resolves.toBe(100);
+  await page.locator('.gimmick-panel.laden button', { hasText: 'Schließen' }).click();
+
+  // Leckerlis werfen und eines anklicken: normal 1 Münze, mit Pfote 2
+  await (await menuepunkt(page, /Leckerlis/)).click();
+  const leckerli = page.locator('.treat').first();
+  await leckerli.waitFor({ timeout: 5000 });
+  // Leckerlis fallen von oben herein und starten ausserhalb des Bildes;
+  // ein echter Klick scheitert daran. Das Ereignis direkt zustellen.
+  await leckerli.dispatchEvent('click');
+  await expect(stand(page)).resolves.toBe(102);
 });

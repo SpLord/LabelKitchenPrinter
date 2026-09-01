@@ -1,3 +1,5 @@
+import { VARIANTS } from './felle.js';
+
 /*
   Aussehen der Katze als SVG.
   Rein darstellend, ohne Zustand – deshalb aus CatSprite herausgelöst.
@@ -6,18 +8,7 @@
   und nicht mehr als SMIL im Markup: SMIL lief im Hauptthread und kostete
   gemessen rund ein Drittel der Bildrate.
 */
-const VARIANTS = [
-  { name: 'sand', body: '#f5d3b3', stroke: '#3b3b3b', accent: '#e08e79', pattern: 'none' },
-  { name: 'creme', body: '#f2e5cf', stroke: '#2f2f2f', accent: '#f59e0b', pattern: 'none' },
-  { name: 'blau', body: '#c7e0ff', stroke: '#1f2937', accent: '#60a5fa', pattern: 'stripes', patternColor: '#60a5fa' },
-  { name: 'rosa', body: '#ffd6e7', stroke: '#334155', accent: '#fb7185', pattern: 'spots', patternColor: '#fb7185' },
-  { name: 'ginger', body: '#fbbf24', stroke: '#3b2f17', accent: '#f59e0b', pattern: 'stripes', patternColor: '#d97706' },
-  { name: 'gray', body: '#cbd5e1', stroke: '#0f172a', accent: '#94a3b8', pattern: 'none' },
-  { name: 'tuxedo', body: '#111827', stroke: '#000000', accent: '#f3f4f6', pattern: 'tuxedo', patternColor: '#f3f4f6' },
-  { name: 'siam', body: '#e5d3b3', stroke: '#3b3b3b', accent: '#8b5e34', pattern: 'siam', patternColor: '#8b5e34' },
-  { name: 'calico', body: '#fff7ed', stroke: '#374151', accent: '#fb923c', pattern: 'patch', patternColor: '#fb923c' },
-  { name: 'snow', body: '#f8fafc', stroke: '#334155', accent: '#a3e635', pattern: 'spots', patternColor: '#a3e635' },
-];
+
 
 function CatVariant({ index, active, zubehoer = {} }) {
   const v = VARIANTS[index % VARIANTS.length];
@@ -39,6 +30,17 @@ function CatVariant({ index, active, zubehoer = {} }) {
         </filter>
       </defs>
       <path className="cat-tail" d="M158 118 c34 -6 52 16 40 40 s-34 14-44 2" fill="none" stroke={v.stroke} strokeWidth="8" strokeLinecap="round" />
+
+      {/* Der Umhang gehört HINTER den Körper – deshalb steht er vor der
+          Körpergruppe im Markup. Als Zubehör weiter unten gezeichnet läge er
+          über der Katze und sähe aufgeklebt aus. */}
+      {zubehoer.umhang && (
+        <g className="kz-umhang">
+          <path d="M96 94 C158 100 194 132 199 192 C150 199 104 176 86 126 Z"
+                fill="#b91c1c" stroke={v.stroke} strokeWidth="5" strokeLinejoin="round" />
+        </g>
+      )}
+
       <g filter="url(#shadow)">
         {/* Body + Head */}
         <ellipse cx="110" cy="120" rx="70" ry="55" fill={v.body} stroke={v.stroke} strokeWidth="6" />
@@ -53,6 +55,24 @@ function CatVariant({ index, active, zubehoer = {} }) {
             <path d="M120 95 q-16 10 -32 0" fill="none" />
             <path d="M130 115 q-22 12 -44 0" fill="none" />
             <path d="M95 70 q-8 6 -16 0" fill="none" />
+          </g>
+        )}
+        {v.pattern === 'glanz' && (
+          <g fill={v.patternColor} opacity="0.55">
+            <ellipse cx="95" cy="100" rx="26" ry="12" transform="rotate(-18 95 100)" />
+            <ellipse cx="140" cy="128" rx="16" ry="7" transform="rotate(-18 140 128)" />
+            <circle cx="66" cy="68" r="5" />
+          </g>
+        )}
+        {v.pattern === 'sterne' && (
+          <g fill={v.patternColor}>
+            <circle cx="122" cy="104" r="3.5" opacity="0.95" />
+            <circle cx="146" cy="126" r="2.5" opacity="0.8" />
+            <circle cx="104" cy="140" r="3" opacity="0.9" />
+            <circle cx="160" cy="108" r="2" opacity="0.7" />
+            <circle cx="128" cy="152" r="2" opacity="0.75" />
+            <circle cx="64" cy="66" r="2.5" opacity="0.85" />
+            <path d="M92 112 l2.6 5.6 l6 .8 l-4.4 4.3 l1.1 6 l-5.3 -2.9 l-5.3 2.9 l1.1 -6 l-4.4 -4.3 l6 -.8 Z" opacity="0.95" />
           </g>
         )}
         {v.pattern === 'spots' && (
@@ -115,6 +135,48 @@ function CatVariant({ index, active, zubehoer = {} }) {
             <path d="M46 40 h60" stroke={v.stroke} strokeWidth="6" strokeLinecap="round" />
             <rect x="58" y="6" width="36" height="34" rx="3" fill="#1f2937" stroke={v.stroke} strokeWidth="5" />
             <rect x="58" y="28" width="36" height="8" fill="#dc2626" />
+          </g>
+        )}
+        {/*
+          Angelegter Flügel auf der Flanke, bewusst VOR dem Körper.
+
+          Zwei Versuche dahinter scheiterten am Platz: seitlich verdeckt die
+          Körperellipse fast alles, und über den Ohren sahen zwei Spitzen aus
+          wie ein zweites Ohrenpaar. Ein angelegter Flügel auf dem Rumpf ist
+          das, was eine sitzende Katze mit Flügeln ohnehin zeigen würde.
+        */}
+        {zubehoer.fluegel && (
+          <g className="kz-fluegel">
+            <path d="M104 98 C146 94 176 118 169 156 C134 155 108 130 101 105 Z"
+                  fill="#c7d2fe" stroke={v.stroke} strokeWidth="4.5" strokeLinejoin="round" />
+            <g fill="none" stroke={v.stroke} strokeWidth="3" opacity="0.5" strokeLinecap="round">
+              <path d="M112 106 C138 108 158 124 163 148" />
+              <path d="M108 118 C130 122 148 136 154 153" />
+              <path d="M105 130 C122 135 134 143 141 154" />
+            </g>
+          </g>
+        )}
+        {/* Der Kragen gehört vor den Körper – der Stoff dahinter ist zu
+            grossen Teilen verdeckt, erst der Kragen macht den Umhang lesbar. */}
+        {zubehoer.umhang && (
+          <g className="kz-umhang-kragen">
+            <path d="M50 112 q30 20 60 -2 l5 13 q-34 24 -70 0 Z"
+                  fill="#dc2626" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
+            <circle cx="80" cy="122" r="5.5" fill="#fbbf24" stroke={v.stroke} strokeWidth="2.5" />
+          </g>
+        )}
+        {zubehoer.kopfhoerer && (
+          <g className="kz-kopfhoerer">
+            <path d="M44 84 q0 -46 36 -46 q36 0 36 46" fill="none" stroke="#1f2937" strokeWidth="7" strokeLinecap="round" />
+            <rect x="34" y="72" width="18" height="26" rx="7" fill="#374151" stroke={v.stroke} strokeWidth="3.5" />
+            <rect x="108" y="72" width="18" height="26" rx="7" fill="#374151" stroke={v.stroke} strokeWidth="3.5" />
+            <rect x="37" y="79" width="12" height="12" rx="4" fill="#f472b6" />
+          </g>
+        )}
+        {zubehoer.heiligenschein && (
+          <g className="kz-heiligenschein">
+            <ellipse cx="80" cy="16" rx="27" ry="8" fill="none" stroke="#fbbf24" strokeWidth="6" />
+            <ellipse cx="80" cy="16" rx="27" ry="8" fill="none" stroke="#fef3c7" strokeWidth="2" />
           </g>
         )}
         {zubehoer.schleife && (

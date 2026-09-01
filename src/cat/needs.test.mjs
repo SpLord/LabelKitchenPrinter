@@ -81,3 +81,32 @@ test('needs: fehlender Speicherwert darf nicht als 0 gelesen werden', () => {
   assert.equal(Number(null), 0, 'Annahme über das Verhalten von Number()');
   assert.equal(Number.isFinite(Number(null)), true, 'deshalb reicht isFinite nicht');
 });
+
+/*
+  Ausstattung aus dem Laden bremst den Verfall. Das muss auch für die
+  Abwesenheit gelten – sonst wäre der Futterautomat ausgerechnet über Nacht
+  wirkungslos, also genau dann, wenn er zählt.
+*/
+test('catchUp: Bremsfaktoren wirken auch über die Abwesenheit', () => {
+  // Zwei Stunden: knapp unter dem Deckel von 25 Punkten, sonst verdeckt der
+  // Deckel den Unterschied, den dieser Test zeigen soll.
+  const zweiStunden = 2 * 3_600_000;
+  const jetzt = 1_000_000_000_000;
+  const ohne = catchUp({ hunger: 100, thirst: 100, lastSeen: jetzt - zweiStunden }, jetzt);
+  const mit = catchUp(
+    { hunger: 100, thirst: 100, lastSeen: jetzt - zweiStunden, hungerFaktor: 0.5, durstFaktor: 1 },
+    jetzt,
+  );
+  assert.equal(ohne.hunger, 76, '12 %/h über zwei Stunden');
+  assert.equal(mit.hunger, 88, 'halber Verfall');
+  assert.equal(mit.thirst, ohne.thirst, 'ohne eigenen Faktor unverändert');
+});
+
+test('catchUp: fehlende Faktoren ändern nichts', () => {
+  const jetzt = 1_000_000_000_000;
+  const lastSeen = jetzt - 3_600_000;
+  assert.deepEqual(
+    catchUp({ hunger: 90, thirst: 80, lastSeen, hungerFaktor: 1, durstFaktor: 1 }, jetzt),
+    catchUp({ hunger: 90, thirst: 80, lastSeen }, jetzt),
+  );
+});

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { angelegtesFell, ablegen, anlegen, kaufen, putzeBesitz } from './laden.js';
+import { angelegtesFell, ablegen, anlegen, effekte, kaufen, putzeBesitz } from './laden.js';
 
 const KEY_BESITZ = 'cat_besitz';
 const KEY_ANGELEGT = 'cat_angelegt';
@@ -52,11 +52,16 @@ export default function useKatzenladen(muenzen, setMuenzen, melde) {
     ));
   }, [besitz]);
 
+  // Wirkung der gekauften Ausstattung – von useCatNeeds gelesen. Eigenes
+  // useMemo, damit die Kennung stabil bleibt und dort keine Effekte neu starten.
+  const wirkung = useMemo(() => effekte(besitz), [besitz]);
+
   return useMemo(() => ({
     besitz,
     angelegt,
+    wirkung,
     fellVariante: angelegtesFell(angelegt),
     kaufeUndLege,
     umschalten,
-  }), [besitz, angelegt, kaufeUndLege, umschalten]);
+  }), [besitz, angelegt, wirkung, kaufeUndLege, umschalten]);
 }

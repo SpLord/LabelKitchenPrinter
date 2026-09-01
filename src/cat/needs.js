@@ -52,13 +52,22 @@ export const decayOver = (value, elapsedMs, { cap = Infinity } = {}) => {
   return clampNeed(clampNeed(value) - loss);
 };
 
-/* Zustand nach einer Pause wiederherstellen (Tab zu, Gerät aus). */
-export const catchUp = ({ hunger, thirst, lastSeen }, now = Date.now()) => {
+/*
+  Zustand nach einer Pause wiederherstellen (Tab zu, Gerät aus).
+
+  Die Faktoren kommen aus der gekauften Ausstattung (Futterautomat,
+  Trinkbrunnen). Sie müssen auch hier greifen: über Nacht ist der Verfall
+  am grössten, das ist genau der Fall, für den man das Ding kauft.
+*/
+export const catchUp = (
+  { hunger, thirst, lastSeen, hungerFaktor = 1, durstFaktor = 1 },
+  now = Date.now(),
+) => {
   const elapsed = Number.isFinite(lastSeen) ? now - lastSeen : 0;
   const opts = { cap: MAX_OFFLINE_DECAY };
   return {
-    hunger: decayOver(hunger, elapsed, opts),
-    thirst: decayOver(thirst, elapsed, opts),
+    hunger: decayOver(hunger, elapsed * hungerFaktor, opts),
+    thirst: decayOver(thirst, elapsed * durstFaktor, opts),
   };
 };
 

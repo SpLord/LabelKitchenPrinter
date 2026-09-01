@@ -640,3 +640,106 @@
   color: var(--muted);
   white-space: nowrap;
 }
+
+/* ==========================================
+   ❓ Erklärung der Statusleiste
+   ========================================== */
+
+/*
+  Die Leiste ist jetzt ein Knopf, soll aber weiter wie ein Teil der Anzeige
+  aussehen: keine Knopffläche, kein eigener Rahmen. Nur der Zeiger und ein
+  dezenter Grund beim Berühren verraten, dass sie etwas tut.
+*/
+.coin-counter .pet-leiste {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.coin-counter .pet-leiste:hover { background: rgba(2, 6, 23, 0.06); }
+.coin-counter .pet-leiste:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.coin-counter .pet-leiste .pet-stat { margin-left: 0; }
+
+.pet-hilfe {
+  font-size: 0.72rem;
+  opacity: 0.45;
+  transition: opacity 120ms ease;
+}
+.coin-counter .pet-leiste:hover .pet-hilfe { opacity: 0.9; }
+
+.gimmick-panel.erklaerung {
+  width: min(26rem, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+.erk-block { margin: 0 0 0.9rem; }
+.erk-block:last-of-type { margin-bottom: 0.3rem; }
+.erk-block h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.erk-block p { margin: 0 0 0.45rem; font-size: 0.86rem; }
+.erk-fein { color: var(--muted); font-size: 0.8rem !important; }
+
+.erk-liste {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.erk-liste li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 7px;
+  font-size: 0.84rem;
+}
+/* Der Eintrag, der gerade zutrifft – damit die Tabelle die Lage erklärt
+   und nicht nur die Regel. */
+.erk-liste li.jetzt {
+  background: rgba(99, 102, 241, 0.12);
+  font-weight: 700;
+}
+.erk-wert { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.erk-liste li.jetzt .erk-wert { color: inherit; }
+
+/* Ausstattung im Laden: die Wirkung steht unter dem Namen */
+.laden-wirkung {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: normal;
+}
+.laden-aktiv {
+  flex: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(34, 197, 94, 0.16);
+  color: #166534;
+  white-space: nowrap;
+}
+.laden-abschnitt-note {
+  margin-left: 0.35rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--primary);
+}

@@ -42,7 +42,21 @@ const schreiben = (key, wert) => {
 
   Die Rechenregeln liegen in needs.js und sind dort getestet.
 */
-export default function useCatNeeds(haeufchen = 0) {
+const OHNE_WIRKUNG = { hungerFaktor: 1, durstFaktor: 1, freudeFaktor: 1, schlafErholung: false };
+
+/* Erholung im Schlaf, wenn die Kuschelhöhle gekauft ist – Punkte je Stunde. */
+export const SCHLAF_ERHOLUNG_PRO_STUNDE = 4;
+
+export default function useCatNeeds(haeufchen = 0, wirkung = OHNE_WIRKUNG) {
+  const { hungerFaktor, durstFaktor, freudeFaktor, schlafErholung } = { ...OHNE_WIRKUNG, ...wirkung };
+  /*
+    Über Refs, nicht über Abhängigkeiten: hinge der Nachhol-Effekt an den
+    Faktoren, liefe er beim Kauf eines Futterautomaten erneut und würde die
+    Abwesenheit ein zweites Mal abziehen. Der Wert darf sich ändern, der
+    Effekt nicht neu starten.
+  */
+  const bremseRef = useRef({ hungerFaktor, durstFaktor });
+  bremseRef.current = { hungerFaktor, durstFaktor };
   const [hunger, setHunger] = useState(() => lesen(KEY_HUNGER));
   const [thirst, setThirst] = useState(() => lesen(KEY_THIRST));
   const [freude, setFreude] = useState(() => lesen(KEY_FREUDE));
@@ -72,8 +86,9 @@ export default function useCatNeeds(haeufchen = 0) {
     try {
       const lastSeen = Number(localStorage.getItem(KEY_SEEN));
       if (Number.isFinite(lastSeen) && lastSeen > 0) {
-        setHunger((h) => catchUp({ hunger: h, thirst: 100, lastSeen }).hunger);
-        setThirst((t) => catchUp({ hunger: 100, thirst: t, lastSeen }).thirst);
+        const { hungerFaktor: hf, durstFaktor: df } = bremseRef.current;
+        setHunger((h) => catchUp({ hunger: h, thirst: 100, lastSeen, hungerFaktor: hf }).hunger);
+        setThirst((t) => catchUp({ hunger: 100, thirst: t, lastSeen, durstFaktor: df }).thirst);
       }
     } catch { /* ohne Zeitstempel beginnt der Verfall einfach jetzt */ }
     stempeln();
@@ -81,8 +96,11 @@ export default function useCatNeeds(haeufchen = 0) {
     const id = setInterval(() => {
       // Nachts ruht sie: halber Verfall statt Pflegefehler wie im Original.
       const takt = schlaeft() ? TAKT * VERFALL_FAKTOR_SCHLAF : TAKT;
-      setHunger((v) => decayOver(v, takt));
-      setThirst((v) => decayOver(v, takt));
+      // Gekaufte Ausstattung bremst den Verfall. Der Faktor sitzt an der
+      // Zeitspanne, weil decayOver linear darin ist – so gilt dieselbe Regel
+      // hier wie beim Nachholen der Abwesenheit.
+      setHunger((v) => decayOver(v, takt * bremseRef.current.hungerFaktor));
+      setThirst((v) => decayOver(v, takt * bremseRef.current.durstFaktor));
       stempeln();
     }, TAKT);
 
@@ -97,12 +115,18 @@ export default function useCatNeeds(haeufchen = 0) {
   // Zufriedenheit fällt eigenständig, schneller wenn etwas fehlt oder Dreck liegt
   useEffect(() => {
     const id = setInterval(() => {
-      const rate = freudeVerfall({ hunger, thirst, haeufchen });
+      // Mit Kuschelhöhle ist die Nacht Erholung statt Abbau – der einzige
+      // Zeitraum, in dem die Zufriedenheit von allein steigt.
+      if (schlaeft() && schlafErholung) {
+        setFreude((v) => clampNeed(v + SCHLAF_ERHOLUNG_PRO_STUNDE / 60));
+        return;
+      }
+      const rate = freudeVerfall({ hunger, thirst, haeufchen }) * freudeFaktor;
       const verlust = (schlaeft() ? VERFALL_FAKTOR_SCHLAF : 1) * (rate / 60);
       setFreude((v) => clampNeed(v - verlust));
     }, TAKT);
     return () => clearInterval(id);
-  }, [hunger, thirst, haeufchen]);
+  }, [hunger, thirst, haeufchen, freudeFaktor, schlafErholung]);
 
   // Krank wird sie nur nach anhaltender Not – nie zufällig, nie tödlich.
   useEffect(() => {

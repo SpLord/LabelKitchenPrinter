@@ -1,4 +1,4 @@
-import { FELLE, ZUBEHOER, artikel, fortschritt, istAngelegt } from './laden.js';
+import { AUSSTATTUNG, FELLE, ZUBEHOER, artikel, fortschritt, istAngelegt, istAusstattung } from './laden.js';
 
 /*
   Katzenladen.
@@ -19,9 +19,13 @@ export default function Katzenladen({ muenzen, besitz, angelegt, onKaufen, onUms
         <span className="laden-name">
           {a.emoji ? <span aria-hidden="true">{a.emoji} </span> : null}
           {a.name}
+          {/* Ausstattung muss erklären, was sie tut – sonst kauft sie niemand */}
+          {a.wirkung && <span className="laden-wirkung">{a.wirkung}</span>}
         </span>
 
-        {gekauft ? (
+        {gekauft && istAusstattung(a.id) ? (
+          <span className="laden-aktiv" title="Wirkt dauerhaft, ohne Anlegen">✓ aktiv</span>
+        ) : gekauft ? (
           <button
             className={`laden-knopf ${getragen ? 'getragen' : ''}`}
             onClick={() => onUmschalten(a.id)}
@@ -58,9 +62,15 @@ export default function Katzenladen({ muenzen, besitz, angelegt, onKaufen, onUms
       <div className="laden-abschnitt">Zubehör</div>
       <ul className="laden-liste">{ZUBEHOER.map(zeile)}</ul>
 
+      <div className="laden-abschnitt">
+        Ausstattung <span className="laden-abschnitt-note">wirkt wirklich</span>
+      </div>
+      <ul className="laden-liste">{AUSSTATTUNG.map(zeile)}</ul>
+
       <p className="laden-hinweis">
-        Gekauftes bleibt dauerhaft. Anlegen und Abnehmen kosten nichts, und es lässt
-        sich jederzeit wechseln.
+        Fell und Zubehör sind Optik: Gekauftes bleibt, Anlegen und Abnehmen kosten
+        nichts. Ausstattung dagegen greift in die Regeln ein und läuft ab dem Kauf
+        von allein – nichts anzulegen.
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
