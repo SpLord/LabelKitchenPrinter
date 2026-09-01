@@ -1,4 +1,4 @@
-import { test, expect, grundaufbau, menuepunkt } from './hilfen.js';
+import { test, expect, grundaufbau, menuepunkt, warteAufDrucke } from './hilfen.js';
 
 const mitZustand = async (page, werte) => {
   await grundaufbau(page);
@@ -118,3 +118,30 @@ test('frisches Gerät startet mit satter Katze, nicht bei null', async ({ page }
   von Hand am laufenden System bestätigt worden; die Rechenregel dahinter
   deckt src/cat/tamagotchi.test.mjs ab.
 */
+
+/*
+  Füttern hatte schon einmal einen bösen Fehler: der Platzieren-Klick wurde
+  über die ganze Seite abgefangen und innerhalb des Hauptbereichs verworfen –
+  auf dem Tablet war das der grösste Teil der Fläche. Es liess sich weder
+  füttern noch sonst etwas bedienen. Diese Prüfung deckt genau das ab: die
+  Ebene nimmt den Klick an, stellt den Napf hin und gibt die Bedienung frei.
+*/
+test('Füttern stellt den Napf hin und blockiert die Bedienung nicht', async ({ page }) => {
+  await mitZustand(page, { cat_hunger: 30, cat_thirst: 80 });
+
+  await (await menuepunkt(page, /Wasser/)).click();
+
+  const ebene = page.locator('.place-overlay');
+  await expect(ebene, 'die Platzieren-Ebene muss aufgehen').toBeVisible();
+
+  // Mitten in den Hauptbereich tippen – genau dort ging es früher verloren
+  const feld = await page.locator('.main-layout').boundingBox();
+  await page.mouse.click(feld.x + feld.width / 2, feld.y + feld.height / 2);
+
+  await expect(page.locator('.placed-item'), 'der Napf muss stehen').toHaveCount(1);
+  await expect(ebene, 'die Ebene muss wieder verschwinden').toHaveCount(0);
+
+  // Und die Küche muss danach weiterarbeiten können
+  await page.getByRole('button', { name: /^Steak/ }).first().click();
+  expect((await warteAufDrucke(page, 1)).length).toBe(1);
+});
