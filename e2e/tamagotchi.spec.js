@@ -106,3 +106,15 @@ test('frisches Gerät startet mit satter Katze, nicht bei null', async ({ page }
   expect(werte.freude).toBeGreaterThan(50);
   expect(await page.locator('.cat-sprite.schwach').count()).toBe(0);
 });
+
+/*
+  BEWUSST NICHT ALS TEST: "Fangen hebt die Zufriedenheit".
+
+  Die Katze muss dafür das Spielzeug tatsächlich erreichen, und die
+  Verfolgung läuft im Headless-Browser stark gedrosselt – der Test bestand mal
+  und fiel mal durch, ohne dass sich am Code etwas änderte. Ein flackernder
+  Test ist schlimmer als keiner: er untergräbt das Vertrauen in die ganze
+  Suite. Die Verdrahtung (showCelebrate ruft erfreuen und naeherKommen) ist
+  von Hand am laufenden System bestätigt worden; die Rechenregel dahinter
+  deckt src/cat/tamagotchi.test.mjs ab.
+*/

@@ -17,7 +17,8 @@ import { clampNeed, conditionOf } from './needs.js';
 
 /* Fällt langsamer als Hunger; Spielen und Streicheln füllen sie. */
 export const FREUDE_VERFALL_PRO_STUNDE = 6;
-export const FREUDE_SPIEL = 12;   // gefangenes Spielzeug
+export const FREUDE_FANGEN = 12;      // Spielzeug erwischt – das eigentliche Spielen
+export const FREUDE_AUFRAEUMEN = 4;   // Häufchen weggeklickt
 export const FREUDE_STREICHELN = 3;
 export const FREUDE_LECKERLI = 8;
 

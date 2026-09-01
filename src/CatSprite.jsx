@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import ShellGame, { STAKE as SHELL_STAKE } from './ShellGame.jsx';
-import { FREUDE_LECKERLI, FREUDE_SPIEL, FREUDE_STREICHELN, MEDIZIN_PREIS, bedarf, ertrag } from './cat/tamagotchi.js';
+import { FREUDE_AUFRAEUMEN, FREUDE_FANGEN, FREUDE_LECKERLI, FREUDE_STREICHELN, MEDIZIN_PREIS, bedarf, ertrag } from './cat/tamagotchi.js';
 import useCatNeeds from './cat/useCatNeeds.js';
 import useCatCoins from './cat/useCatCoins.js';
 import useKatzenladen from './cat/useKatzenladen.js';
@@ -85,6 +85,13 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   // Stabile Referenz: das ganze wachstum-Objekt als Abhängigkeit würde die
   // Verfolgungsschleife bei jedem Freundschaftspunkt neu starten.
   const { naeherKommen } = wachstum;
+
+  // Über Refs, damit showCelebrate stabil bleibt und die Verfolgungsschleife
+  // nicht bei jedem Freudenpunkt neu startet.
+  const erfreuenRef = useRef(erfreuen);
+  const naeherKommenRef = useRef(naeherKommen);
+  erfreuenRef.current = erfreuen;
+  naeherKommenRef.current = naeherKommen;
 
 
   // Placement state
@@ -171,7 +178,14 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     []
   );
 
+  /*
+    Die Katze hat das Spielzeug erwischt – das ist das eigentliche Spielen.
+    Vorher hing die Spielfreude am Wegklicken eines Häufchens, und das Fangen
+    selbst brachte gar nichts.
+  */
   const showCelebrate = useCallback(() => {
+    erfreuenRef.current(FREUDE_FANGEN);
+    naeherKommenRef.current(FREUNDSCHAFT_SPIELEN);
     const msg = celebrates[Math.floor(Math.random() * celebrates.length)];
     setBubbleSize('big');
     setMessage(msg);
@@ -618,8 +632,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
   const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
-  erfreuen(FREUDE_SPIEL);
-  naeherKommen(FREUNDSCHAFT_SPIELEN);
+  erfreuen(FREUDE_AUFRAEUMEN);
     // cleanup coin after animation (~900ms)
     setTimeout(() => {
       setCoins((prev) => prev.filter((c) => c.id !== coinId));
@@ -665,7 +678,6 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
   const basis = 1 + (x2Active ? 1 : 0) + (magnetActive ? 1 : 0);
   const add = ertrag(basis, { hunger, thirst, freude, krank });
   if (add > 0) setCoinCount((c) => c + add);
-  erfreuen(FREUDE_SPIEL);
     setTimeout(() => setCoins((prev) => prev.filter((c) => c.id !== coinId)), 1000);
   };
 
