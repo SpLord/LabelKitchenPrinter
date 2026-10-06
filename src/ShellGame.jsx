@@ -103,29 +103,56 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak, bal
   }, [numCups]);
 
   // ── Einsatz ─────────────────────────────────────────────────────────────────
+  /*
+    Reicht das Guthaben? EINMAL beim Öffnen festgehalten, nicht laufend am
+    Kontostand gemessen.
+
+    Vorher hingen die Effekte unten an `balance`. Der Einsatz senkt den
+    Kontostand aber sofort – mit 5 bis 9 Münzen unter 5. Der Merkphasen-Effekt
+    startete daraufhin neu, sein Aufräumen löschte den Timer zum Mischen, und
+    der Neustart brach wegen "zu wenig" sofort ab. Das Spiel blieb für immer in
+    der Merkphase stehen, die 5 Münzen waren weg. Auch spätere Münzfunde
+    während des Spiels starteten die Merkphase neu und warfen eine laufende
+    Wahl zurück ins Mischen.
+  */
+  const [genugGuthaben] = useState(() => balance >= STAKE);
+
+  // Rückrufe über Refs: sie ändern sich bei jedem Render des Aufrufers und
+  // dürfen die Effekte nicht neu starten.
+  const onResultRef = useRef(onResult);
+  const onCloseRef = useRef(onClose);
+  onResultRef.current = onResult;
+  onCloseRef.current = onClose;
+
+  // Genau einmal abbuchen – StrictMode ruft Effekte doppelt auf.
   const stakePaidRef = useRef(false);
   useEffect(() => {
-    if (stakePaidRef.current) return;   // StrictMode ruft Effekte doppelt auf
+    if (!genugGuthaben || stakePaidRef.current) return;
     stakePaidRef.current = true;
-    if (balance < STAKE) {
-      setMessage(`Zu wenig Münzen – ${STAKE} 🪙 nötig.`);
-      setStage('result');
-      const t = setTimeout(onClose, 1800);
-      return () => clearTimeout(t);
-    }
-    onResult(-STAKE);
-  }, [balance, onResult, onClose]);
+    onResultRef.current(-STAKE);
+  }, [genugGuthaben]);
+
+  // Zu wenig: Hinweis zeigen und schliessen. Bewusst getrennt vom Abbuchen –
+  // hinter dem Einmal-Riegel würde StrictMode den Schliess-Timer beim ersten
+  // Aufräumen löschen und nie neu setzen.
+  useEffect(() => {
+    if (genugGuthaben) return;
+    setMessage(`Zu wenig Münzen – ${STAKE} 🪙 nötig.`);
+    setStage('result');
+    const t = setTimeout(() => onCloseRef.current(), 1800);
+    return () => clearTimeout(t);
+  }, [genugGuthaben]);
 
   // ── Peek → Shuffle ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (balance < STAKE) return;
+    if (!genugGuthaben) return;
     // 1,5 s waren zu knapp, um sich den Becher zu merken – zumal der Deckel
     // erst 260 ms zum Anheben braucht.
     const peekTimer = setTimeout(() => {
       setStage('shuffle');
     }, 2400);
     return () => clearTimeout(peekTimer);
-  }, [balance]);
+  }, [genugGuthaben]);
 
   // ── Shuffle Loop ────────────────────────────────────────────────────────────
   useEffect(() => {

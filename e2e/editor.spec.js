@@ -70,3 +70,55 @@ test('Sicherung lässt sich herunterladen', async ({ seite }) => {
   ]);
   expect(datei.suggestedFilename()).toMatch(/^etiketten-\d{4}-\d{2}-\d{2}\.json$/);
 });
+
+/*
+  Namen werden getippt, nicht eingefügt. Die E2E-Tests benutzten bisher
+  fill(), das den Wert in einem Rutsch setzt – dadurch blieb monatelang
+  unentdeckt, dass jedes Leerzeichen sofort weggetrimmt wurde: getippt
+  "Rote Beete", im Feld stand "RoteBeete". Deshalb hier Zeichen für Zeichen.
+*/
+test('Namen mit Leerzeichen lassen sich Zeichen für Zeichen tippen', async ({ seite }) => {
+  const feld = seite.locator('.editor-group-name').first();
+  await feld.click();
+  await seite.keyboard.press('Control+a');
+  await seite.keyboard.type('Rote Beete', { delay: 30 });
+  await expect(feld).toHaveValue('Rote Beete');
+
+  // Übernommen wird beim Verlassen des Feldes – und es überlebt den Reload
+  await feld.press('Tab');
+  await seite.reload();
+  await seite.waitForSelector('.status-indicator .online');
+  await seite.click('.edit-toggle');
+  await expect(seite.locator('.editor-group-name').first()).toHaveValue('Rote Beete');
+});
+
+test('ein Etikett lässt sich komplett neu schreiben', async ({ seite }) => {
+  const feld = seite.locator('.editor-entry input').first();
+  await feld.click();
+  await seite.keyboard.press('Control+a');
+  await seite.keyboard.press('Backspace');
+  // Das leere Zwischenstadium muss erlaubt sein, sonst kommt man nie weiter
+  await expect(feld).toHaveValue('');
+  await seite.keyboard.type('Kalbsbäckchen geschmort', { delay: 20 });
+  await feld.press('Enter');
+  await expect(feld).toHaveValue('Kalbsbäckchen geschmort');
+});
+
+test('leer gelassener Name fällt auf den alten zurück, nichts geht verloren', async ({ seite }) => {
+  const feld = seite.locator('.editor-entry input').first();
+  const vorher = await feld.inputValue();
+  await feld.click();
+  await seite.keyboard.press('Control+a');
+  await seite.keyboard.press('Backspace');
+  await feld.press('Tab');
+  await expect(feld).toHaveValue(vorher);
+});
+
+test('Escape verwirft die Änderung', async ({ seite }) => {
+  const feld = seite.locator('.editor-group-name').first();
+  const vorher = await feld.inputValue();
+  await feld.click();
+  await seite.keyboard.type(' Probe');
+  await feld.press('Escape');
+  await expect(feld).toHaveValue(vorher);
+});

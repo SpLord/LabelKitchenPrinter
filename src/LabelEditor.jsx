@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import IconPicker from './labels/IconPicker.jsx';
+import NamensFeld from './labels/NamensFeld.jsx';
 import { downloadBackup, readBackup } from './labels/backup.js';
 import {
   addEntry, addGroup, moveEntry, moveGroup, removeEntry, removeGroup,
@@ -130,10 +131,10 @@ export default function LabelEditor({ groups, onChange, onClose, speicherZustand
                     label={group.name}
                     onChange={(icon) => onChange(setGroupIcon(groups, group.id, icon))}
                   />
-                  <input
+                  <NamensFeld
                     className="editor-group-name"
                     value={group.name}
-                    onChange={(e) => onChange(renameGroup(groups, group.id, e.target.value))}
+                    onCommit={(name) => onChange(renameGroup(groups, group.id, name))}
                     aria-label="Gruppenname"
                   />
                   <div className="editor-group-tools">
@@ -162,9 +163,9 @@ export default function LabelEditor({ groups, onChange, onClose, speicherZustand
                       </div>
                     ) : (
                       <>
-                        <input
+                        <NamensFeld
                           value={entry.name}
-                          onChange={(e) => onChange(renameEntry(groups, group.id, index, e.target.value))}
+                          onCommit={(name) => onChange(renameEntry(groups, group.id, index, name))}
                           aria-label={`Etikett ${index + 1} in ${group.name}`}
                         />
                         <label className="haltbar-feld" title={

@@ -80,3 +80,23 @@ test('bei zu wenig Münzen startet das Spiel gar nicht', async ({ page }) => {
   expect(await page.locator('.shell-board').count()).toBe(0);
   await expect(page.locator('.coin-num')).toHaveText('3');
 });
+
+/*
+  Mit 5 bis 9 Münzen fror das Hütchenspiel in der Merkphase ein: der Einsatz
+  senkte den Kontostand unter 5, der Merkphasen-Effekt hing am Kontostand,
+  startete neu und brach ab – der Timer zum Mischen war aber schon gelöscht.
+  Die bestehenden Tests starteten mit 500 oder mit zu wenig Münzen; das
+  Fenster dazwischen hat nie jemand geprüft. Genau das tut dieser Test.
+*/
+for (const start of [5, 9]) {
+  test(`das Hütchenspiel läuft auch mit nur ${start} Münzen durch`, async ({ page }) => {
+    await mitStand(page, { cat_coinCount: start });
+    (await menuepunkt(page, /Hütchenspiel/)).click();
+    await page.waitForSelector('.cup');
+    // Merkphase 2,4 s, dann Mischen – danach müssen die Becher wählbar sein
+    await expect(page.locator('.cup:not([disabled])').first()).toBeVisible({ timeout: 15_000 });
+    // Der Einsatz ist abgebucht. Bei 0 blendet sich die Anzeige ganz aus.
+    if (start - 5 > 0) await expect(page.locator('.coin-num')).toHaveText(String(start - 5));
+    else await expect(page.locator('.coin-num')).toHaveCount(0);
+  });
+}
