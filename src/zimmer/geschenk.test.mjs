@@ -33,7 +33,7 @@ test('abholen: liefert Betrag und merkt sich den Schichttag', () => {
   const pflege = { tag: '2026-10-05', punkte: 8 };
   const r = abholen({ abgeholt: null, pflege, herzen: 1, glueckspfote: false }, TAG(6, 9));
   assert.equal(r.muenzen, 10 + 8 + 4);
-  assert.equal(r.abgeholt, '2026-10-06');
+  assert.equal(r.abgeholt, '2026-10-06|1');
 });
 
 test('abholen: Pflege von vorgestern zählt nicht mehr', () => {
@@ -42,7 +42,7 @@ test('abholen: Pflege von vorgestern zählt nicht mehr', () => {
 });
 
 test('abholen: schon abgeholt → nichts', () => {
-  const r = abholen({ abgeholt: '2026-10-06', pflege: { tag: '2026-10-05', punkte: 20 }, herzen: 2 }, TAG(6, 9));
+  const r = abholen({ abgeholt: '2026-10-06|1', pflege: { tag: '2026-10-05', punkte: 20 }, herzen: 2 }, TAG(6, 9));
   assert.equal(r.muenzen, 0);
 });
 
@@ -94,4 +94,26 @@ test('selbstheilung: Hunger oder Durst unter der Schwelle setzt die Uhr zurück'
 
 test('selbstheilung: gesund → keine Uhr', () => {
   assert.deepEqual(selbstheilung({ krank: false, hunger: 60, durst: 60, gutSeit: T }, T + STUNDE), { gutSeit: null, heilt: false });
+});
+
+test('zweites Geschenk (ab 3 Herzen): ab Mittag, halber Betrag, dann ist Schluss', () => {
+  const pflege = { tag: '2026-10-05', punkte: 20 };
+  const erstes = abholen({ abgeholt: null, pflege, herzen: 3, zweites: true }, TAG(6, 9));
+  assert.equal(erstes.muenzen, 10 + 20 + 12);
+  // vormittags noch nicht
+  assert.equal(geschenkDa(erstes.abgeholt, TAG(6, 11), true), false);
+  assert.equal(geschenkDa(erstes.abgeholt, TAG(6, 12), true), true);
+  const zweites = abholen({ abgeholt: erstes.abgeholt, pflege, herzen: 3, zweites: true }, TAG(6, 13));
+  assert.equal(zweites.muenzen, Math.round(42 / 2));
+  assert.equal(geschenkDa(zweites.abgeholt, TAG(6, 18), true), false);
+});
+
+test('ohne Freischaltung kein zweites Geschenk', () => {
+  const erstes = abholen({ abgeholt: null, pflege: null, herzen: 2 }, TAG(6, 9));
+  assert.equal(geschenkDa(erstes.abgeholt, TAG(6, 15), false), false);
+});
+
+test('alter Speicherstand (nur Tag als Text) zählt als ein abgeholtes Geschenk', () => {
+  assert.equal(geschenkDa('2026-10-06', TAG(6, 15), true), true);
+  assert.equal(geschenkDa('2026-10-06', TAG(6, 15), false), false);
 });

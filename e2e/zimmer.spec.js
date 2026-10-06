@@ -11,7 +11,9 @@ const oeffnen = async (page, pfad, werte = {}) => {
   await grundaufbau(page);
   await page.addInitScript((w) => {
     try { for (const [k, v] of Object.entries(w)) localStorage.setItem(k, String(v)); } catch { /* gesperrt */ }
-  }, { cat_coinCount: 500, cat_coinPeak: 1410, cat_lastSeen: Date.now(), cat_fwDone: '1', cat_hunger: 80, cat_thirst: 80, ...werte });
+  // zimmer_herzen_gesehen: 5 – sonst läge die Herz-Feier über jedem Test
+  }, { cat_coinCount: 500, cat_coinPeak: 1410, cat_lastSeen: Date.now(), cat_fwDone: '1', cat_hunger: 80, cat_thirst: 80,
+    zimmer_herzen_gesehen: 5, ...werte });
   await page.goto(pfad);
   await page.waitForSelector('.status-indicator .online');
 };
@@ -394,4 +396,30 @@ test('Hütchenspiel im Zimmer: Einsatz geht ab, Schließen führt zurück ins Zi
   await page.getByRole('button', { name: 'Schließen' }).click();
   await expect(page.getByRole('dialog', { name: 'Hütchenspiel' })).toHaveCount(0);
   await expect(page.locator('.zimmer-menue')).toBeVisible();
+});
+
+/* ── Etappe 6: Herzen schalten Verhalten frei ─────────────────────────── */
+test('neues Herz: Feier mit dem, was jetzt neu ist – einmal', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_herzen_gesehen: 0, cat_freundschaft: 25, zimmer_geschenk: schichtTag(0) });
+  const feier = page.getByRole('dialog', { name: 'Neues Herz' });
+  await expect(feier).toContainText('2 neue Herzen');
+  await expect(feier).toContainText('Begrüssung');
+  await expect(feier).toContainText('Bauch zeigen');
+  await feier.getByRole('button').click();
+  await expect(feier).toHaveCount(0);
+  // gemerkt – kein Neuladen, das Init-Skript des Tests setzte den Wert sonst zurück
+  expect(await page.evaluate(() => localStorage.getItem('zimmer_herzen_gesehen'))).toBe('2');
+});
+
+test('Freundschaft: Tipp auf die Herzen zeigt, was jedes Herz bringt', async ({ page }) => {
+  await zimmerAuf(page, { cat_freundschaft: 25, zimmer_geschenk: schichtTag(0) });
+  await page.getByRole('button', { name: /von 5 Herzen/ }).click();
+  await expect(page.locator('[data-freischaltung="rollen"]')).toContainText('frei');
+  await expect(page.locator('[data-freischaltung="zweitesGeschenk"]')).toContainText('noch zu');
+});
+
+test('Bauch zeigen (zweites Herz): Streicheln lässt sie sich rollen', async ({ page }) => {
+  await zimmerAuf(page, { cat_freundschaft: 25, zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-katze').dispatchEvent('click');
+  await expect(page.locator('.zimmer-katze')).toHaveClass(/rollt/);
 });

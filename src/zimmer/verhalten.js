@@ -101,7 +101,8 @@ export function wirkung(art, lage) {
       return gefressen > 0 ? { hunger: gefressen, napf: -gefressen } : {};
     }
     case 'kratzen': return { laune: KRATZ_LAUNE };
-    case 'fenster': return { laune: FENSTER_LAUNE };
+    // Sonnenbad (viertes Herz): dreimal so viel Laune am Fenster
+    case 'fenster': return { laune: lage.sonnenbad ? FENSTER_LAUNE * 3 : FENSTER_LAUNE };
     case 'klo':
     case 'haeufchen': return { gang: true };
     default: return {};

@@ -25,7 +25,23 @@ export const betrag = ({ pflegeVortag = 0, herzen = 0, glueckspfote = false }) =
   return glueckspfote ? Math.round(roh * GESCHENK.glueckspfote) : roh;
 };
 
-export const geschenkDa = (abgeholt, jetzt = new Date()) => abgeholt !== schichtSchluessel(jetzt);
+/*
+  abgeholt: "JJJJ-MM-TT|anzahl" – oder alt nur der Tag (= eins abgeholt).
+  Mit dem dritten Herz kommt ab Mittag ein zweites Päckchen.
+*/
+export const MITTAG = 12;
+const lesenAbgeholt = (abgeholt) => {
+  if (typeof abgeholt !== 'string' || !abgeholt) return { tag: null, anzahl: 0 };
+  const [tag, n] = abgeholt.split('|');
+  const anzahl = Number(n);
+  return { tag, anzahl: Number.isFinite(anzahl) && anzahl > 0 ? anzahl : 1 };
+};
+
+export const geschenkDa = (abgeholt, jetzt = new Date(), zweites = false) => {
+  const { tag, anzahl } = lesenAbgeholt(abgeholt);
+  if (tag !== schichtSchluessel(jetzt)) return true;
+  return zweites && anzahl < 2 && jetzt.getHours() >= MITTAG;
+};
 
 /* Schlüssel des Schichttags davor. */
 const vortagSchluessel = (jetzt) => schichtSchluessel(new Date(jetzt.getTime() - 24 * 3_600_000));
@@ -39,10 +55,14 @@ const pflegeVom = (pflege, tag) => {
 };
 
 /* Geschenk öffnen. muenzen 0 heisst: heute schon geholt. */
-export function abholen({ abgeholt, pflege, herzen = 0, glueckspfote = false }, jetzt = new Date()) {
-  if (!geschenkDa(abgeholt, jetzt)) return { muenzen: 0, abgeholt };
-  const pflegeVortag = pflegeVom(pflege, vortagSchluessel(jetzt));
-  return { muenzen: betrag({ pflegeVortag, herzen, glueckspfote }), abgeholt: schichtSchluessel(jetzt) };
+export function abholen({ abgeholt, pflege, herzen = 0, glueckspfote = false, zweites = false }, jetzt = new Date()) {
+  if (!geschenkDa(abgeholt, jetzt, zweites)) return { muenzen: 0, abgeholt };
+  const heute = schichtSchluessel(jetzt);
+  const alt = lesenAbgeholt(abgeholt);
+  const anzahl = alt.tag === heute ? alt.anzahl + 1 : 1;
+  const voll = betrag({ pflegeVortag: pflegeVom(pflege, vortagSchluessel(jetzt)), herzen, glueckspfote });
+  // Das zweite Päckchen ist kleiner – ein Bonus, kein zweiter Tageslohn
+  return { muenzen: anzahl === 1 ? voll : Math.round(voll / 2), abgeholt: `${heute}|${anzahl}` };
 }
 
 /* Eine Pflegetätigkeit verbuchen. Neuer Schichttag: der alte wird Vortag. */

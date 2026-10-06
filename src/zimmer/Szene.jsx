@@ -16,7 +16,7 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
   dieser Unterschied die Bildrate gerettet.
 */
 export default function Szene({
-  moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {},
+  moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
 }) {
   // Frisch gekauftes Möbel ploppt einmal auf
   const plopp = (id) => (neu === id ? 'zimmer-neu' : undefined);
@@ -85,7 +85,7 @@ export default function Szene({
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g
-        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} tut-${art} pose-${pose}`}
+        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} ${rollt ? 'rollt' : ''} tut-${art} pose-${pose}`}
         style={{ transform: `translate(${pos.x - KATZE / 2}px, ${pos.y - KATZE + 12}px)`, transitionDuration: `${dauer}ms` }}
         onClick={onKatze}
         role="button"

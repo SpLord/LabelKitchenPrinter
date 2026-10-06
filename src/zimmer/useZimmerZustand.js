@@ -10,6 +10,7 @@ import { KLO, faellig, gang, haeufchenWeg, kloLeeren, lesen as kloLesen, nachhol
 import { wirkung } from './verhalten.js';
 import { STANDARD_NAME, putzeName } from './katzenname.js';
 import { abholen, geschenkDa, pflegeLesen, pflegen, selbstheilung } from './geschenk.js';
+import { freigeschaltet, freundschaftHeute, grenzeLesen, neuFreigeschaltet } from './herzen.js';
 
 const KEY_NAPF = 'zimmer_napf';
 const KEY_NOTRATION = 'zimmer_notration';
@@ -18,6 +19,8 @@ const KEY_NAME = 'zimmer_katzenname';
 const KEY_PFLEGE = 'zimmer_pflege';
 const KEY_GESCHENK = 'zimmer_geschenk';
 const KEY_GUT_SEIT = 'zimmer_gut_seit';
+const KEY_FREUNDSCHAFT_HEUTE = 'zimmer_freundschaft_heute';
+const KEY_HERZEN_GESEHEN = 'zimmer_herzen_gesehen';
 
 const lesenText = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const schreibenText = (key, wert) => {
@@ -61,6 +64,36 @@ export default function useZimmerZustand() {
 
   const beduerfnisse = useCatNeeds(klo.haeufchen.length, laden.wirkung);
   const wachstum = useWachstum(beduerfnisse.zustand.key, () => {});
+  const kann = useCallback((id) => freigeschaltet(wachstum.herzen, id), [wachstum.herzen]);
+
+  /*
+    Freundschaft wächst je Quelle und Tag nur begrenzt (Streicheln 3, Spielen 2,
+    Füttern 2) – sonst füllt Dauerstreicheln alle Herzen in Minuten und die
+    Freischaltungen wären nichts wert.
+  */
+  const grenzeRef = useRef(undefined);
+  if (grenzeRef.current === undefined) grenzeRef.current = grenzeLesen(lesenText(KEY_FREUNDSCHAFT_HEUTE));
+  const { naeherKommen } = wachstum;
+  const naeher = useCallback((quelle, plus) => {
+    const r = freundschaftHeute(grenzeRef.current, quelle, plus, new Date());
+    grenzeRef.current = r.stand;
+    schreibenText(KEY_FREUNDSCHAFT_HEUTE, JSON.stringify(r.stand));
+    if (r.plus > 0) naeherKommen(r.plus);
+    return r.plus;
+  }, [naeherKommen]);
+
+  // Neue Herzen feiern: was ist seit dem letzten Blick freigeschaltet?
+  const [herzenGesehen, setHerzenGesehen] = useState(() => {
+    const n = Number(lesenText(KEY_HERZEN_GESEHEN));
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  });
+  const neueFreischaltungen = useMemo(
+    () => neuFreigeschaltet(herzenGesehen, wachstum.herzen), [herzenGesehen, wachstum.herzen],
+  );
+  const freischaltungenGesehen = useCallback(() => {
+    setHerzenGesehen(wachstum.herzen);
+    schreibenText(KEY_HERZEN_GESEHEN, String(wachstum.herzen));
+  }, [wachstum.herzen]);
   const [napf, setNapf] = useState(() => lesenZahl(KEY_NAPF, 30));
 
   // Eigener Name – "Mails" ist der Koch
@@ -108,18 +141,20 @@ export default function useZimmerZustand() {
 
   // Tägliches Geschenk – einmal je Schichttag, ab 5 Uhr
   const [abgeholt, setAbgeholt] = useState(() => lesenText(KEY_GESCHENK));
-  const geschenkHeute = geschenkDa(abgeholt, new Date(jetzt));
+  const zweitesGeschenk = kann('zweitesGeschenk');
+  const geschenkHeute = geschenkDa(abgeholt, new Date(jetzt), zweitesGeschenk);
   const { setStand: setzeMuenzen } = muenzen;
   const geschenkOeffnen = useCallback(() => {
     const r = abholen({
       abgeholt, pflege: pflegeStand, herzen: wachstum.herzen, glueckspfote: laden.besitz.includes('glueckspfote'),
+      zweites: zweitesGeschenk,
     }, new Date());
     if (r.muenzen <= 0) return 0;
     setAbgeholt(r.abgeholt);
     schreibenText(KEY_GESCHENK, r.abgeholt);
     setzeMuenzen((c) => c + r.muenzen);
     return r.muenzen;
-  }, [abgeholt, pflegeStand, wachstum.herzen, laden.besitz, setzeMuenzen]);
+  }, [abgeholt, pflegeStand, wachstum.herzen, laden.besitz, setzeMuenzen, zweitesGeschenk]);
 
   // Selbstheilung: zwölf Stunden gut versorgt → gesund, auch ohne Medizin
   const gutSeitRef = useRef(null);
@@ -160,6 +195,7 @@ export default function useZimmerZustand() {
     napf,
     moebel,
     mussMal: faellig(klo, Date.now()),
+    sonnenbad: kann('sonnenbad'),
     kloPlatz: hatKlo && klo.klo < KLO.kapazitaet,
   };
 
@@ -182,10 +218,10 @@ export default function useZimmerZustand() {
     if (muenzen.stand < preis || napf >= 100) return false;
     muenzen.setStand((c) => c - preis);
     setNapf((v) => Math.min(100, v + menge));
-    wachstum.naeherKommen(FREUNDSCHAFT_FUETTERN);
+    naeher('fuettern', FREUNDSCHAFT_FUETTERN);
     pflege('fuettern');
     return true;
-  }, [muenzen, napf, wachstum, pflege]);
+  }, [muenzen, napf, naeher, pflege]);
 
   /*
     Keine Sackgasse: Wer keine Münzen fürs billigste Futter hat, bekommt einmal
@@ -244,6 +280,10 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    kann,
+    naeher,
+    neueFreischaltungen,
+    freischaltungenGesehen,
     huetchenSerie,
     setHuetchenSerie,
     pflege,

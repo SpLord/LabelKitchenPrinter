@@ -223,11 +223,55 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
   animation: zimmer-lohn 1100ms ease-out forwards;
 }
 .zimmer-lohn .zimmer-muenze { width: 2.4cqw; height: 2.4cqw; }
-@keyframes zimmer-lohn { 0% { opacity: 0; transform: translateY(1cqw) scale(0.6); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: translateY(-7cqw); } }
+/* Münzen fliegen zur Anzeige oben rechts – man sieht, wohin der Lohn geht */
+@keyframes zimmer-lohn {
+  0% { opacity: 0; transform: translateY(1cqw) scale(0.6); }
+  20% { opacity: 1; transform: translateY(-2cqw) scale(1.15); }
+  45% { opacity: 1; transform: translateY(-3cqw) scale(1); }
+  100% { opacity: 0.2; transform: translate(var(--zum-x, 0), var(--zum-y, -7cqw)) scale(0.5); }
+}
+.zimmer-lohn { animation-timing-function: cubic-bezier(.5,0,.7,1); }
+
+/* Bauch zeigen (zweites Herz): beim Streicheln rollt sie sich einmal */
+.zimmer-katze.rollt .zimmer-katze-hops { animation: zimmer-rollen 900ms cubic-bezier(.4,0,.3,1); transform-box: fill-box; transform-origin: 50% 70%; }
+@keyframes zimmer-rollen { 0% { transform: none; } 40% { transform: rotate(-180deg) translateY(-10px); } 60% { transform: rotate(-200deg) translateY(-10px); } 100% { transform: rotate(-360deg); } }
+
+/* Herzen im Kopf sind ein Knopf zum Freundschaftsblatt */
+.zimmer-herzen-knopf { all: unset; cursor: pointer; display: inline-flex; border-radius: 1cqw; }
+.zimmer-herzen-knopf:focus-visible { outline: 0.35cqw solid #f59e0b; outline-offset: 0.3cqw; }
+
+/* Freundschaftsblatt */
+.zimmer-freundschaft ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1cqw; }
+.zimmer-freundschaft li {
+  display: grid; grid-template-columns: 12cqw 1fr auto; align-items: center; gap: 1.4cqw;
+  padding: 1cqw 1.6cqw; background: #fff; border: 0.35cqw solid var(--kontur); border-radius: 1.6cqw;
+}
+.zimmer-freundschaft li.zu { background: #f5efe6; color: #8a7a66; }
+.zimmer-freundschaft li strong { display: block; font-size: 1.8cqw; }
+.zimmer-freundschaft li small { font-size: 1.4cqw; }
+.zimmer-freundschaft-herzen { display: flex; flex-wrap: wrap; gap: 0.2cqw; }
+.zimmer-freundschaft-herzen svg { width: 2.2cqw; height: auto; }
+.zimmer-freundschaft-stand { font-weight: 800; font-size: 1.4cqw; padding: 0.4cqw 1cqw; border-radius: 999px; border: 0.3cqw solid var(--kontur); background: #dcfce7; }
+.zimmer-freundschaft li.zu .zimmer-freundschaft-stand { background: #eadbc6; }
+
+/* Neues Herz */
+.zimmer-feier-huelle { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(47, 42, 38, 0.35); }
+.zimmer-feier {
+  width: 54cqw; padding: 3cqw 3.4cqw 2.6cqw; text-align: center;
+  background: var(--flaeche); border: 0.5cqw solid var(--kontur); border-radius: 2.6cqw; box-shadow: 0 0.6cqw 0 var(--kontur);
+  animation: zimmer-feier 520ms cubic-bezier(.3,1.5,.5,1) both;
+}
+@keyframes zimmer-feier { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.zimmer-feier-herz { display: flex; justify-content: center; animation: zimmer-pochen 1.1s ease-in-out infinite; }
+.zimmer-feier-herz svg { width: 10cqw; height: auto; }
+@keyframes zimmer-pochen { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.18); } 30% { transform: scale(0.96); } 45% { transform: scale(1.1); } }
+.zimmer-feier h2 { margin: 1cqw 0 1.2cqw; font-size: 3.2cqw; }
+.zimmer-feier ul { list-style: none; margin: 0 0 2cqw; padding: 0; font-size: 1.8cqw; line-height: 1.45; }
 
 @media (prefers-reduced-motion: reduce) {
   .zimmer, .zimmer-blatt,
-  .zimmer-haeufchen, .zimmer-gestank path, .zimmer-lohn, .zimmer-neu, .zimmer-geschenk, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
+  .zimmer-haeufchen, .zimmer-gestank path, .zimmer-lohn, .zimmer-neu, .zimmer-geschenk,
+  .zimmer-katze.rollt .zimmer-katze-hops, .zimmer-feier, .zimmer-feier-herz, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }

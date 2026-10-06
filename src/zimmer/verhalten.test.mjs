@@ -105,3 +105,7 @@ test('wirkung: Klo und Häufchen melden einen Gang', () => {
   assert.deepEqual(wirkung('klo', satt), { gang: true });
   assert.deepEqual(wirkung('haeufchen', satt), { gang: true });
 });
+
+test('wirkung: Sonnenbad (viertes Herz) bringt am Fenster dreimal so viel Laune', () => {
+  assert.equal(wirkung('fenster', satt).laune * 3, wirkung('fenster', { ...satt, sonnenbad: true }).laune);
+});

@@ -6,6 +6,7 @@ import { KLO } from './klo.js';
 import NamensFeld from '../labels/NamensFeld.jsx';
 import EinrichtenKarten from './EinrichtenKarten.jsx';
 import { KleiderschrankKarten, LadenKarten } from './GarderobeKarten.jsx';
+import { FreundschaftKarten, HerzFeier } from './Freundschaft.jsx';
 import Szene from './Szene.jsx';
 import SpielFederangel from './SpielFederangel.jsx';
 import SpielMaeuseloch from './SpielMaeuseloch.jsx';
@@ -27,6 +28,7 @@ const SYMBOLE = {
   spielen: <g {...K}><circle r="18" fill="#60a5fa" /><path d="M-17 -5 q17 10 34 0 M-14 10 q14 -8 28 0" fill="none" stroke="#fff" /><circle r="18" fill="none" /></g>,
   laden: <g {...K}><path d="M-10 -10 v-6 a10 10 0 0 1 20 0 v6" fill="none" /><path d="M-18 -10 h36 l-3 30 h-30 Z" fill="#fbbf24" /></g>,
   kleiderschrank: <g {...K} fill="none"><path d="M0 -6 v-4 a6 6 0 1 1 6 -6" /><path d="M0 -6 L-22 10 h44 Z" fill="#c7b8f5" /></g>,
+  herzen: <g {...K}><path d="M0 -6 C-6 -16 -22 -12 -18 2 C-15 11 0 20 0 20 C0 20 15 11 18 2 C22 -12 6 -16 0 -6 Z" fill="#ef4444" /></g>,
   einrichten: <g {...K}><rect x="-20" y="-16" width="40" height="22" rx="8" fill="#86c5a4" /><rect x="-24" y="0" width="48" height="16" rx="6" fill="#a7d8bf" /><path d="M-18 16 v5 M18 16 v5" /></g>,
 };
 const Symbol = ({ name, groesse = 48 }) => (
@@ -126,7 +128,7 @@ function SpieleKarten({ onSpiel, muenzen }) {
 }
 
 function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
-  const titel = BEREICHE.find((b) => b.id === bereich)?.titel;
+  const titel = BEREICHE.find((b) => b.id === bereich)?.titel ?? (bereich === 'herzen' ? 'Freundschaft' : '');
   return (
     <div className="zimmer-blatt-huelle" onClick={onZu}>
       <section className="zimmer-blatt" role="dialog" aria-label={titel} onClick={(e) => e.stopPropagation()}>
@@ -199,6 +201,8 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
           <SpieleKarten onSpiel={onSpiel} muenzen={zustand.muenzen} />
         ) : bereich === 'einrichten' ? (
           <EinrichtenKarten zustand={zustand} onGekauft={onGekauft} />
+        ) : bereich === 'herzen' ? (
+          <FreundschaftKarten herzen={zustand.wachstum.herzen} />
         ) : bereich === 'laden' ? (
           <LadenKarten zustand={zustand} onGekauft={onAngezogen} />
         ) : (
@@ -226,7 +230,7 @@ export default function Zimmer({ zustand, onZu }) {
     setSpiel(art);
   };
 
-  const { erfreuen, wachstum, setMuenzen, name, pflege } = zustand;
+  const { erfreuen, naeher, setMuenzen, name, pflege } = zustand;
   const { freigeben } = katze;
   const federEnde = useCallback((faenge) => {
     setSpiel(null);
@@ -248,17 +252,17 @@ export default function Zimmer({ zustand, onZu }) {
     pflege('spielen');
     if (treffer > 0) {
       erfreuen(launeFuer(treffer));
-      wachstum.naeherKommen(1);
+      naeher('spielen', 1);
     }
     setErgebnis(treffer > 0 ? `${treffer} ${treffer === 1 ? 'Maus' : 'Mäuse'} – ${name} ist ganz aufgedreht` : 'Die Mäuse waren zu flink');
-  }, [freigeben, pflege, erfreuen, wachstum, name]);
+  }, [freigeben, pflege, erfreuen, naeher, name]);
   const mausTreffer = useCallback(() => setHerzchen((n) => n + 1), []);
 
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
-    wachstum.naeherKommen(1);
+    naeher('spielen', 1);
     setHerzchen((n) => n + 1);
-  }, [erfreuen, wachstum]);
+  }, [erfreuen, naeher]);
 
   useEffect(() => {
     if (!ergebnis) return undefined;
@@ -311,10 +315,29 @@ export default function Zimmer({ zustand, onZu }) {
     setErgebnis(`Geschenk von ${zustand.name}: +${m} Münzen`);
   };
 
+  // Begrüssung (erstes Herz): beim Öffnen kommt sie nach vorn gelaufen
+  const [rollt, setRollt] = useState(false);
+  const { folge: folgeKatze, freigeben: freigebenKatze } = katze;
+  const begruesst = zustand.kann('begruessen');
+  useEffect(() => {
+    if (!begruesst) return undefined;
+    const hin = setTimeout(() => { folgeKatze({ x: 512, y: 650 }); setHerzchen((n) => n + 1); }, 400);
+    const weiter = setTimeout(() => freigebenKatze(), 2600);
+    return () => { clearTimeout(hin); clearTimeout(weiter); };
+    // nur beim Öffnen des Zimmers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!rollt) return undefined;
+    const t = setTimeout(() => setRollt(false), 1000);
+    return () => clearTimeout(t);
+  }, [rollt]);
+
   const streicheln = () => {
+    if (zustand.kann('rollen')) setRollt(true);
     zustand.pflege('streicheln');
     zustand.erfreuen(FREUDE_STREICHELN);
-    zustand.wachstum.naeherKommen(FREUNDSCHAFT_STREICHELN);
+    zustand.naeher('streicheln', FREUNDSCHAFT_STREICHELN);
     setHerzchen((n) => n + 1);
   };
 
@@ -325,12 +348,15 @@ export default function Zimmer({ zustand, onZu }) {
                klo={zustand.klo} kloVoll={zustand.klo >= KLO.kapazitaet} haeufchen={zustand.haeufchen}
                fell={zustand.fell} zubehoer={zustand.angelegt} onKatze={streicheln} onPutzen={putzen}
                neu={neuesMoebel} onFrei={() => setBereich('einrichten')}
-               geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} />
+               geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} rollt={rollt} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"
-                style={{ left: `${p.x / 10.24}%`, top: `${(p.y - 40) / 7.68}%` }}
->
+                style={{
+                  left: `${p.x / 10.24}%`, top: `${(p.y - 40) / 7.68}%`,
+                  // Ziel: die Münzanzeige oben rechts (Bühne ist 100 × 75 cqw)
+                  '--zum-x': `${93 - p.x / 10.24}cqw`, '--zum-y': `${(5 - (p.y - 40) / 7.68) * 0.75}cqw`,
+                }}>
             <span className="zimmer-muenze" />+{p.lohn}
           </span>
         ))}
@@ -361,7 +387,10 @@ export default function Zimmer({ zustand, onZu }) {
             <NamensFeld className="zimmer-name-feld" value={zustand.name} onCommit={zustand.umbenennen}
                         aria-label="Name der Katze – antippen zum Ändern" maxLength={16} spellCheck={false} />
             <span className="zimmer-phase">{zustand.wachstum.phase.name}</span>
-            <Herzen anzahl={zustand.wachstum.herzen} />
+            <button className="zimmer-herzen-knopf" onClick={() => setBereich('herzen')}
+                    aria-label={`${zustand.wachstum.herzen} von 5 Herzen – was bringt Freundschaft?`}>
+              <Herzen anzahl={zustand.wachstum.herzen} />
+            </button>
           </span>
           <span className="zimmer-knopf zimmer-geld" aria-label={`${zustand.muenzen} Münzen`}>
             <span className="zimmer-muenze" aria-hidden="true" /> {zustand.muenzen}
@@ -395,6 +424,9 @@ export default function Zimmer({ zustand, onZu }) {
         </nav>
         )}
 
+        {!spiel && !bereich && zustand.neueFreischaltungen.length > 0 && (
+          <HerzFeier neu={zustand.neueFreischaltungen} name={zustand.name} onWeiter={zustand.freischaltungenGesehen} />
+        )}
         {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft}
                                   onAngezogen={(a) => setErgebnis(`${a.name} gekauft – ${zustand.name} trägt es`)} />}
       </div>
