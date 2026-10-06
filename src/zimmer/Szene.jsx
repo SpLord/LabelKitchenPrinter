@@ -1,5 +1,7 @@
 import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { PLAETZE } from './einrichtung.js';
+import { Besucher, FundstueckBild, Gestirn, Wandlampe } from './Fensterwelt.jsx';
+import { LICHT } from './tageszeit.js';
 import {
   FreierPlatz, Futterautomat, Gedankenblase, Geschenk, Haeufchen, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
 } from './Moebel.jsx';
@@ -17,7 +19,9 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
 */
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
+  tageszeit = 'tag', besuch = null, fund = null, onFund = () => {},
 }) {
+  const licht = LICHT[tageszeit] ?? LICHT.tag;
   // Frisch gekauftes Möbel ploppt einmal auf
   const plopp = (id) => (neu === id ? 'zimmer-neu' : undefined);
   const { pos, richtung, dauer, laeuft, blase, art } = katze;
@@ -27,7 +31,8 @@ export default function Szene({
          role="img" aria-label="Katzenzimmer">
       <defs>
         <filter id="zimmer-weich" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6" /></filter>
-        <linearGradient id="zimmer-himmel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#9fd4f6" /><stop offset="1" stopColor="#d6eefc" /></linearGradient>
+        <linearGradient id="zimmer-himmel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={licht.himmel[0]} /><stop offset="1" stopColor={licht.himmel[1]} /></linearGradient>
+        <clipPath id="zimmer-fenster"><rect x="73" y="113" width="194" height="174" rx="8" /></clipPath>
       </defs>
 
       {/* Wand mit Streifentapete */}
@@ -46,8 +51,12 @@ export default function Szene({
       <g stroke={KONTUR} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round">
         {/* Fenster */}
         <rect x="70" y="110" width="200" height="180" rx="10" fill="url(#zimmer-himmel)" />
-        <circle cx="226" cy="150" r="20" fill="#fde68a" stroke="none" />
-        <path d="M92 168 q14 -16 30 -4 q12 -10 22 4" fill="#fff" strokeWidth="3.5" />
+        {/* Tageszeit nach der echten Uhr (Etappe 7) und wer am Fenster vorbeikommt */}
+        <g clipPath="url(#zimmer-fenster)">
+          <Gestirn art={licht.gestirn} />
+          {tageszeit !== 'nacht' && <path d="M92 168 q14 -16 30 -4 q12 -10 22 4" fill="#fff" strokeWidth="3.5" />}
+          {besuch && <g key={besuch.id}><Besucher art={besuch.art} /></g>}
+        </g>
         <path d="M170 110 V290 M70 200 H270" strokeWidth="6" />
         <rect x="58" y="288" width="226" height="18" rx="5" fill="#fff" />
         {/* Bild an der Wand */}
@@ -57,6 +66,7 @@ export default function Szene({
         {/* Wandregal */}
         <rect x="420" y="250" width="150" height="14" rx="5" fill="#a16207" />
       </g>
+      <Wandlampe an={licht.lampe} />
 
       {/* Freie Stellplätze */}
       {frei.map((p) => (
@@ -82,6 +92,17 @@ export default function Szene({
       ))}
 
       {geschenk && <Geschenk x={790} y={640} onOeffnen={onGeschenk} />}
+      {fund && (
+        <g transform="translate(380 652)" className="zimmer-tippbar" onClick={onFund}
+           role="button" aria-label="Fundstück aufheben" data-fund={fund}>
+          <g className="zimmer-fund">
+            <ellipse cx="0" cy="14" rx="22" ry="5" fill="#9c6b3e" opacity="0.3" />
+            <FundstueckBild id={fund} />
+            <path className="zimmer-funkeln" d="M22 -22 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 Z" fill="#fde047" stroke="#2f2a26" strokeWidth="2" />
+          </g>
+          <circle r="34" fill="transparent" />
+        </g>
+      )}
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g
@@ -109,6 +130,10 @@ export default function Szene({
         )}
         <g transform={`translate(${KATZE * 0.62} -58)`}><Gedankenblase was={blase} /></g>
       </g>
+      {/* Abend und Nacht: das Zimmer dunkelt ab, die Lampe bleibt hell */}
+      {licht.dunkel > 0 && (
+        <rect width="1024" height="768" fill="#1e1b4b" opacity={licht.dunkel} pointerEvents="none" className="zimmer-dunkel" />
+      )}
     </svg>
   );
 }

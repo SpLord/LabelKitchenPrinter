@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FREUDE_STREICHELN } from '../cat/tamagotchi.js';
 import { FREUNDSCHAFT_STREICHELN } from '../cat/wachstum.js';
 import { PLAETZE } from './einrichtung.js';
@@ -13,6 +13,8 @@ import SpielMaeuseloch from './SpielMaeuseloch.jsx';
 import ShellGame, { STAKE } from '../ShellGame.jsx';
 import ErrorBoundary from '../ErrorBoundary.jsx';
 import { launeFuer } from './maeuseloch.js';
+import { BESUCH, besucher, tageszeit } from './tageszeit.js';
+import { FUNDSTUECKE } from './fundstuecke.js';
 import SpielLeckerli from './SpielLeckerli.jsx';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
 
@@ -202,7 +204,7 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
         ) : bereich === 'einrichten' ? (
           <EinrichtenKarten zustand={zustand} onGekauft={onGekauft} />
         ) : bereich === 'herzen' ? (
-          <FreundschaftKarten herzen={zustand.wachstum.herzen} />
+          <FreundschaftKarten herzen={zustand.wachstum.herzen} gefunden={zustand.gefunden} />
         ) : bereich === 'laden' ? (
           <LadenKarten zustand={zustand} onGekauft={onAngezogen} />
         ) : (
@@ -333,6 +335,33 @@ export default function Zimmer({ zustand, onZu }) {
     return () => clearTimeout(t);
   }, [rollt]);
 
+  // Tageszeit nach der echten Uhr; ab und zu schaut jemand am Fenster vorbei
+  const zeit = tageszeit(new Date(zustand.jetzt));
+  const [besuch, setBesuch] = useState(null);
+  const zeitRef = useRef(zeit);
+  zeitRef.current = zeit;
+  useEffect(() => {
+    let uhr;
+    const naechster = () => {
+      const warten = BESUCH.abstandMin + Math.random() * (BESUCH.abstandMax - BESUCH.abstandMin);
+      uhr = setTimeout(() => {
+        setBesuch({ id: Date.now(), art: besucher(zeitRef.current) });
+        uhr = setTimeout(() => { setBesuch(null); naechster(); }, BESUCH.dauer);
+      }, warten);
+    };
+    naechster();
+    return () => clearTimeout(uhr);
+  }, []);
+
+  // Fundstück aufheben: ins Album, ein paar Münzen, und es fliegt zur Anzeige
+  const fundAufheben = () => {
+    const r = zustand.fundEinsammeln();
+    if (!r) return;
+    const name = FUNDSTUECKE.find((f) => f.id === r.id)?.name ?? 'etwas';
+    setLohnPops((p) => [...p.slice(-3), { id: `fund-${Date.now()}`, x: 380, y: 600, lohn: r.lohn }]);
+    setErgebnis(r.neu ? `${zustand.name} hat dir etwas mitgebracht: ${name} – neu im Album!` : `${name} – kennst du schon`);
+  };
+
   const streicheln = () => {
     if (zustand.kann('rollen')) setRollt(true);
     zustand.pflege('streicheln');
@@ -348,7 +377,8 @@ export default function Zimmer({ zustand, onZu }) {
                klo={zustand.klo} kloVoll={zustand.klo >= KLO.kapazitaet} haeufchen={zustand.haeufchen}
                fell={zustand.fell} zubehoer={zustand.angelegt} onKatze={streicheln} onPutzen={putzen}
                neu={neuesMoebel} onFrei={() => setBereich('einrichten')}
-               geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} rollt={rollt} />
+               geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} rollt={rollt}
+               tageszeit={zeit} besuch={besuch} fund={zustand.fundOffen} onFund={fundAufheben} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"

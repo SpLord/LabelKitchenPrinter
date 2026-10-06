@@ -423,3 +423,40 @@ test('Bauch zeigen (zweites Herz): Streicheln lässt sie sich rollen', async ({ 
   await page.locator('.zimmer-katze').dispatchEvent('click');
   await expect(page.locator('.zimmer-katze')).toHaveClass(/rollt/);
 });
+
+/* ── Etappe 7: Tageszeit, Fensterbesuch, Fundstücke ───────────────────── */
+test('Tageszeit: nachts Mond und Lampe an, mittags Sonne und Lampe aus', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-06T22:30:00') });
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  await expect(page.locator('[data-gestirn="mond"]')).toBeAttached();
+  await expect(page.locator('[data-lampe="an"]')).toBeAttached();
+  await page.clock.setFixedTime(new Date('2026-10-07T12:00:00'));
+  await page.clock.runFor(61_000);
+  await expect(page.locator('[data-gestirn="sonne"]')).toBeAttached();
+  await expect(page.locator('[data-lampe="aus"]')).toBeAttached();
+});
+
+test('Fensterbesuch: nach spätestens einer Minute schaut jemand vorbei', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-06T12:00:00') });
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  // Er bleibt nur 7 s – also sekundenweise schauen, ob er in der ersten Minute kam
+  let gesehen = false;
+  for (let t = 0; t < 61 && !gesehen; t += 1) {
+    await page.clock.runFor(1000);
+    gesehen = (await page.locator('[data-besuch]').count()) === 1;
+  }
+  expect(gesehen).toBe(true);
+});
+
+test('Fundstück: aufheben bringt es ins Album und 5 Münzen', async ({ page }) => {
+  await zimmerAuf(page, {
+    zimmer_geschenk: schichtTag(0), cat_freundschaft: 100,
+    zimmer_fund: JSON.stringify({ gewuerfelt: schichtTag(0), gefunden: [], offen: 'murmel' }),
+  });
+  await page.getByRole('button', { name: 'Fundstück aufheben' }).dispatchEvent('click');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Murmel – neu im Album');
+  await expect(page.locator('.zimmer-geld')).toContainText('505');
+  await page.getByRole('button', { name: /von 5 Herzen/ }).click();
+  await expect(page.locator('[data-album="murmel"]')).toContainText('Murmel');
+  await expect(page.locator('[data-album="korken"]')).toContainText('?');
+});

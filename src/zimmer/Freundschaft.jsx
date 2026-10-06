@@ -1,4 +1,6 @@
 import { FREISCHALTUNGEN } from './herzen.js';
+import { FUNDSTUECKE } from './fundstuecke.js';
+import { FundstueckBild } from './Fensterwelt.jsx';
 
 const HERZ = 'M0 4 C-6 -6 -18 -2 -14 8 C-11 15 0 20 0 20 C0 20 11 15 14 8 C18 -2 6 -6 0 4 Z';
 
@@ -33,7 +35,7 @@ export function HerzFeier({ neu, name, onWeiter }) {
 }
 
 /* Blatt "Freundschaft": was jedes Herz bringt, was schon frei ist. */
-export function FreundschaftKarten({ herzen }) {
+export function FreundschaftKarten({ herzen, gefunden = [] }) {
   return (
     <div className="zimmer-freundschaft">
       <ol>
@@ -53,6 +55,18 @@ export function FreundschaftKarten({ herzen }) {
           );
         })}
       </ol>
+      <h3 className="zimmer-abschnitt zimmer-album-titel">Fundstücke-Album · {gefunden.length} von {FUNDSTUECKE.length}</h3>
+      <div className="zimmer-album">
+        {FUNDSTUECKE.map((f) => {
+          const da = gefunden.includes(f.id);
+          return (
+            <figure key={f.id} className={da ? 'da' : 'fehlt'} data-album={f.id}>
+              <svg viewBox="-26 -26 52 52" aria-hidden="true"><FundstueckBild id={f.id} /></svg>
+              <figcaption>{da ? f.name : '?'}</figcaption>
+            </figure>
+          );
+        })}
+      </div>
       <p className="zimmer-hinweis">
         Freundschaft wächst mit Streicheln, Spielen und Füttern – jeden Tag ein Stück, und ein gut versorgter Tag zählt extra.
       </p>

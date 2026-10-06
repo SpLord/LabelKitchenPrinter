@@ -11,6 +11,7 @@ import { wirkung } from './verhalten.js';
 import { STANDARD_NAME, putzeName } from './katzenname.js';
 import { abholen, geschenkDa, pflegeLesen, pflegen, selbstheilung } from './geschenk.js';
 import { freigeschaltet, freundschaftHeute, grenzeLesen, neuFreigeschaltet } from './herzen.js';
+import { einsammeln, fundLesen, fundPruefen } from './fundstuecke.js';
 
 const KEY_NAPF = 'zimmer_napf';
 const KEY_NOTRATION = 'zimmer_notration';
@@ -21,6 +22,7 @@ const KEY_GESCHENK = 'zimmer_geschenk';
 const KEY_GUT_SEIT = 'zimmer_gut_seit';
 const KEY_FREUNDSCHAFT_HEUTE = 'zimmer_freundschaft_heute';
 const KEY_HERZEN_GESEHEN = 'zimmer_herzen_gesehen';
+const KEY_FUND = 'zimmer_fund';
 
 const lesenText = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const schreibenText = (key, wert) => {
@@ -156,6 +158,28 @@ export default function useZimmerZustand() {
     return r.muenzen;
   }, [abgeholt, pflegeStand, wachstum.herzen, laden.besitz, setzeMuenzen, zweitesGeschenk]);
 
+  // Fundstücke (fünftes Herz): einmal je Schichttag gewürfelt, im Minutentakt geprüft
+  const [fund, setFund] = useState(() => fundLesen(lesenText(KEY_FUND)));
+  const fundFrei = kann('fundstuecke');
+  const fundRef = useRef(fund);
+  fundRef.current = fund;
+  useEffect(() => {
+    const neu = fundPruefen(fundRef.current, { frei: fundFrei }, new Date(jetzt));
+    if (neu === fundRef.current) return;
+    fundRef.current = neu;
+    setFund(neu);
+    schreibenText(KEY_FUND, JSON.stringify(neu));
+  }, [fundFrei, jetzt]);
+  const fundEinsammeln = useCallback(() => {
+    const r = einsammeln(fundRef.current);
+    if (!r.id) return null;
+    fundRef.current = r.stand;
+    setFund(r.stand);
+    schreibenText(KEY_FUND, JSON.stringify(r.stand));
+    if (r.lohn > 0) setzeMuenzen((c) => c + r.lohn);
+    return r;
+  }, [setzeMuenzen]);
+
   // Selbstheilung: zwölf Stunden gut versorgt → gesund, auch ohne Medizin
   const gutSeitRef = useRef(null);
   if (gutSeitRef.current === null) {
@@ -280,6 +304,10 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    jetzt,
+    fundOffen: fund.offen,
+    gefunden: fund.gefunden,
+    fundEinsammeln,
     kann,
     naeher,
     neueFreischaltungen,

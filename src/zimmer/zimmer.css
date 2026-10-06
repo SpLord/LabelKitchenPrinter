@@ -254,6 +254,45 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-freundschaft-stand { font-weight: 800; font-size: 1.4cqw; padding: 0.4cqw 1cqw; border-radius: 999px; border: 0.3cqw solid var(--kontur); background: #dcfce7; }
 .zimmer-freundschaft li.zu .zimmer-freundschaft-stand { background: #eadbc6; }
 
+/* Fundstücke-Album */
+.zimmer-album-titel { margin-top: 2cqw; }
+.zimmer-album { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.8cqw; }
+.zimmer-album figure {
+  margin: 0; display: flex; flex-direction: column; align-items: center; gap: 0.3cqw;
+  padding: 0.8cqw 0.4cqw; background: #fff; border: 0.3cqw solid var(--kontur); border-radius: 1.2cqw;
+}
+.zimmer-album svg { width: 5.4cqw; height: 5.4cqw; }
+.zimmer-album figcaption { font-size: 1.1cqw; font-weight: 700; text-align: center; line-height: 1.15; }
+/* Noch nicht gefunden: nur der Umriss */
+.zimmer-album .fehlt { background: #f5efe6; }
+.zimmer-album .fehlt svg { filter: brightness(0) opacity(0.18); }
+
+/* Fundstück auf dem Boden */
+.zimmer-fund { animation: zimmer-fund 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes zimmer-fund { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.zimmer-funkeln { animation: zimmer-funkeln 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes zimmer-funkeln { 0%, 100% { transform: scale(0.6) rotate(0); opacity: 0.6; } 50% { transform: scale(1.1) rotate(45deg); opacity: 1; } }
+
+/* Besucher am Fenster: fliegt einmal quer durch (7 s, wie BESUCH.dauer) */
+.zimmer-besuch { animation: zimmer-vorbei 7s ease-in-out forwards; }
+@keyframes zimmer-vorbei {
+  0% { transform: translate(40px, 250px); }
+  30% { transform: translate(130px, 190px); }
+  55% { transform: translate(160px, 215px); }
+  100% { transform: translate(320px, 140px); }
+}
+.zimmer-besuch-motte { animation-name: zimmer-motte; }
+@keyframes zimmer-motte {
+  0% { transform: translate(300px, 140px); }
+  25% { transform: translate(200px, 180px); } 50% { transform: translate(230px, 150px); }
+  75% { transform: translate(150px, 200px); } 100% { transform: translate(30px, 160px); }
+}
+.zimmer-fluegel { animation: zimmer-flattern-fluegel 0.24s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes zimmer-flattern-fluegel { from { transform: scaleY(1); } to { transform: scaleY(0.45); } }
+.zimmer-lampenschein { animation: zimmer-lampe 4s ease-in-out infinite; }
+@keyframes zimmer-lampe { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.28; } }
+.zimmer-dunkel { mix-blend-mode: multiply; }
+
 /* Neues Herz */
 .zimmer-feier-huelle { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(47, 42, 38, 0.35); }
 .zimmer-feier {
@@ -271,7 +310,8 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 @media (prefers-reduced-motion: reduce) {
   .zimmer, .zimmer-blatt,
   .zimmer-haeufchen, .zimmer-gestank path, .zimmer-lohn, .zimmer-neu, .zimmer-geschenk,
-  .zimmer-katze.rollt .zimmer-katze-hops, .zimmer-feier, .zimmer-feier-herz, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
+  .zimmer-katze.rollt .zimmer-katze-hops, .zimmer-feier, .zimmer-feier-herz,
+  .zimmer-fund, .zimmer-funkeln, .zimmer-fluegel, .zimmer-lampenschein, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }
