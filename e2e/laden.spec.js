@@ -94,7 +94,7 @@ test('gekaufte Ausstattung läuft von selbst und wird nicht angelegt', async ({ 
   const zeile = page.locator('.laden-zeile', { hasText: 'Kratzbaum' });
   await zeile.locator('.laden-knopf').click();
 
-  await expect(stand(page)).resolves.toBe(3000 - 1200);
+  await expect(stand(page)).resolves.toBe(3000 - 600);
   // Kein "anlegen"-Knopf: ein Kratzbaum steht im Raum, man zieht ihn nicht an
   await expect(zeile.locator('.laden-knopf')).toHaveCount(0);
   await expect(zeile.locator('.laden-aktiv')).toHaveText(/aktiv/);

@@ -47,19 +47,23 @@ export const ZUBEHOER = [
 */
 export const AUSSTATTUNG = [
   {
+    id: 'katzenklo', name: 'Katzenklo', preis: 150, emoji: '🚽',
+    wirkung: 'Sie geht aufs Klo, statt ins Zimmer zu machen.',
+  },
+  {
     id: 'futterautomat', name: 'Futterautomat', preis: 700, emoji: '🍚',
     wirkung: 'Der Hunger fällt ein Viertel langsamer.',
   },
   {
-    id: 'trinkbrunnen', name: 'Trinkbrunnen', preis: 700, emoji: '⛲',
+    id: 'trinkbrunnen', name: 'Trinkbrunnen', preis: 400, emoji: '⛲',
     wirkung: 'Der Durst fällt ein Viertel langsamer.',
   },
   {
-    id: 'kratzbaum', name: 'Kratzbaum', preis: 1200, emoji: '🪵',
+    id: 'kratzbaum', name: 'Kratzbaum', preis: 600, emoji: '🪵',
     wirkung: 'Die Zufriedenheit fällt fast ein Drittel langsamer.',
   },
   {
-    id: 'kuschelhoehle', name: 'Kuschelhöhle', preis: 2000, emoji: '🛏️',
+    id: 'kuschelhoehle', name: 'Kuschelhöhle', preis: 900, emoji: '🛏️',
     wirkung: 'Nachts erholt sie sich, statt weiter abzubauen.',
   },
   {

@@ -6,10 +6,15 @@ import useWachstum from '../cat/useWachstum.js';
 import { MEDIZIN_PREIS, bedarf, schlaeft } from '../cat/tamagotchi.js';
 import { FREUNDSCHAFT_FUETTERN, tagesSchluessel } from '../cat/wachstum.js';
 import { einrichtung } from './einrichtung.js';
+import { KLO, faellig, gang, haeufchenWeg, kloLeeren, lesen as kloLesen, nachholen } from './klo.js';
 import { wirkung } from './verhalten.js';
+import { STANDARD_NAME, putzeName } from './katzenname.js';
 
 const KEY_NAPF = 'zimmer_napf';
 const KEY_NOTRATION = 'zimmer_notration';
+const KEY_KLO = 'zimmer_klo';
+const KEY_NAME = 'zimmer_katzenname';
+const NACHHOLEN_ALLE = 60_000;
 export const NOTRATION = 20;      // so viel kommt kostenlos in den Napf
 export const BILLIGSTES_FUTTER = 3;
 
@@ -36,15 +41,47 @@ const lesenZahl = (key, ersatz) => {
 export default function useZimmerZustand() {
   const muenzen = useCatCoins();
   const laden = useKatzenladen(muenzen.stand, muenzen.setStand, () => {});
-  const beduerfnisse = useCatNeeds(0, laden.wirkung);
+
+  // Klo und Häufchen (Etappe 3) – die Häufchen drücken die Laune
+  const [klo, setKlo] = useState(() => {
+    try { return kloLesen(localStorage.getItem(KEY_KLO), Date.now()); } catch { return kloLesen(null, Date.now()); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(KEY_KLO, JSON.stringify(klo)); } catch { /* gesperrt */ }
+  }, [klo]);
+
+  const beduerfnisse = useCatNeeds(klo.haeufchen.length, laden.wirkung);
   const wachstum = useWachstum(beduerfnisse.zustand.key, () => {});
   const [napf, setNapf] = useState(() => lesenZahl(KEY_NAPF, 30));
+
+  // Eigener Name – "Mails" ist der Koch
+  const [name, setNameRoh] = useState(() => {
+    try { return putzeName(localStorage.getItem(KEY_NAME)) ?? STANDARD_NAME; } catch { return STANDARD_NAME; }
+  });
+  const umbenennen = useCallback((roh) => {
+    const neu = putzeName(roh);
+    if (!neu) return;
+    setNameRoh(neu);
+    try { localStorage.setItem(KEY_NAME, neu); } catch { /* gesperrt */ }
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem(KEY_NAPF, String(Math.round(napf))); } catch { /* gesperrt */ }
   }, [napf]);
 
   const { moebel, frei } = useMemo(() => einrichtung(laden.besitz), [laden.besitz]);
+  const hatKlo = moebel.has('katzenklo');
+
+  // Verpasste Gänge verbuchen: beim Start und danach jede Minute
+  useEffect(() => {
+    const pruefen = () => setKlo((z) => {
+      const neu = nachholen(z, { hatKlo, jetzt: Date.now() });
+      return neu === z ? z : neu;
+    });
+    pruefen();
+    const uhr = setInterval(pruefen, NACHHOLEN_ALLE);
+    return () => clearInterval(uhr);
+  }, [hatKlo]);
 
   // Die Verhaltenslogik liest über einen Ref – der Ablauf startet nur einmal
   const lageRef = useRef(null);
@@ -55,11 +92,16 @@ export default function useZimmerZustand() {
     nacht: schlaeft(),
     napf,
     moebel,
+    mussMal: faellig(klo, Date.now()),
+    kloPlatz: hatKlo && klo.klo < KLO.kapazitaet,
   };
 
   const { fuettern, traenken, erfreuen } = beduerfnisse;
-  const anwenden = useCallback((art) => {
+  const hatKloRef = useRef(hatKlo);
+  hatKloRef.current = hatKlo;
+  const anwenden = useCallback((art, ort = null) => {
     const w = wirkung(art, lageRef.current);
+    if (w.gang) setKlo((z) => gang(z, { hatKlo: hatKloRef.current, jetzt: Date.now(), ort }));
     if (w.hunger) fuettern(w.hunger);
     if (w.durst) traenken(w.durst);
     if (w.laune) erfreuen(w.laune);
@@ -109,11 +151,30 @@ export default function useZimmerZustand() {
     return true;
   }, [beduerfnisse.krank, medizinPreis, muenzen, heilen]);
 
+  /* Putzen: Klo leeren und Häufchen wegmachen – Lohn bis zur Tagesgrenze. */
+  const { setStand } = muenzen;
+  // Synchron über einen Ref: der Lohn muss sofort feststehen, und ein schneller
+  // Doppeltipp darf nicht zweimal zahlen
+  const kloRef = useRef(klo);
+  kloRef.current = klo;
+  const putzen = useCallback((was) => {
+    const z = kloRef.current;
+    const r = was === 'klo' ? kloLeeren(z, tagesSchluessel()) : haeufchenWeg(z, was, tagesSchluessel());
+    if (r.zustand === z) return 0;
+    kloRef.current = r.zustand;
+    setKlo(r.zustand);
+    if (r.lohn > 0) setStand((c) => c + r.lohn);
+    return r.lohn;
+  }, [setStand]);
+
   const was = bedarf({
     hunger: beduerfnisse.hunger, thirst: beduerfnisse.thirst, freude: beduerfnisse.freude, krank: beduerfnisse.krank,
+    haeufchen: klo.haeufchen.length,
   });
 
   return {
+    name,
+    umbenennen,
     muenzen: muenzen.stand,
     setMuenzen: muenzen.setStand,
     hunger: beduerfnisse.hunger,
@@ -124,6 +185,7 @@ export default function useZimmerZustand() {
     erfreuen,
     wachstum,
     besitz: laden.besitz,
+    kaufen: laden.kaufeUndLege,
     angelegt: laden.angelegt,
     // Kein Zufallsfell mehr: sie behält ihr Fell, bis man ein anderes anlegt
     fell: laden.fellVariante ?? 0,
@@ -137,6 +199,9 @@ export default function useZimmerZustand() {
     medizinPreis,
     medizinGeben,
     bedarf: was,
+    klo: klo.klo,
+    haeufchen: klo.haeufchen,
+    putzen,
     lageRef,
     anwendenRef,
   };

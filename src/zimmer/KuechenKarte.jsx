@@ -1,7 +1,6 @@
 import CatVariant from '../cat/CatVariant.jsx';
 import './zimmer-karte.css';
 
-export const NAME = 'Mails';
 
 /* Was ihr gerade fehlt, in Worten – Reihenfolge = Dringlichkeit. */
 export const zustandsText = ({ krank, bedarf, zustand }) => {
@@ -9,6 +8,7 @@ export const zustandsText = ({ krank, bedarf, zustand }) => {
   if (bedarf.includes('durst')) return 'hat Durst';
   if (bedarf.includes('hunger')) return 'hat Hunger';
   if (bedarf.includes('langeweile')) return 'langweilt sich';
+  if (bedarf.includes('dreck')) return 'braucht ein sauberes Zimmer';
   return zustand?.label ?? 'zufrieden';
 };
 
@@ -19,9 +19,9 @@ export const zustandsText = ({ krank, bedarf, zustand }) => {
 */
 export default function KuechenKarte({ zustand, onOeffnen }) {
   const text = zustandsText(zustand);
-  const braucht = zustand.krank || zustand.bedarf.some((b) => b !== 'dreck');
+  const braucht = zustand.krank || zustand.bedarf.length > 0;
   return (
-    <button className="kuechen-karte" onClick={onOeffnen} aria-label={`${NAME} ${text} – Katzenzimmer öffnen`}>
+    <button className="kuechen-karte" onClick={onOeffnen} aria-label={`${zustand.name} ${text} – Katzenzimmer öffnen`}>
       <span className="kuechen-karte-katze" aria-hidden="true">
         <svg viewBox="0 0 200 200" width="100%" height="100%">
           <CatVariant index={zustand.fell} active={false} zubehoer={zustand.angelegt} />
@@ -29,7 +29,7 @@ export default function KuechenKarte({ zustand, onOeffnen }) {
         {braucht && <span className="kuechen-karte-punkt" />}
       </span>
       <span className="kuechen-karte-text">
-        <strong>{NAME}</strong>
+        <strong>{zustand.name}</strong>
         <span>{text}</span>
       </span>
       <span className="kuechen-karte-muenzen">

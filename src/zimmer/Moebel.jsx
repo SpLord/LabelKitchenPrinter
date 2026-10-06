@@ -97,6 +97,63 @@ export function Kuschelhoehle({ x, y }) {
 }
 
 /* Freier Stellplatz: gestrichelt, damit man sieht, dass hier etwas hinpasst. */
+/* Gestank: drei Wellenlinien, die aufsteigen (zimmer.css). */
+const Gestank = ({ x, y }) => (
+  <g className="zimmer-gestank" fill="none" stroke="#84cc16" strokeWidth={3.5} strokeLinecap="round" opacity="0.85">
+    <path d={`M${x - 12} ${y} q-6 -8 0 -16 q6 -8 0 -16`} />
+    <path d={`M${x} ${y - 4} q-6 -8 0 -16 q6 -8 0 -16`} />
+    <path d={`M${x + 12} ${y} q-6 -8 0 -16 q6 -8 0 -16`} />
+  </g>
+);
+
+/*
+  Katzenklo. fuellung = Gänge seit dem letzten Leeren (0 … voll). Je Gang
+  liegt ein Klümpchen im Streu; volles Klo stinkt sichtbar. Antippen leert es.
+*/
+export function Katzenklo({ x, y, fuellung = 0, voll = false, onLeeren }) {
+  const klumpen = [[-24, -30], [10, -33], [30, -28]].slice(0, fuellung);
+  const tippbar = fuellung > 0;
+  return (
+    <g transform={`translate(${x} ${y})`} {...strich} data-moebel="katzenklo"
+       className={tippbar ? 'zimmer-tippbar' : undefined}
+       onClick={tippbar ? onLeeren : undefined}
+       role={tippbar ? 'button' : undefined}
+       aria-label={tippbar ? 'Katzenklo leeren' : undefined}>
+      <Schatten x={0} y={4} rx={64} />
+      <path d="M-60 -34 h120 l-8 34 h-104 Z" fill="#5eead4" />
+      <ellipse cx="0" cy="-34" rx="60" ry="10" fill="#e7d3a8" strokeWidth={4} />
+      <g fill="#cdb489" stroke="none">
+        <circle cx="-34" cy="-35" r="2" /><circle cx="-8" cy="-31" r="2" /><circle cx="22" cy="-36" r="2" /><circle cx="40" cy="-32" r="2" />
+      </g>
+      {klumpen.map(([kx, ky]) => <ellipse key={kx} cx={kx} cy={ky} rx="9" ry="5" fill="#a16207" strokeWidth={3} />)}
+      <path d="M-44 -16 h88" stroke="#99f6e4" strokeWidth={4} />
+      {voll && <Gestank x={0} y={-48} />}
+      {/* Grössere, unsichtbare Tippfläche für Finger */}
+      {tippbar && <rect x="-66" y="-60" width="132" height="70" fill="transparent" stroke="none" />}
+    </g>
+  );
+}
+
+/* Ein Häufchen. Bewusst niedlich statt eklig: Kringel mit Glanzpunkt. */
+export function Haeufchen({ x, y, onWeg }) {
+  return (
+    // Position und Plopp auf getrennten Ebenen: die CSS-Animation setzt
+    // transform und würde sonst das translate des Attributs überschreiben
+    <g transform={`translate(${x} ${y})`} className="zimmer-tippbar"
+       onClick={onWeg} role="button" aria-label="Häufchen wegmachen" data-haeufchen="">
+      <g {...strich} strokeWidth={4} className="zimmer-haeufchen">
+      <Schatten x={0} y={2} rx={22} />
+      <path d="M-20 0 q0 -10 10 -10 h20 q10 0 10 10 Z" fill="#92400e" />
+      <path d="M-14 -10 q0 -9 9 -9 h10 q9 0 9 9 Z" fill="#a16207" />
+      <path d="M-6 -19 q0 -9 7 -10 q5 4 3 10 Z" fill="#b45309" />
+      <circle cx="-6" cy="-14" r="2.5" fill="#fde68a" stroke="none" />
+      <Gestank x={0} y={-30} />
+      <circle cx="0" cy="-14" r="34" fill="transparent" stroke="none" />
+      </g>
+    </g>
+  );
+}
+
 export function FreierPlatz({ x, y, art }) {
   const farbe = '#a0896c';
   return (

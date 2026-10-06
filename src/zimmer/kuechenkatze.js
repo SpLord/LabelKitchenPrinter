@@ -2,7 +2,7 @@
   Die Katze auf der Etikettenseite.
 
   Sie lebt im freien Streifen der Kopfleiste – zwischen dem letzten Knopf
-  links und der Mails-Karte rechts – und läuft dort hin und her. Über die
+  links und der Katzenkarte rechts – und läuft dort hin und her. Über die
   Etikettenknöpfe darf sie nie: genau daran ist die alte Katze gescheitert
   (Audit 2026-10-06, Tipps gingen verloren). Ist der Streifen zu schmal,
   bleibt sie lieber ganz weg.

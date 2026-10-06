@@ -10,7 +10,7 @@ export const inSzene = (e, element) => {
 };
 
 /*
-  Federangel: Man führt eine Feder an einer Schnur, Mails rennt hinterher.
+  Federangel: Man führt eine Feder an einer Schnur, die Katze rennt hinterher.
   Hängt die Feder tief genug und lange genug in ihrer Reichweite, fängt sie
   sie – dann springt die Feder weg und es geht weiter. Bringt Laune und
   Freundschaft, keine Münzen (Design 2026-10-06: Spielen ist Zuwendung).

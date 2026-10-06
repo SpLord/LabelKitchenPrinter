@@ -32,10 +32,12 @@ export function einrichtung(besitz) {
   if (hat.has('futterautomat')) moebel.add('futterautomat');
   if (hat.has('kratzbaum')) moebel.add('kratzbaum');
   if (hat.has('kuschelhoehle')) moebel.add('kuschelhoehle');
+  if (hat.has('katzenklo')) moebel.add('katzenklo');
 
   const belegt = new Set(['napf', 'wasser']);
   if (moebel.has('kratzbaum')) belegt.add('kratzbaum');
   if (moebel.has('kuschelhoehle')) belegt.add('hoehle');
+  if (moebel.has('katzenklo')) belegt.add('klo');
   const frei = Object.keys(PLAETZE).filter((p) => !belegt.has(p));
 
   return { moebel, frei };

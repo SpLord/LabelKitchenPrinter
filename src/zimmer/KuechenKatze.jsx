@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import KatzePose from './KatzePose.jsx';
 import { Gedankenblase } from './Moebel.jsx';
-import { NAME, zustandsText } from './KuechenKarte.jsx';
+import { zustandsText } from './KuechenKarte.jsx';
 import { KUECHENKATZE, blaseFuer, freieZone, naechsterSchritt } from './kuechenkatze.js';
 
 const G = KUECHENKATZE.groesse;
@@ -20,7 +20,7 @@ function messen(kopf) {
 }
 
 /*
-  Mails auf der Etikettenseite: läuft im freien Streifen der Kopfleiste,
+  Die Katze auf der Etikettenseite: läuft im freien Streifen der Kopfleiste,
   setzt sich, schläft nachts, liegt krank und zeigt in einer Denkblase, was
   ihr fehlt. Ein Tipp auf sie öffnet das Zimmer.
 
@@ -111,7 +111,7 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
         transitionDuration: `${katze.dauer}ms`,
       }}
       onClick={onOeffnen}
-      aria-label={`${NAME} ${zustandsText(zustand)} – Katzenzimmer öffnen`}
+      aria-label={`${zustand.name} ${zustandsText(zustand)} – Katzenzimmer öffnen`}
     >
       <span className="kuechen-katze-koerper" style={{ transform: `scaleX(${-katze.richtung})` }}>
         <KatzePose pose={pose} fell={zustand.fell} zubehoer={zustand.angelegt} aktiv={katze.art === 'laufen'} />

@@ -54,7 +54,7 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
       warte(weg, () => {
         setKatze((k) => ({ ...k, laeuft: false, dauer: 0, richtung: nach.richtung ?? k.richtung }));
         warte(t.dauer, () => {
-          anwendenRef.current?.(t.art);
+          anwendenRef.current?.(t.art, nach);
           setKatze((k) => ({ ...k, blase: null }));
           warte(400, durchgang);
         });

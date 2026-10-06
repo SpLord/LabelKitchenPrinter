@@ -1,7 +1,7 @@
 import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { PLAETZE } from './einrichtung.js';
 import {
-  FreierPlatz, Futterautomat, Gedankenblase, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
+  FreierPlatz, Futterautomat, Gedankenblase, Haeufchen, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
 } from './Moebel.jsx';
 
 const KONTUR = '#2f2a26';
@@ -15,7 +15,11 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
   das rechnet die Grafikkarte, nicht React pro Bild. Im September hat genau
   dieser Unterschied die Bildrate gerettet.
 */
-export default function Szene({ moebel, frei, napf, katze, fell, zubehoer, onKatze }) {
+export default function Szene({
+  moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {},
+}) {
+  // Frisch gekauftes Möbel ploppt einmal auf
+  const plopp = (id) => (neu === id ? 'zimmer-neu' : undefined);
   const { pos, richtung, dauer, laeuft, blase, art } = katze;
   const pose = poseFuer({ laeuft, art });
   return (
@@ -55,14 +59,27 @@ export default function Szene({ moebel, frei, napf, katze, fell, zubehoer, onKat
       </g>
 
       {/* Freie Stellplätze */}
-      {frei.map((p) => <FreierPlatz key={p} {...PLAETZE[p]} />)}
+      {frei.map((p) => (
+        <g key={p} className="zimmer-tippbar" onClick={onFrei} role="button" aria-label="Freier Platz – einrichten" data-platz={p}>
+          <FreierPlatz {...PLAETZE[p]} />
+        </g>
+      ))}
 
       {/* Möbel – hinten zuerst, damit vorne Liegendes darüber gezeichnet wird */}
-      {moebel.has('kuschelhoehle') && <Kuschelhoehle {...PLAETZE.hoehle} />}
-      {moebel.has('kratzbaum') && <Kratzbaum {...PLAETZE.kratzbaum} />}
-      {moebel.has('futterautomat') && <Futterautomat {...PLAETZE.napf} />}
+      {moebel.has('kuschelhoehle') && <g className={plopp('kuschelhoehle')}><Kuschelhoehle {...PLAETZE.hoehle} /></g>}
+      {moebel.has('kratzbaum') && <g className={plopp('kratzbaum')}><Kratzbaum {...PLAETZE.kratzbaum} /></g>}
+      {moebel.has('futterautomat') && <g className={plopp('futterautomat')}><Futterautomat {...PLAETZE.napf} /></g>}
       <Napf {...PLAETZE.napf} fuellung={napf} />
-      {moebel.has('trinkbrunnen') ? <Trinkbrunnen {...PLAETZE.wasser} /> : <Wassernapf {...PLAETZE.wasser} />}
+      {moebel.has('trinkbrunnen') ? <g className={plopp('trinkbrunnen')}><Trinkbrunnen {...PLAETZE.wasser} /></g> : <Wassernapf {...PLAETZE.wasser} />}
+      {moebel.has('katzenklo') && (
+        <g className={plopp('katzenklo')}>
+          <Katzenklo {...PLAETZE.klo} fuellung={klo} voll={kloVoll} onLeeren={() => onPutzen('klo')} />
+        </g>
+      )}
+      {/* Hinten zuerst, damit vordere Häufchen davor liegen */}
+      {[...haeufchen].sort((a, b) => a.y - b.y).map((h) => (
+        <Haeufchen key={h.id} x={h.x} y={h.y} onWeg={() => onPutzen(h.id)} />
+      ))}
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g

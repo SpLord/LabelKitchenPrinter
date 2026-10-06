@@ -111,6 +111,12 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
   border: 0.4cqw solid var(--kontur); border-radius: 999px; background: #fff;
 }
 .zimmer-name strong { font-size: 2cqw; font-weight: 800; }
+.zimmer-name-feld {
+  width: 11ch; min-width: 4ch; padding: 0.1cqw 0.3cqw; margin: 0;
+  border: 0; border-bottom: 2px dashed #d6c3a5; border-radius: 4px; background: transparent;
+  font: 800 2cqw/1.2 Roboto, "Segoe UI", Arial, sans-serif; color: #2f2a26; field-sizing: content;
+}
+.zimmer-name-feld:focus { outline: 3px solid #f59e0b; outline-offset: 2px; background: #fff; border-bottom-color: transparent; }
 .zimmer-phase { font-size: 1.4cqw; color: #78350f; }
 .zimmer-herzen { display: inline-flex; gap: 0.2cqw; }
 .zimmer-herzen svg { width: 2.6cqw; height: 2.4cqw; }
@@ -173,8 +179,33 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-kommt strong { font-size: 1.9cqw; }
 .zimmer-kommt p { margin: 0.6cqw 0 0; color: #57534e; }
 
+/* Frisch gekauftes Möbel */
+.zimmer-neu { animation: zimmer-moebel-plopp 650ms cubic-bezier(.3,1.7,.5,1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes zimmer-moebel-plopp { 0% { transform: scale(0.1); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1); } }
+.zimmer-hat { display: inline-block; padding: 0.6cqw 1.2cqw; border-radius: 999px; background: #dcfce7; border: 3px solid #2f2a26; font-weight: 800; font-size: 1.5cqw; }
+.zimmer-karte-hat { opacity: 0.85; }
+
+/* Klo und Häufchen (Etappe 3) */
+.zimmer-tippbar { cursor: pointer; }
+.zimmer-haeufchen { animation: zimmer-plopp 380ms cubic-bezier(.3,1.6,.6,1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes zimmer-plopp { from { transform: scale(0.2); } to { transform: scale(1); } }
+.zimmer-gestank path { animation: zimmer-gestank 2.2s ease-in-out infinite; }
+.zimmer-gestank path:nth-child(2) { animation-delay: 0.7s; }
+.zimmer-gestank path:nth-child(3) { animation-delay: 1.4s; }
+@keyframes zimmer-gestank { 0%, 100% { opacity: 0; transform: translateY(6px); } 50% { opacity: 0.9; transform: translateY(-4px); } }
+.zimmer-lohn {
+  position: absolute; translate: -50% 0; pointer-events: none;
+  display: inline-flex; align-items: center; gap: 0.4cqw;
+  font: 800 2.4cqw/1 Roboto, system-ui, sans-serif; color: #2f2a26;
+  text-shadow: 0 2px 0 #fff, 0 -1px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff;
+  animation: zimmer-lohn 1100ms ease-out forwards;
+}
+.zimmer-lohn .zimmer-muenze { width: 2.4cqw; height: 2.4cqw; }
+@keyframes zimmer-lohn { 0% { opacity: 0; transform: translateY(1cqw) scale(0.6); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: translateY(-7cqw); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .zimmer, .zimmer-blatt, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
+  .zimmer, .zimmer-blatt,
+  .zimmer-haeufchen, .zimmer-gestank path, .zimmer-lohn, .zimmer-neu, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }

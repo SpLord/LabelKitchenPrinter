@@ -5,7 +5,8 @@
   Zufall wird hineingereicht, damit die Tests ihn festnageln können. Wer die
   Katze bewegt und wann, regelt useKatzeImZimmer.js.
 
-  Rangfolge (Design 2026-10-06): krank → Nacht → Durst → Hunger → freie Zeit.
+  Rangfolge (Design 2026-10-06): krank → Nacht → Durst → Hunger → muss mal →
+  freie Zeit.
   Ein Bedürfnis gilt ab SCHWELLE als dringend; darüber hat sie frei.
 
   Koordinaten: Szene 1024 × 768, gemeint ist immer der Punkt zwischen den
@@ -26,6 +27,7 @@ export const ORTE = {
   hoehle:    { x: 862, y: 600, richtung: -1 },
   fenster:   { x: 214, y: 300, richtung: 1 },
   liegen:    { x: 640, y: 660, richtung: -1 },
+  klo:       { x: 118, y: 662, richtung: 1 },
 };
 
 const BODEN = { links: 180, rechts: 960, oben: 568, unten: 680 };
@@ -48,7 +50,9 @@ const gewichtet = (liste, zufall) => {
 };
 
 /*
-  lage: { hunger, durst, krank, nacht, napf, moebel: Set<string> }
+  lage: { hunger, durst, krank, nacht, napf, mussMal, kloPlatz, moebel: Set<string> }
+  mussMal: ein Gang ist fällig (klo.js); kloPlatz: es steht ein Klo und es
+  ist nicht voll.
   Liefert { art, ort, dauer, blase } – blase ist das, was sie in der
   Gedankenblase zeigt (oder null).
 */
@@ -66,6 +70,11 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     return napf > 0
       ? { art: 'fressen', ort: ORTE.napf, dauer: 7_000, blase: 'hunger' }
       : { art: 'betteln', ort: ORTE.napf, dauer: 15_000, blase: 'hunger' };
+  }
+  if (lage.mussMal) {
+    return lage.kloPlatz
+      ? { art: 'klo', ort: ORTE.klo, dauer: 4_000, blase: null }
+      : { art: 'haeufchen', ort: bummelOrt(zufall), dauer: 2_500, blase: null };
   }
 
   const frei = [
@@ -93,6 +102,8 @@ export function wirkung(art, lage) {
     }
     case 'kratzen': return { laune: KRATZ_LAUNE };
     case 'fenster': return { laune: FENSTER_LAUNE };
+    case 'klo':
+    case 'haeufchen': return { gang: true };
     default: return {};
   }
 }

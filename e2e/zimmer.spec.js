@@ -26,7 +26,7 @@ test('Hauptseite: Karte statt alter Katze', async ({ page }) => {
   await oeffnen(page, '/');
   await expect(page.locator('.kuechen-karte')).toBeVisible();
   await expect(page.locator('.cat-sprite')).toHaveCount(0);
-  await expect(page.locator('.kuechen-karte')).toContainText('Mails');
+  await expect(page.locator('.kuechen-karte')).toContainText('Mieze');
   await expect(page.locator('.kuechen-karte')).toContainText('500');
 });
 
@@ -45,7 +45,7 @@ const ueberlappt = (page) => page.evaluate(() => {
     .map((e) => e.className || e.tagName);
 });
 
-test('Küchenkatze: Mails sitzt in der Kopfleiste und verdeckt nichts', async ({ page }, info) => {
+test('Küchenkatze: sie sitzt in der Kopfleiste und verdeckt nichts', async ({ page }, info) => {
   await oeffnen(page, '/');
   await expect(page.locator('.app-bar .kuechen-katze')).toBeVisible();
   for (let i = 0; i < 4; i += 1) {
@@ -84,7 +84,7 @@ test('Zimmer öffnen, Napf füllen, zurück in die Küche', async ({ page }) => 
   await oeffnen(page, '/', { zimmer_napf: 10 });
   await page.locator('.kuechen-karte').click();
   await expect(page.locator('.zimmer-szene')).toBeVisible();
-  await expect(page.locator('.zimmer-name')).toContainText('Mails');
+  await expect(page.getByRole('textbox', { name: /Name der Katze/ })).toHaveValue('Mieze');
 
   await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
   await expect(page.locator('.zimmer-blatt')).toContainText('Napf 10 % voll');
@@ -191,7 +191,8 @@ test('Leckerli fangen: gefangene Leckerlis werden zu Münzen', async ({ page }) 
   await page.locator('.zimmer-karte', { hasText: 'Leckerli fangen' }).locator('.zimmer-preis').click();
   // Napf jedem Leckerli hinterherführen: es landet dort, wo es fällt
   const flaeche = await page.locator('.zimmer-spiel').boundingBox();
-  for (let t = 0; t < 30; t += 1) {
+  // Bis die Ergebnismeldung kommt – sie steht nur 2,6 s, danach wäre sie weg
+  for (let t = 0; t < 40 && (await page.locator('.zimmer-ergebnis').count()) === 0; t += 1) {
     const x = await page.evaluate(() => {
       const g = [...document.querySelectorAll('.zimmer-leckerli.faellt')].map((e) => e.parentElement.getAttribute('transform'));
       const m = g.length ? /translate\(([\d.]+)/.exec(g[0]) : null;
@@ -204,4 +205,90 @@ test('Leckerli fangen: gefangene Leckerlis werden zu Münzen', async ({ page }) 
   const stand = Number((await page.locator('.zimmer-geld').innerText()).replace(/\D/g, ''));
   expect(stand).toBeGreaterThan(100);
   expect(stand).toBeLessThanOrEqual(110);
+});
+
+/* ── Etappe 3a: Einrichten, Katzenklo, Häufchen ───────────────────────── */
+const STUNDE = 3_600_000;
+const kloStand = (z) => JSON.stringify({ letzterGang: Date.now(), klo: 0, haeufchen: [], putzen: { tag: '', summe: 0 }, ...z });
+const heute = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const zimmerAuf = async (page, werte) => {
+  await oeffnen(page, '/', werte);
+  await page.locator('.kuechen-karte').click();
+  await expect(page.locator('.zimmer-szene')).toBeVisible();
+};
+
+test('Einrichten: Katzenklo kaufen – es steht danach im Zimmer', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_klo: kloStand({}) });
+  await expect(page.locator('[data-moebel="katzenklo"]')).toHaveCount(0);
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Einrichten/ }).click();
+  const karte = page.locator('.zimmer-karte[data-artikel="katzenklo"]');
+  await expect(karte).toContainText('150');
+  await karte.locator('.zimmer-preis').click();
+  await expect(page.locator('.zimmer-blatt')).toHaveCount(0);
+  await expect(page.locator('[data-moebel="katzenklo"]')).toHaveCount(1);
+  await expect(page.locator('.zimmer-geld')).toContainText('350');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Katzenklo steht jetzt im Zimmer');
+
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Einrichten/ }).click();
+  await expect(karte).toContainText('steht im Zimmer');
+});
+
+test('Einrichten: ein Tipp auf einen freien Platz öffnet es', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_klo: kloStand({}) });
+  await page.locator('[data-platz="klo"]').click();
+  await expect(page.locator('.zimmer-blatt')).toContainText('Katzenklo');
+});
+
+test('ohne Klo: verpasste Gänge liegen als Häufchen da, wegmachen bringt 2 Münzen', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_klo: kloStand({ letzterGang: Date.now() - 9 * STUNDE }) });
+  const haufen = page.locator('[data-haeufchen]');
+  await expect(haufen).toHaveCount(2);
+  // dispatchEvent: die Katze darf dabei draufsitzen (dann fängt sie den Tipp ab)
+  await haufen.last().dispatchEvent('click');
+  await expect(haufen).toHaveCount(1);
+  await expect(page.locator('.zimmer-geld')).toContainText('502');
+  await expect(page.locator('.zimmer-lohn')).toContainText('+2');
+});
+
+test('mit Klo: Gänge landen im Klo, leeren bringt 3 Münzen', async ({ page }) => {
+  await zimmerAuf(page, {
+    cat_besitz: JSON.stringify(['katzenklo']),
+    zimmer_klo: kloStand({ letzterGang: Date.now() - 9 * STUNDE }),
+  });
+  await expect(page.locator('[data-haeufchen]')).toHaveCount(0);
+  const klo = page.getByRole('button', { name: 'Katzenklo leeren' });
+  await expect(klo).toBeVisible();
+  await klo.click();
+  await expect(page.locator('.zimmer-geld')).toContainText('503');
+  await expect(page.getByRole('button', { name: 'Katzenklo leeren' })).toHaveCount(0);
+});
+
+test('Putzen: nach 30 Münzen am Tag gibt es nur noch ein Danke', async ({ page }) => {
+  await zimmerAuf(page, {
+    zimmer_klo: kloStand({ letzterGang: Date.now() - 5 * STUNDE, putzen: { tag: heute(), summe: 30 } }),
+  });
+  await page.locator('[data-haeufchen]').first().click();
+  await expect(page.locator('[data-haeufchen]')).toHaveCount(0);
+  await expect(page.locator('.zimmer-geld')).toContainText('500');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('keine Münzen mehr');
+});
+
+test('Küchenkarte: viele Häufchen → braucht ein sauberes Zimmer', async ({ page }) => {
+  await oeffnen(page, '/', { zimmer_klo: kloStand({ letzterGang: Date.now() - 13 * STUNDE }) });
+  await expect(page.locator('.kuechen-karte')).toContainText('braucht ein sauberes Zimmer');
+});
+
+test('Name: sie heisst Mieze, nicht wie der Koch – und lässt sich umbenennen', async ({ page }) => {
+  await zimmerAuf(page, {});
+  const feld = page.getByRole('textbox', { name: /Name der Katze/ });
+  await expect(feld).toHaveValue('Mieze');
+  await feld.fill('Luna');
+  await feld.press('Enter');
+  await page.getByRole('button', { name: '← Küche' }).click();
+  await expect(page.locator('.kuechen-karte')).toContainText('Luna');
+  await page.reload();
+  await expect(page.locator('.kuechen-karte')).toContainText('Luna');
 });
