@@ -370,3 +370,28 @@ test('Kleiderschrank: an- und ablegen, Standardfell zurück', async ({ page }) =
   await expect(page.locator('.zimmer-wahl', { hasText: 'Standard' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.zimmer-wahl[data-artikel="fell-ginger"]')).toHaveAttribute('aria-pressed', 'false');
 });
+
+/* ── Etappe 5: Mäuseloch und Hütchenspiel im Zimmer ───────────────────── */
+test('Mäuseloch: Maus antippen, Mieze springt hin, am Ende gibt es Laune', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Mäuseloch' }).locator('.zimmer-preis').click();
+  await expect(page.locator('.zimmer-menue')).toHaveCount(0);
+  const maus = page.locator('[data-maus]');
+  await expect(maus).toHaveCount(1, { timeout: 5000 });
+  await maus.dispatchEvent('pointerdown');
+  await expect(page.locator('.zimmer-spiel-hud')).toContainText('1 Maus');
+  await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-jagen/);
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('1 Maus');
+  await expect(page.locator('.zimmer-menue')).toBeVisible();
+});
+
+test('Hütchenspiel im Zimmer: Einsatz geht ab, Schließen führt zurück ins Zimmer', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Hütchenspiel' }).locator('.zimmer-preis').click();
+  await expect(page.getByRole('dialog', { name: 'Hütchenspiel' })).toBeVisible();
+  await expect(page.locator('.zimmer-geld')).toContainText('495');
+  await page.getByRole('button', { name: 'Schließen' }).click();
+  await expect(page.getByRole('dialog', { name: 'Hütchenspiel' })).toHaveCount(0);
+  await expect(page.locator('.zimmer-menue')).toBeVisible();
+});

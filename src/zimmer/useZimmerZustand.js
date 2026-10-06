@@ -74,6 +74,19 @@ export default function useZimmerZustand() {
     try { localStorage.setItem(KEY_NAME, neu); } catch { /* gesperrt */ }
   }, []);
 
+  // Hütchenspiel: Siegesserie wie bei der alten Katze (gleicher Schlüssel)
+  const [huetchenSerie, setHuetchenSerieRoh] = useState(() => {
+    const v = parseInt(lesenText('cat_shellStreak') ?? '0', 10);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  });
+  const setHuetchenSerie = useCallback((wert) => {
+    setHuetchenSerieRoh((alt) => {
+      const neu = typeof wert === 'function' ? wert(alt) : wert;
+      schreibenText('cat_shellStreak', String(neu));
+      return neu;
+    });
+  }, []);
+
   // Pflegepunkte: wer sich heute kümmert, bekommt morgen ein grösseres Geschenk
   const [pflegeStand, setPflegeStand] = useState(() => pflegeLesen(lesenText(KEY_PFLEGE)));
   const pflege = useCallback((art) => {
@@ -231,6 +244,8 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    huetchenSerie,
+    setHuetchenSerie,
     pflege,
     geschenkHeute,
     geschenkOeffnen,

@@ -257,7 +257,7 @@ export default function ShellGame({ onClose, onResult, streak = 0, onStreak, bal
 
         {/* Header */}
         <div className="shell-title">
-          🎩 Hütchenspiel
+          Hütchenspiel
           {level >= 2 && <span className="shell-level"> Level 2 🚀</span>}
           {streak >= 2 && <span className="shell-streak"> 🔥 {streak}x Streak!</span>}
           <span className="shell-bet">

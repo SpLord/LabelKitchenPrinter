@@ -8,6 +8,10 @@ import EinrichtenKarten from './EinrichtenKarten.jsx';
 import { KleiderschrankKarten, LadenKarten } from './GarderobeKarten.jsx';
 import Szene from './Szene.jsx';
 import SpielFederangel from './SpielFederangel.jsx';
+import SpielMaeuseloch from './SpielMaeuseloch.jsx';
+import ShellGame, { STAKE } from '../ShellGame.jsx';
+import ErrorBoundary from '../ErrorBoundary.jsx';
+import { launeFuer } from './maeuseloch.js';
 import SpielLeckerli from './SpielLeckerli.jsx';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
 
@@ -73,11 +77,11 @@ function Herzen({ anzahl }) {
 }
 
 /* Spielen: kurze Spiele für die Pause, jedes etwa eine halbe Minute. */
-function SpieleKarten({ onSpiel }) {
+function SpieleKarten({ onSpiel, muenzen }) {
   const warten = wartezeit(leckerliZuletzt());
   const minuten = Math.ceil(warten / 60_000);
   return (
-    <div className="zimmer-karten">
+    <div className="zimmer-karten zimmer-karten-klein">
       <article className="zimmer-karte">
         <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
           <g {...K}><path d="M70 2 L44 30" stroke="#a16207" strokeWidth="6" /><path d="M44 30 Q40 46 40 40" fill="none" strokeWidth="2" />
@@ -97,13 +101,25 @@ function SpieleKarten({ onSpiel }) {
         <button className="zimmer-preis" disabled={warten > 0} onClick={() => onSpiel('leckerli')}>spielen</button>
         {warten > 0 && <small>wieder in {minuten} min</small>}
       </article>
-      <article className="zimmer-karte zimmer-karte-info">
+      <article className="zimmer-karte">
         <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
-          <g {...K}><path d="M10 60 a30 30 0 0 1 60 0 Z" fill="#7a5a3a" /><ellipse cx="40" cy="48" rx="12" ry="9" fill="#d1d5db" />
-            <circle cx="35" cy="46" r="2" fill="#2f2a26" stroke="none" /><circle cx="45" cy="46" r="2" fill="#2f2a26" stroke="none" /></g>
+          <g {...K}><path d="M10 60 a30 30 0 0 1 60 0 Z" fill="#3f2a1e" /><ellipse cx="40" cy="48" rx="12" ry="9" fill="#d1d5db" />
+            <circle cx="33" cy="38" r="5" fill="#fbcfe8" /><circle cx="47" cy="38" r="5" fill="#fbcfe8" />
+            <circle cx="35" cy="47" r="2" fill="#2f2a26" stroke="none" /><circle cx="45" cy="47" r="2" fill="#2f2a26" stroke="none" /></g>
         </svg>
         <h3>Mäuseloch</h3>
-        <p>Eine Spielzeugmaus lugt aus der Fußleiste – kommt als Nächstes.</p>
+        <p>Maus antippen, bevor sie verschwindet. Bringt Laune.</p>
+        <button className="zimmer-preis" onClick={() => onSpiel('maus')}>spielen</button>
+      </article>
+      <article className="zimmer-karte">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K} strokeWidth="3.5">{[16, 40, 64].map((x) => <path key={x} d={`M${x - 12} 60 l4 -34 h16 l4 34 Z`} fill="#ef4444" />)}
+            <circle cx="40" cy="64" r="5" fill="#fbbf24" /></g>
+        </svg>
+        <h3>Hütchenspiel</h3>
+        <p>Unter welchem Becher liegt die Münze? Einsatz {STAKE}.</p>
+        <button className="zimmer-preis" disabled={muenzen < STAKE} onClick={() => onSpiel('huetchen')}>spielen</button>
+        {muenzen < STAKE && <small>Zu wenig Münzen</small>}
       </article>
     </div>
   );
@@ -180,7 +196,7 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
             )}
           </div>
         ) : bereich === 'spielen' ? (
-          <SpieleKarten onSpiel={onSpiel} />
+          <SpieleKarten onSpiel={onSpiel} muenzen={zustand.muenzen} />
         ) : bereich === 'einrichten' ? (
           <EinrichtenKarten zustand={zustand} onGekauft={onGekauft} />
         ) : bereich === 'laden' ? (
@@ -226,6 +242,18 @@ export default function Zimmer({ zustand, onZu }) {
     if (muenzen > 0) setMuenzen((c) => c + muenzen);
     setErgebnis(muenzen > 0 ? `+${muenzen} Münzen` : 'Diesmal nichts gefangen');
   }, [freigeben, setMuenzen, pflege]);
+  const mausEnde = useCallback((treffer) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    if (treffer > 0) {
+      erfreuen(launeFuer(treffer));
+      wachstum.naeherKommen(1);
+    }
+    setErgebnis(treffer > 0 ? `${treffer} ${treffer === 1 ? 'Maus' : 'Mäuse'} – ${name} ist ganz aufgedreht` : 'Die Mäuse waren zu flink');
+  }, [freigeben, pflege, erfreuen, wachstum, name]);
+  const mausTreffer = useCallback(() => setHerzchen((n) => n + 1), []);
+
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
     wachstum.naeherKommen(1);
@@ -342,6 +370,18 @@ export default function Zimmer({ zustand, onZu }) {
 
         {spiel === 'feder' && <SpielFederangel katze={katze} onFang={federFang} onEnde={federEnde} />}
         {spiel === 'leckerli' && <SpielLeckerli onEnde={leckerliEnde} />}
+        {spiel === 'maus' && <SpielMaeuseloch katze={katze} onTreffer={mausTreffer} onEnde={mausEnde} />}
+        {spiel === 'huetchen' && (
+          <ErrorBoundary label="Das Hütchenspiel">
+            <ShellGame
+              onClose={() => { setSpiel(null); pflege('spielen'); }}
+              onResult={(delta) => setMuenzen((c) => Math.max(0, c + delta))}
+              streak={zustand.huetchenSerie}
+              onStreak={zustand.setHuetchenSerie}
+              balance={zustand.muenzen}
+            />
+          </ErrorBoundary>
+        )}
         {ergebnis && <div className="zimmer-ergebnis" role="status">{ergebnis}</div>}
 
         {!spiel && (
