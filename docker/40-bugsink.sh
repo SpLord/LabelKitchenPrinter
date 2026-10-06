@@ -33,8 +33,9 @@ EOF
 DSN="${SENTRY_DSN:-}"
 # Ränder kürzen – beim Einfügen in ein Portainer-Feld rutscht gern ein
 # Leerzeichen oder Umbruch mit. Ein Umbruch MITTEN im Wert bleibt erhalten
-# und wird unten abgewiesen (sed arbeitet zeilenweise).
-DSN=$(printf '%s' "$DSN" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+# und wird unten abgewiesen (sed arbeitet zeilenweise; die Befehlsersetzung
+# entfernt nur Umbrüche am Ende).
+DSN=$(printf '%s' "$DSN" | sed -e 's/^[ 	]*//' -e 's/[ 	]*$//')
 if [ -z "$DSN" ]; then
   aus "kein SENTRY_DSN gesetzt"
   exit 0
@@ -44,10 +45,22 @@ fi
 # eine passende Zeile genügte ihm. Ein DSN wie "junk;<Umbruch>https://…/9"
 # kam durch und schrieb "location = /api/junk;" in die Konfiguration
 # (Review vom 06.10.2026, nachgestellt).
-if [ "$(printf '%s' "$DSN" | tr -cd '[:graph:]')" != "$DSN" ]; then
-  aus "SENTRY_DSN enthält Leer- oder Steuerzeichen"
-  exit 0
-fi
+#
+# Bewusst ohne Zeichenklassen wie [:graph:]: BusyBox-tr (Alpine, also dieses
+# Image) liest sie als die wörtlichen Zeichen "[:graph]" und löschte alles –
+# lokal mit GNU-tr getestet sah es richtig aus, die CI lehnte jeden DSN ab.
+# Leerzeichen im Wert fängt das Muster unten ab; durchrutschen konnten nur
+# Zeilenumbrüche, weil grep zeilenweise prüft.
+NL='
+'
+TAB=$(printf '\t')
+CR=$(printf '\r')
+case "$DSN" in
+  *"$NL"* | *"$TAB"* | *"$CR"*)
+    aus "SENTRY_DSN enthält Steuerzeichen"
+    exit 0
+    ;;
+esac
 
 # Erwartet: https://<schlüssel>@<host>[:port]/<projekt>
 if ! printf '%s' "$DSN" | grep -Eq '^https://[0-9a-fA-F-]{32,36}@[A-Za-z0-9.-]+(:[0-9]{1,5})?/[0-9]{1,6}$'; then
