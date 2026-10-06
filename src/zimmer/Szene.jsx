@@ -1,7 +1,7 @@
 import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { PLAETZE } from './einrichtung.js';
 import {
-  FreierPlatz, Futterautomat, Gedankenblase, Haeufchen, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
+  FreierPlatz, Futterautomat, Gedankenblase, Geschenk, Haeufchen, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
 } from './Moebel.jsx';
 
 const KONTUR = '#2f2a26';
@@ -16,7 +16,7 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
   dieser Unterschied die Bildrate gerettet.
 */
 export default function Szene({
-  moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {},
+  moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {},
 }) {
   // Frisch gekauftes Möbel ploppt einmal auf
   const plopp = (id) => (neu === id ? 'zimmer-neu' : undefined);
@@ -80,6 +80,8 @@ export default function Szene({
       {[...haeufchen].sort((a, b) => a.y - b.y).map((h) => (
         <Haeufchen key={h.id} x={h.x} y={h.y} onWeg={() => onPutzen(h.id)} />
       ))}
+
+      {geschenk && <Geschenk x={790} y={640} onOeffnen={onGeschenk} />}
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g

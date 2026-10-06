@@ -270,15 +270,15 @@ test('Putzen: nach 30 Münzen am Tag gibt es nur noch ein Danke', async ({ page 
   await zimmerAuf(page, {
     zimmer_klo: kloStand({ letzterGang: Date.now() - 5 * STUNDE, putzen: { tag: heute(), summe: 30 } }),
   });
-  await page.locator('[data-haeufchen]').first().click();
+  await page.locator('[data-haeufchen]').first().dispatchEvent('click');
   await expect(page.locator('[data-haeufchen]')).toHaveCount(0);
   await expect(page.locator('.zimmer-geld')).toContainText('500');
   await expect(page.locator('.zimmer-ergebnis')).toContainText('keine Münzen mehr');
 });
 
-test('Küchenkarte: viele Häufchen → braucht ein sauberes Zimmer', async ({ page }) => {
+test('Küchenkarte: viele Häufchen → braucht Putzen', async ({ page }) => {
   await oeffnen(page, '/', { zimmer_klo: kloStand({ letzterGang: Date.now() - 13 * STUNDE }) });
-  await expect(page.locator('.kuechen-karte')).toContainText('braucht ein sauberes Zimmer');
+  await expect(page.locator('.kuechen-karte')).toContainText('braucht Putzen');
 });
 
 test('Name: sie heisst Mieze, nicht wie der Koch – und lässt sich umbenennen', async ({ page }) => {
@@ -291,4 +291,48 @@ test('Name: sie heisst Mieze, nicht wie der Koch – und lässt sich umbenennen'
   await expect(page.locator('.kuechen-karte')).toContainText('Luna');
   await page.reload();
   await expect(page.locator('.kuechen-karte')).toContainText('Luna');
+});
+
+/* ── Etappe 3b: tägliches Geschenk, Pflege, Selbstheilung ─────────────── */
+const schichtTag = (versatzTage = 0) => {
+  const d = new Date(Date.now() - 5 * STUNDE + versatzTage * 24 * STUNDE);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+test('Geschenk: liegt einmal am Tag im Zimmer, bringt Münzen und ist dann weg', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_klo: kloStand({}) });
+  const paket = page.getByRole('button', { name: 'Geschenk öffnen' });
+  await expect(paket).toBeVisible();
+  await paket.dispatchEvent('click');
+  // ohne Pflege am Vortag: 10 Münzen, dazu 4 für das eine Herz der Testkatze
+  await expect(page.locator('.zimmer-geld')).toContainText('514');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Geschenk von Mieze: +14 Münzen');
+  await expect(paket).toHaveCount(0);
+  await page.reload();
+  await page.locator('.kuechen-karte').click();
+  await expect(page.locator('.zimmer-szene')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Geschenk öffnen' })).toHaveCount(0);
+});
+
+test('Geschenk: Pflege vom Vortag macht es grösser', async ({ page }) => {
+  await zimmerAuf(page, {
+    zimmer_klo: kloStand({}),
+    zimmer_pflege: JSON.stringify({ tag: schichtTag(-1), punkte: 20 }),
+  });
+  await page.getByRole('button', { name: 'Geschenk öffnen' }).dispatchEvent('click');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('+34 Münzen');
+});
+
+test('Küchenkarte: wartet ein Geschenk, sagt sie es', async ({ page }) => {
+  await oeffnen(page, '/', { zimmer_klo: kloStand({}) });
+  await expect(page.locator('.kuechen-karte')).toContainText('Geschenk wartet');
+  await expect(page.locator('.kuechen-karte-punkt')).toBeVisible();
+});
+
+test('Selbstheilung: zwölf Stunden gut versorgt → wieder gesund, ohne Medizin', async ({ page }) => {
+  await zimmerAuf(page, {
+    zimmer_klo: kloStand({}), zimmer_geschenk: schichtTag(0),
+    cat_krank: '1', cat_hunger: 80, cat_thirst: 80, zimmer_gut_seit: Date.now() - 13 * STUNDE,
+  });
+  await expect(page.locator('.kuechen-karte')).not.toContainText('ist krank');
 });

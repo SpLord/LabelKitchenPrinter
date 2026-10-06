@@ -23,8 +23,8 @@ export const KLO = {
   maxHaeufchen: 4,
   abstandHaeufchen: 80,
   bodenUnten: 652,        // tiefer verdeckt sie die Menüleiste
-  // Napf, Wasser und Klo (einrichtung.js): nicht neben Futter oder Klo
-  meiden: [{ x: 470, y: 602 }, { x: 590, y: 606 }, { x: 106, y: 668 }],
+  // Napf, Wasser, Klo (einrichtung.js) und der Geschenkplatz (Szene.jsx)
+  meiden: [{ x: 470, y: 602 }, { x: 590, y: 606 }, { x: 106, y: 668 }, { x: 790, y: 640 }],
   abstandMoebel: 85,   // so weit auseinander, dass jedes antippbar bleibt
   lohnKlo: 3,
   lohnHaeufchen: 2,

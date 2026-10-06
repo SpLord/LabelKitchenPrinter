@@ -212,20 +212,22 @@ export default function Zimmer({ zustand, onZu }) {
     setSpiel(art);
   };
 
-  const { erfreuen, wachstum, setMuenzen, name } = zustand;
+  const { erfreuen, wachstum, setMuenzen, name, pflege } = zustand;
   const { freigeben } = katze;
   const federEnde = useCallback((faenge) => {
     setSpiel(null);
     freigeben();
+    pflege('spielen');
     setErgebnis(faenge > 0 ? `${faenge} ${faenge === 1 ? 'Fang' : 'Fänge'} – ${name} ist zufrieden` : `${name} hat die Feder nicht erwischt`);
-  }, [freigeben, name]);
+  }, [freigeben, name, pflege]);
   const leckerliEnde = useCallback((faenge) => {
     setSpiel(null);
     freigeben();
+    pflege('spielen');
     const muenzen = muenzenFuerRunde(faenge);
     if (muenzen > 0) setMuenzen((c) => c + muenzen);
     setErgebnis(muenzen > 0 ? `+${muenzen} Münzen` : 'Diesmal nichts gefangen');
-  }, [freigeben, setMuenzen]);
+  }, [freigeben, setMuenzen, pflege]);
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
     wachstum.naeherKommen(1);
@@ -275,7 +277,16 @@ export default function Zimmer({ zustand, onZu }) {
     return () => clearTimeout(t);
   }, [neuesMoebel]);
 
+  // Geschenk öffnen: Münzregen an der Stelle, Meldung mit dem Betrag
+  const geschenkOeffnen = () => {
+    const m = zustand.geschenkOeffnen();
+    if (m <= 0) return;
+    setLohnPops((p) => [...p.slice(-3), { id: `geschenk-${Date.now()}`, x: 790, y: 580, lohn: m }]);
+    setErgebnis(`Geschenk von ${zustand.name}: +${m} Münzen`);
+  };
+
   const streicheln = () => {
+    zustand.pflege('streicheln');
     zustand.erfreuen(FREUDE_STREICHELN);
     zustand.wachstum.naeherKommen(FREUNDSCHAFT_STREICHELN);
     setHerzchen((n) => n + 1);
@@ -287,7 +298,8 @@ export default function Zimmer({ zustand, onZu }) {
         <Szene moebel={zustand.moebel} frei={zustand.frei} napf={zustand.napf} katze={katze}
                klo={zustand.klo} kloVoll={zustand.klo >= KLO.kapazitaet} haeufchen={zustand.haeufchen}
                fell={zustand.fell} zubehoer={zustand.angelegt} onKatze={streicheln} onPutzen={putzen}
-               neu={neuesMoebel} onFrei={() => setBereich('einrichten')} />
+               neu={neuesMoebel} onFrei={() => setBereich('einrichten')}
+               geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"

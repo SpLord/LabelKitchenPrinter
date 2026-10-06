@@ -12,7 +12,7 @@
   align-items: center;
   gap: 12px;
   min-height: 60px;
-  padding: 4px 18px 4px 6px;
+  padding: 4px 18px 4px 18px;
   border: 3.5px solid #2f2a26;
   border-radius: 999px;
   background: #fff8ee;
@@ -27,9 +27,8 @@
 .kuechen-karte:active { transform: translateY(2px); box-shadow: 0 1px 0 #2f2a26; }
 .kuechen-karte:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
 
-.kuechen-karte-katze { position: relative; width: 52px; height: 52px; flex: none; }
 .kuechen-karte-punkt {
-  position: absolute; top: -2px; right: -2px; width: 16px; height: 16px;
+  display: inline-block; vertical-align: 2px; margin-left: 6px; width: 12px; height: 12px;
   border-radius: 50%; background: #3b82f6; border: 3px solid #2f2a26;
   animation: karte-puls 2.4s ease-in-out infinite;
 }
@@ -38,7 +37,10 @@
 
 .kuechen-karte-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
 .kuechen-karte-text strong { font-size: 1.05rem; font-weight: 800; }
-.kuechen-karte-text span { font-size: 0.82rem; color: #78350f; }
+.kuechen-karte-text span {
+  font-size: 0.82rem; color: #78350f;
+  max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .kuechen-karte-muenzen {
   display: inline-flex; align-items: center; gap: 6px; margin-left: 8px;

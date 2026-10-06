@@ -154,6 +154,25 @@ export function Haeufchen({ x, y, onWeg }) {
   );
 }
 
+/* Tägliches Geschenk: Päckchen mit Schleife, hüpft leicht. Antippen öffnet es. */
+export function Geschenk({ x, y, onOeffnen }) {
+  return (
+    <g transform={`translate(${x} ${y})`} className="zimmer-tippbar" onClick={onOeffnen}
+       role="button" aria-label="Geschenk öffnen" data-geschenk="">
+      <g className="zimmer-geschenk" {...strich} strokeWidth={4}>
+        <Schatten x={0} y={2} rx={36} />
+        <rect x="-30" y="-46" width="60" height="46" rx="5" fill="#a78bfa" />
+        <rect x="-35" y="-58" width="70" height="16" rx="4" fill="#c4b5fd" />
+        <path d="M-6 -58 V0 M6 -58 V0" stroke="#fbbf24" strokeWidth={6} />
+        <path d="M-6 -58 V0 M6 -58 V0" fill="none" strokeWidth={0} />
+        <path d="M0 -58 C-22 -82 -34 -60 0 -58 C34 -60 22 -82 0 -58 Z" fill="#fbbf24" strokeWidth={3.5} />
+        <circle cx="0" cy="-58" r="5" fill="#f59e0b" strokeWidth={3} />
+        <rect x="-44" y="-96" width="88" height="100" fill="transparent" stroke="none" />
+      </g>
+    </g>
+  );
+}
+
 export function FreierPlatz({ x, y, art }) {
   const farbe = '#a0896c';
   return (

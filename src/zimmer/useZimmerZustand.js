@@ -9,11 +9,20 @@ import { einrichtung } from './einrichtung.js';
 import { KLO, faellig, gang, haeufchenWeg, kloLeeren, lesen as kloLesen, nachholen } from './klo.js';
 import { wirkung } from './verhalten.js';
 import { STANDARD_NAME, putzeName } from './katzenname.js';
+import { abholen, geschenkDa, pflegeLesen, pflegen, selbstheilung } from './geschenk.js';
 
 const KEY_NAPF = 'zimmer_napf';
 const KEY_NOTRATION = 'zimmer_notration';
 const KEY_KLO = 'zimmer_klo';
 const KEY_NAME = 'zimmer_katzenname';
+const KEY_PFLEGE = 'zimmer_pflege';
+const KEY_GESCHENK = 'zimmer_geschenk';
+const KEY_GUT_SEIT = 'zimmer_gut_seit';
+
+const lesenText = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+const schreibenText = (key, wert) => {
+  try { if (wert === null) localStorage.removeItem(key); else localStorage.setItem(key, wert); } catch { /* gesperrt */ }
+};
 const NACHHOLEN_ALLE = 60_000;
 export const NOTRATION = 20;      // so viel kommt kostenlos in den Napf
 export const BILLIGSTES_FUTTER = 3;
@@ -65,19 +74,64 @@ export default function useZimmerZustand() {
     try { localStorage.setItem(KEY_NAME, neu); } catch { /* gesperrt */ }
   }, []);
 
+  // Pflegepunkte: wer sich heute kümmert, bekommt morgen ein grösseres Geschenk
+  const [pflegeStand, setPflegeStand] = useState(() => pflegeLesen(lesenText(KEY_PFLEGE)));
+  const pflege = useCallback((art) => {
+    setPflegeStand((p) => {
+      const neu = pflegen(p, art, new Date());
+      schreibenText(KEY_PFLEGE, JSON.stringify(neu));
+      return neu;
+    });
+  }, []);
+
   useEffect(() => {
     try { localStorage.setItem(KEY_NAPF, String(Math.round(napf))); } catch { /* gesperrt */ }
   }, [napf]);
 
+  // Minutentakt: Geschenk ab 5 Uhr, Selbstheilung, verpasste Klogänge
+  const [jetzt, setJetzt] = useState(() => Date.now());
+  // (der Takt selbst läuft weiter unten, zusammen mit den Klogängen)
   const { moebel, frei } = useMemo(() => einrichtung(laden.besitz), [laden.besitz]);
+
+  // Tägliches Geschenk – einmal je Schichttag, ab 5 Uhr
+  const [abgeholt, setAbgeholt] = useState(() => lesenText(KEY_GESCHENK));
+  const geschenkHeute = geschenkDa(abgeholt, new Date(jetzt));
+  const { setStand: setzeMuenzen } = muenzen;
+  const geschenkOeffnen = useCallback(() => {
+    const r = abholen({
+      abgeholt, pflege: pflegeStand, herzen: wachstum.herzen, glueckspfote: laden.besitz.includes('glueckspfote'),
+    }, new Date());
+    if (r.muenzen <= 0) return 0;
+    setAbgeholt(r.abgeholt);
+    schreibenText(KEY_GESCHENK, r.abgeholt);
+    setzeMuenzen((c) => c + r.muenzen);
+    return r.muenzen;
+  }, [abgeholt, pflegeStand, wachstum.herzen, laden.besitz, setzeMuenzen]);
+
+  // Selbstheilung: zwölf Stunden gut versorgt → gesund, auch ohne Medizin
+  const gutSeitRef = useRef(null);
+  if (gutSeitRef.current === null) {
+    const roh = Number(lesenText(KEY_GUT_SEIT));
+    gutSeitRef.current = { wert: Number.isFinite(roh) && roh > 0 ? roh : null };
+  }
+  const { heilen: heilenNeeds } = beduerfnisse;
+  useEffect(() => {
+    const r = selbstheilung({
+      krank: beduerfnisse.krank, hunger: beduerfnisse.hunger, durst: beduerfnisse.thirst, gutSeit: gutSeitRef.current.wert,
+    }, jetzt);
+    if (r.gutSeit !== gutSeitRef.current.wert) {
+      gutSeitRef.current.wert = r.gutSeit;
+      schreibenText(KEY_GUT_SEIT, r.gutSeit === null ? null : String(r.gutSeit));
+    }
+    if (r.heilt) heilenNeeds();
+  }, [beduerfnisse.krank, beduerfnisse.hunger, beduerfnisse.thirst, jetzt, heilenNeeds]);
   const hatKlo = moebel.has('katzenklo');
 
-  // Verpasste Gänge verbuchen: beim Start und danach jede Minute
   useEffect(() => {
-    const pruefen = () => setKlo((z) => {
-      const neu = nachholen(z, { hatKlo, jetzt: Date.now() });
-      return neu === z ? z : neu;
-    });
+    const pruefen = () => {
+      setJetzt(Date.now());
+      setKlo((z) => nachholen(z, { hatKlo, jetzt: Date.now() }));
+    };
     pruefen();
     const uhr = setInterval(pruefen, NACHHOLEN_ALLE);
     return () => clearInterval(uhr);
@@ -116,8 +170,9 @@ export default function useZimmerZustand() {
     muenzen.setStand((c) => c - preis);
     setNapf((v) => Math.min(100, v + menge));
     wachstum.naeherKommen(FREUNDSCHAFT_FUETTERN);
+    pflege('fuettern');
     return true;
-  }, [muenzen, napf, wachstum]);
+  }, [muenzen, napf, wachstum, pflege]);
 
   /*
     Keine Sackgasse: Wer keine Münzen fürs billigste Futter hat, bekommt einmal
@@ -163,9 +218,10 @@ export default function useZimmerZustand() {
     if (r.zustand === z) return 0;
     kloRef.current = r.zustand;
     setKlo(r.zustand);
+    pflege('putzen');
     if (r.lohn > 0) setStand((c) => c + r.lohn);
     return r.lohn;
-  }, [setStand]);
+  }, [setStand, pflege]);
 
   const was = bedarf({
     hunger: beduerfnisse.hunger, thirst: beduerfnisse.thirst, freude: beduerfnisse.freude, krank: beduerfnisse.krank,
@@ -175,6 +231,9 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    pflege,
+    geschenkHeute,
+    geschenkOeffnen,
     muenzen: muenzen.stand,
     setMuenzen: muenzen.setStand,
     hunger: beduerfnisse.hunger,

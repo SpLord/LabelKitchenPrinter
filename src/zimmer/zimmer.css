@@ -185,6 +185,10 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-hat { display: inline-block; padding: 0.6cqw 1.2cqw; border-radius: 999px; background: #dcfce7; border: 3px solid #2f2a26; font-weight: 800; font-size: 1.5cqw; }
 .zimmer-karte-hat { opacity: 0.85; }
 
+/* Tägliches Geschenk */
+.zimmer-geschenk { animation: zimmer-geschenk 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes zimmer-geschenk { 0%, 70%, 100% { transform: translateY(0) rotate(0); } 80% { transform: translateY(-8px) rotate(-4deg); } 90% { transform: translateY(0) rotate(3deg); } }
+
 /* Klo und Häufchen (Etappe 3) */
 .zimmer-tippbar { cursor: pointer; }
 .zimmer-haeufchen { animation: zimmer-plopp 380ms cubic-bezier(.3,1.6,.6,1) both; transform-box: fill-box; transform-origin: 50% 100%; }
@@ -205,7 +209,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 
 @media (prefers-reduced-motion: reduce) {
   .zimmer, .zimmer-blatt,
-  .zimmer-haeufchen, .zimmer-gestank path, .zimmer-lohn, .zimmer-neu, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
+  .zimmer-haeufchen, .zimmer-gestank path, .zimmer-lohn, .zimmer-neu, .zimmer-geschenk, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }

@@ -22,10 +22,10 @@ test('gang mit Klo: landet im Klo, kein Häufchen', () => {
 });
 
 test('gang ohne Klo: Häufchen an ihrer Stelle', () => {
-  const z = gang(leer(T0), { hatKlo: false, jetzt: T0 + STUNDE, ort: { x: 760, y: 640 }, zufall: fest });
+  const z = gang(leer(T0), { hatKlo: false, jetzt: T0 + STUNDE, ort: { x: 690, y: 630 }, zufall: fest });
   assert.equal(z.klo, 0);
   assert.equal(z.haeufchen.length, 1);
-  assert.deepEqual([z.haeufchen[0].x, z.haeufchen[0].y], [760, 640]);
+  assert.deepEqual([z.haeufchen[0].x, z.haeufchen[0].y], [690, 630]);
 });
 
 test('gang: volles Klo → Häufchen daneben auf dem Boden', () => {

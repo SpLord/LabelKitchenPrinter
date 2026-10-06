@@ -42,6 +42,12 @@ export default [
       // Das hier hätte den useMemo-Absturz gefunden, bevor er in Produktion ging:
       'no-undef': 'error',
 
+      // Und das hier den Absturz in 1.11.0-dev: ein State wurde im selben Hook
+      // benutzt, bevor er deklariert war (temporal dead zone) – Lint und Build
+      // waren grün, die ErrorBoundary blendete das ganze Katzenspiel aus.
+      // Nur derselbe Gültigkeitsbereich; Aufrufe aus Funktionen bleiben erlaubt.
+      'no-use-before-define': ['error', { functions: false, classes: false, variables: false }],
+
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'react/prop-types': 'off',
       'no-empty': ['warn', { allowEmptyCatch: true }],
