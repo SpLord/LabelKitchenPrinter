@@ -1,4 +1,4 @@
-import { test, expect, grundaufbau, menuepunkt, warteAufDrucke } from './hilfen.js';
+import { test, expect, grundaufbau, menuepunkt, warteAufDrucke, streichleKatze } from './hilfen.js';
 
 const mitZustand = async (page, werte) => {
   await grundaufbau(page);
@@ -51,7 +51,7 @@ test('Streicheln hebt die Zufriedenheit', async ({ page }) => {
   await mitZustand(page, { cat_hunger: 90, cat_thirst: 90, cat_freude: 40 });
   const freude = () => page.evaluate(() => Number(localStorage.getItem('cat_freude')));
   const vor = await freude();
-  await page.locator('.cat-sprite').click();
+  await streichleKatze(page);
   await expect.poll(freude).toBeGreaterThan(vor);
 });
 

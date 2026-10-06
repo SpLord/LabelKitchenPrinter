@@ -15,8 +15,15 @@ import { clampNeed, conditionOf } from './needs.js';
 
 // ── Zufriedenheit ────────────────────────────────────────────────────────────
 
-/* Fällt langsamer als Hunger; Spielen und Streicheln füllen sie. */
-export const FREUDE_VERFALL_PRO_STUNDE = 6;
+/*
+  Fällt etwas schneller als Hunger; Spielen und Streicheln füllen sie.
+
+  War 6 – wirkte aber nie, weil der Timer jede Minute neu startete (behoben in
+  1.3.4). Mit funktionierendem Verfall hiesse 6 %/h: von 70 auf 0 in rund
+  zwölf Stunden, also jeden Morgen eine verdriessliche Katze. Design
+  2026-10-06: 2 %/h – eine Spielrunde am Tag hält sie oben.
+*/
+export const FREUDE_VERFALL_PRO_STUNDE = 2;
 export const FREUDE_FANGEN = 12;      // Spielzeug erwischt – das eigentliche Spielen
 export const FREUDE_AUFRAEUMEN = 4;   // Häufchen weggeklickt
 export const FREUDE_STREICHELN = 3;

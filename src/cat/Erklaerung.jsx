@@ -1,4 +1,5 @@
 import { AUSSTATTUNG } from './laden.js';
+import { dauerInWorten } from './dauer.js';
 import { CONDITIONS, DECAY_PER_HOUR, NEED_MAX } from './needs.js';
 import {
   FREUDE_AUFRAEUMEN, FREUDE_FANGEN, FREUDE_LECKERLI, FREUDE_STREICHELN,
@@ -64,7 +65,7 @@ export default function Erklaerung({
         <h4>🍽️ Hunger {Math.round(hunger)}&nbsp;% · 💧 Durst {Math.round(thirst)}&nbsp;%</h4>
         <p>
           Beide fallen um {DECAY_PER_HOUR}&nbsp;% je Stunde – von voll auf leer sind das
-          rund {stundenLeer} Stunden, also gut eine Schicht. Auffüllen über
+          rund {stundenLeer} Stunden, also {dauerInWorten(stundenLeer)}. Auffüllen über
           <em> Füttern &amp; Wasser</em> im ✨-Menü: den Napf hinstellen, die Katze geht hin.
         </p>
         <p className="erk-fein">

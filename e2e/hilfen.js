@@ -116,3 +116,34 @@ export const warteAufDrucke = async (page, anzahl) => {
   ).toBe(anzahl);
   return page.evaluate(() => window.__drucke);
 };
+
+/*
+  Die Katze streicheln – zuverlässig.
+
+  Seit 1.3.4 gibt die Katze einen Tipp an das Bedienelement darunter weiter
+  (sie verschluckte vorher Etikett-Tipps). Ein Test, der einfach auf die Katze
+  tippt, streichelt deshalb nur, wenn sie zufällig über freier Fläche steht –
+  auf dem Tablet in rund 60 % der Fälle. Hier werden die Bedienelemente für
+  den einen Tipp stillgelegt und ein Punkt gesucht, an dem die Katze oben liegt.
+*/
+export const streichleKatze = async (page) => {
+  const punkt = await page.evaluate(() => {
+    document.querySelectorAll('button, a, input, select, textarea, label, [role=button], .react-datepicker').forEach((e) => {
+      if (!e.closest('.cat-sprite')) { e.dataset.vorStreicheln = e.style.pointerEvents; e.style.pointerEvents = 'none'; }
+    });
+    const r = document.querySelector('.cat-sprite svg').getBoundingClientRect();
+    for (let i = 1; i <= 7; i += 1) for (let j = 1; j <= 7; j += 1) {
+      const x = r.left + (r.width * i) / 8;
+      const y = r.top + (r.height * j) / 8;
+      if (document.elementsFromPoint(x, y)[0]?.closest('.cat-sprite')) return { x, y };
+    }
+    return null;
+  });
+  if (!punkt) throw new Error('Katze liegt vollständig unter anderen Elementen');
+  await page.mouse.click(punkt.x, punkt.y);
+  await page.evaluate(() => {
+    document.querySelectorAll('[data-vor-streicheln]').forEach((e) => {
+      e.style.pointerEvents = e.dataset.vorStreicheln; delete e.dataset.vorStreicheln;
+    });
+  });
+};

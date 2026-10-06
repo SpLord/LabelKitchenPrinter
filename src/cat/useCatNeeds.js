@@ -112,21 +112,32 @@ export default function useCatNeeds(haeufchen = 0, wirkung = OHNE_WIRKUNG) {
   const fuettern = useCallback((menge) => setHunger((v) => feed(v, menge)), []);
   const traenken = useCallback((menge) => setThirst((v) => feed(v, menge)), []);
 
+  /*
+    Der Abbau-Intervall liest den Stand über einen Ref. Hing er an
+    [hunger, thirst, ...], wurde er bei jeder Änderung abgebaut und neu
+    gestartet – und der Hunger ändert sich jede Minute, also genau im Takt des
+    Intervalls. Er löste nie aus, die Zufriedenheit sank nie (gemessen: nach
+    60 Minuten Hunger -1,2, Zufriedenheit +-0). Jetzt läuft er einmal durch.
+  */
+  const freudeStandRef = useRef({ hunger, thirst, haeufchen, freudeFaktor, schlafErholung });
+  freudeStandRef.current = { hunger, thirst, haeufchen, freudeFaktor, schlafErholung };
+
   // Zufriedenheit fällt eigenständig, schneller wenn etwas fehlt oder Dreck liegt
   useEffect(() => {
     const id = setInterval(() => {
+      const { hunger: h, thirst: d, haeufchen: dreck, freudeFaktor: ff, schlafErholung: erholung } = freudeStandRef.current;
       // Mit Kuschelhöhle ist die Nacht Erholung statt Abbau – der einzige
       // Zeitraum, in dem die Zufriedenheit von allein steigt.
-      if (schlaeft() && schlafErholung) {
+      if (schlaeft() && erholung) {
         setFreude((v) => clampNeed(v + SCHLAF_ERHOLUNG_PRO_STUNDE / 60));
         return;
       }
-      const rate = freudeVerfall({ hunger, thirst, haeufchen }) * freudeFaktor;
+      const rate = freudeVerfall({ hunger: h, thirst: d, haeufchen: dreck }) * ff;
       const verlust = (schlaeft() ? VERFALL_FAKTOR_SCHLAF : 1) * (rate / 60);
       setFreude((v) => clampNeed(v - verlust));
     }, TAKT);
     return () => clearInterval(id);
-  }, [hunger, thirst, haeufchen, freudeFaktor, schlafErholung]);
+  }, []);
 
   // Krank wird sie nur nach anhaltender Not – nie zufällig, nie tödlich.
   useEffect(() => {

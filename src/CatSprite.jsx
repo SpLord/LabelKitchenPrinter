@@ -10,6 +10,7 @@ import Erklaerung from './cat/Erklaerung.jsx';
 import { FREUNDSCHAFT_FUETTERN, FREUNDSCHAFT_SPIELEN, FREUNDSCHAFT_STREICHELN } from './cat/wachstum.js';
 import Katzenladen from './cat/Katzenladen.jsx';
 import { getCookie, setCookie } from './cat/storage.js';
+import { istEingabefeld, tippziel } from './cat/tippziel.js';
 
 import CatVariant, { VARIANTS } from './cat/CatVariant.jsx';
 export default function CatSprite({ play, onCatch, debugUi = false, laserMode = false, onToggleLaser, setSuppressSpawn, toyPosRef }) {
@@ -427,6 +428,19 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
     setBubbleSize('normal');
     if (hideTimeout.current) clearTimeout(hideTimeout.current);
     hideTimeout.current = setTimeout(() => setMessage(null), 12000);
+  };
+
+  /*
+    Die Katze liegt über der Bedienung. Läge unter dem Tipp ein Knopf, würde
+    sie ihn verschlucken und das Etikett bliebe ungedruckt. Darum zuerst
+    nachsehen, was darunter liegt, und den Tipp dorthin weitergeben.
+  */
+  const beiTipp = (e) => {
+    e.stopPropagation();
+    const ziel = tippziel(document.elementsFromPoint(e.clientX, e.clientY));
+    if (!ziel) { showPurr(); return; }
+    if (istEingabefeld(ziel)) ziel.focus();
+    else ziel.click();
   };
 
   useEffect(() => {
@@ -1118,7 +1132,7 @@ export default function CatSprite({ play, onCatch, debugUi = false, laserMode = 
         role="button"
       tabIndex={0}
       title="Klick für Schnurren"
-      onClick={(e) => { e.stopPropagation(); showPurr(); }}
+      onClick={beiTipp}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPurr(); } }}
     >
       <div className="cat-float" style={{ '--phasen-groesse': wachstum.phase.groesse }}>

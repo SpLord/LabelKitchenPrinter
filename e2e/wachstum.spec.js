@@ -1,4 +1,4 @@
-import { test, expect, grundaufbau } from './hilfen.js';
+import { test, expect, grundaufbau, streichleKatze } from './hilfen.js';
 
 const mitWerten = async (page, werte, zeit) => {
   if (zeit) await page.clock.setFixedTime(new Date(zeit));
@@ -62,7 +62,7 @@ test('Freundschaft wächst beim Streicheln und fällt nie', async ({ page }) => 
   await mitWerten(page, { cat_freundschaft: 30, cat_letzterTag: '2026-08-31' }, '2026-08-31T14:00:00');
   const wert = () => page.evaluate(() => Number(localStorage.getItem('cat_freundschaft')));
   const vor = await wert();
-  await page.locator('.cat-sprite').click();
+  await streichleKatze(page);
   await expect.poll(wert).toBeGreaterThan(vor);
 
   await page.reload();

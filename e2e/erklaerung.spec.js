@@ -1,6 +1,7 @@
 import { test, expect, grundaufbau, menuepunkt } from './hilfen.js';
 import { FREUNDSCHAFT_TAG } from '../src/cat/wachstum.js';
-import { DECAY_PER_HOUR } from '../src/cat/needs.js';
+import { DECAY_PER_HOUR, NEED_MAX } from '../src/cat/needs.js';
+import { dauerInWorten } from '../src/cat/dauer.js';
 
 /*
   Die Statusleiste zeigt sechs Zahlen, deren Bedeutung nirgends stand –
@@ -54,6 +55,16 @@ test('die Zahlen stammen aus den Regeln, nicht aus dem Text', async ({ page }) =
   await page.locator('.pet-leiste').click();
   // Ändert sich die Verfallsrate im Code, muss die Hilfe mitgehen
   await expect(page.locator('.erklaerung')).toContainText(`${DECAY_PER_HOUR} % je Stunde`);
+});
+
+test('die Dauer von voll auf leer folgt aus der Rate, nicht aus einer Schätzung', async ({ page }) => {
+  await mitStand(page);
+  await page.locator('.pet-leiste').click();
+  const stunden = Math.round(NEED_MAX / DECAY_PER_HOUR);
+  const text = await page.locator('.erklaerung').innerText();
+  expect(text).toContain(`rund ${stunden} Stunden, also ${dauerInWorten(stunden)}`);
+  // Bei der aktuellen Rate (mehrere Tage) darf keine Schicht behauptet werden
+  expect(text).not.toContain('Schicht');
 });
 
 test('gekaufte Ausstattung taucht in der Erklärung auf', async ({ page }) => {
