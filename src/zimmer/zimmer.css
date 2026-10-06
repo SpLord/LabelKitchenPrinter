@@ -40,6 +40,26 @@
 .zimmer-katze-koerper { transform-box: fill-box; transform-origin: center; transition: transform 180ms ease; }
 .zimmer-katze-hops { transform-box: fill-box; transform-origin: 50% 100%; }
 .zimmer-katze.laeuft .zimmer-katze-hops { animation: zimmer-hops 0.42s ease-in-out infinite; }
+
+/* Posen (Etappe 2): Beine, Schwanz, Atmen, Zzz */
+.pose-bein { transform-box: fill-box; transform-origin: 50% 8%; }
+.pose-laufen .pose-bein.vorn-a, .pose-laufen .pose-bein.hinten-b { animation: pose-schritt 0.42s ease-in-out infinite; }
+.pose-laufen .pose-bein.vorn-b, .pose-laufen .pose-bein.hinten-a { animation: pose-schritt 0.42s ease-in-out infinite reverse; }
+@keyframes pose-schritt { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(22deg); } }
+.pose-schwanz { transform-box: fill-box; transform-origin: 0% 100%; animation: pose-wedeln 1.6s ease-in-out infinite; }
+@keyframes pose-wedeln { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(8deg); } }
+.pose-kopf-frisst { transform-box: fill-box; transform-origin: 80% 20%; animation: pose-nicken 0.7s ease-in-out infinite; }
+@keyframes pose-nicken { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(7deg); } }
+.pose-atmen { transform-box: fill-box; transform-origin: 50% 100%; animation: pose-atmen 3.2s ease-in-out infinite; }
+@keyframes pose-atmen { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.06); } }
+.zimmer-zzz text { opacity: 0; animation: zimmer-zzz 3.6s ease-out infinite; }
+.zimmer-zzz text:nth-child(2) { animation-delay: 1.2s; }
+.zimmer-zzz text:nth-child(3) { animation-delay: 2.4s; }
+@keyframes zimmer-zzz {
+  0% { opacity: 0; transform: translate(0, 0); }
+  20% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(-34px, -70px); }
+}
 @keyframes zimmer-hops {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   25% { transform: translateY(-5px) rotate(-1.5deg); }
@@ -155,6 +175,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 
 @media (prefers-reduced-motion: reduce) {
   .zimmer, .zimmer-blatt, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
+  .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }
 }

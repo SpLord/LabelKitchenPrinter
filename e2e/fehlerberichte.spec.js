@@ -45,6 +45,13 @@ test('ein unbehandelter Fehler geht an den eigenen Ursprung, nicht nach draussen
   const fremd = [];
   page.on('request', (r) => { if (!r.url().startsWith(baseURL)) fremd.push(r.url()); });
   await bereit(page);
+  /*
+    Erst werfen, wenn das SDK wirklich läuft: es wird nachgeladen, sobald die
+    Freigabe vom Server da ist. Auf dem langsameren Tablet-Durchlauf war es
+    manchmal noch nicht so weit, und der Fehler ging ungezählt verloren – ein
+    Wackler im Test, kein Fehler der App. Sentry legt beim Start window.__SENTRY__ an.
+  */
+  await page.waitForFunction(() => Boolean(window.__SENTRY__), null, { timeout: 10_000 });
 
   await page.evaluate(() => setTimeout(() => { throw new Error('E2E-Probe: unbehandelt'); }));
   await expect.poll(() => umschlaege.length, { timeout: 10_000 }).toBeGreaterThan(0);

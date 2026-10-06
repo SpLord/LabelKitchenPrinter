@@ -110,33 +110,6 @@ function CatVariant({ index, active, zubehoer = {} }) {
 
         {/* Gekauftes Zubehör aus dem Katzenladen. Kopf: Kreis bei 80/85 r=40,
             Augen bei 65/85 und 95/85, Ohren oben zwischen y 25 und 60. */}
-        {zubehoer.halsband && (
-          <g className="kz-halsband">
-            <path d="M52 116 q28 16 56 0" fill="none" stroke={v.accent} strokeWidth="9" strokeLinecap="round" />
-            <circle cx="80" cy="126" r="6" fill="#fbbf24" stroke={v.stroke} strokeWidth="2.5" />
-          </g>
-        )}
-        {zubehoer.brille && (
-          <g className="kz-brille" fill="none" stroke={v.stroke} strokeWidth="4">
-            <circle cx="65" cy="85" r="13" fill="rgba(255,255,255,0.35)" />
-            <circle cx="95" cy="85" r="13" fill="rgba(255,255,255,0.35)" />
-            <path d="M78 85 h4" strokeLinecap="round" />
-            <path d="M52 82 l-9 -4" strokeLinecap="round" />
-          </g>
-        )}
-        {zubehoer.schal && (
-          <g className="kz-schal">
-            <path d="M48 118 q32 20 64 2 l3 12 q-34 19 -70 -2 Z" fill="#ef4444" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
-            <path d="M104 132 l10 26 l-13 4 l-6 -26 Z" fill="#dc2626" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
-          </g>
-        )}
-        {zubehoer.hut && (
-          <g className="kz-hut">
-            <path d="M46 40 h60" stroke={v.stroke} strokeWidth="6" strokeLinecap="round" />
-            <rect x="58" y="6" width="36" height="34" rx="3" fill="#1f2937" stroke={v.stroke} strokeWidth="5" />
-            <rect x="58" y="28" width="36" height="8" fill="#dc2626" />
-          </g>
-        )}
         {/*
           Angelegter Flügel auf der Flanke, bewusst VOR dem Körper.
 
@@ -156,36 +129,8 @@ function CatVariant({ index, active, zubehoer = {} }) {
             </g>
           </g>
         )}
-        {/* Der Kragen gehört vor den Körper – der Stoff dahinter ist zu
-            grossen Teilen verdeckt, erst der Kragen macht den Umhang lesbar. */}
-        {zubehoer.umhang && (
-          <g className="kz-umhang-kragen">
-            <path d="M50 112 q30 20 60 -2 l5 13 q-34 24 -70 0 Z"
-                  fill="#dc2626" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
-            <circle cx="80" cy="122" r="5.5" fill="#fbbf24" stroke={v.stroke} strokeWidth="2.5" />
-          </g>
-        )}
-        {zubehoer.kopfhoerer && (
-          <g className="kz-kopfhoerer">
-            <path d="M44 84 q0 -46 36 -46 q36 0 36 46" fill="none" stroke="#1f2937" strokeWidth="7" strokeLinecap="round" />
-            <rect x="34" y="72" width="18" height="26" rx="7" fill="#374151" stroke={v.stroke} strokeWidth="3.5" />
-            <rect x="108" y="72" width="18" height="26" rx="7" fill="#374151" stroke={v.stroke} strokeWidth="3.5" />
-            <rect x="37" y="79" width="12" height="12" rx="4" fill="#f472b6" />
-          </g>
-        )}
-        {zubehoer.heiligenschein && (
-          <g className="kz-heiligenschein">
-            <ellipse cx="80" cy="16" rx="27" ry="8" fill="none" stroke="#fbbf24" strokeWidth="6" />
-            <ellipse cx="80" cy="16" rx="27" ry="8" fill="none" stroke="#fef3c7" strokeWidth="2" />
-          </g>
-        )}
-        {zubehoer.schleife && (
-          <g className="kz-schleife">
-            <path d="M112 44 l-16 -10 v20 Z" fill="#fb7185" stroke={v.stroke} strokeWidth="3.5" strokeLinejoin="round" />
-            <path d="M112 44 l16 -10 v20 Z" fill="#fb7185" stroke={v.stroke} strokeWidth="3.5" strokeLinejoin="round" />
-            <circle cx="112" cy="44" r="5" fill="#f43f5e" stroke={v.stroke} strokeWidth="3" />
-          </g>
-        )}
+
+        <ZubehoerKopf zubehoer={zubehoer} v={v} />
 
         {/* Paws */}
         <ellipse className="cat-paw cat-paw-1" cx="60" cy="155" rx="16" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="6" />
@@ -196,6 +141,77 @@ function CatVariant({ index, active, zubehoer = {} }) {
 }
 
 
+
+
+/*
+  Kopf- und Halsstücke im Koordinatensystem der sitzenden Katze
+  (Kopf: Kreis bei 80/85, r=40). Herausgelöst, damit die Posen im
+  Katzenzimmer dasselbe Zubehör tragen können – sie setzen es per
+  transform auf ihren eigenen Kopf, statt es neu zu zeichnen.
+*/
+export function ZubehoerKopf({ zubehoer = {}, v }) {
+  return (
+    <>
+    {zubehoer.halsband && (
+      <g className="kz-halsband">
+        <path d="M52 116 q28 16 56 0" fill="none" stroke={v.accent} strokeWidth="9" strokeLinecap="round" />
+        <circle cx="80" cy="126" r="6" fill="#fbbf24" stroke={v.stroke} strokeWidth="2.5" />
+      </g>
+    )}
+    {zubehoer.brille && (
+      <g className="kz-brille" fill="none" stroke={v.stroke} strokeWidth="4">
+        <circle cx="65" cy="85" r="13" fill="rgba(255,255,255,0.35)" />
+        <circle cx="95" cy="85" r="13" fill="rgba(255,255,255,0.35)" />
+        <path d="M78 85 h4" strokeLinecap="round" />
+        <path d="M52 82 l-9 -4" strokeLinecap="round" />
+      </g>
+    )}
+    {zubehoer.schal && (
+      <g className="kz-schal">
+        <path d="M48 118 q32 20 64 2 l3 12 q-34 19 -70 -2 Z" fill="#ef4444" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
+        <path d="M104 132 l10 26 l-13 4 l-6 -26 Z" fill="#dc2626" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
+      </g>
+    )}
+    {zubehoer.hut && (
+      <g className="kz-hut">
+        <path d="M46 40 h60" stroke={v.stroke} strokeWidth="6" strokeLinecap="round" />
+        <rect x="58" y="6" width="36" height="34" rx="3" fill="#1f2937" stroke={v.stroke} strokeWidth="5" />
+        <rect x="58" y="28" width="36" height="8" fill="#dc2626" />
+      </g>
+    )}
+    {/* Der Kragen gehört vor den Körper – der Stoff dahinter ist zu
+        grossen Teilen verdeckt, erst der Kragen macht den Umhang lesbar. */}
+    {zubehoer.umhang && (
+      <g className="kz-umhang-kragen">
+        <path d="M50 112 q30 20 60 -2 l5 13 q-34 24 -70 0 Z"
+              fill="#dc2626" stroke={v.stroke} strokeWidth="4" strokeLinejoin="round" />
+        <circle cx="80" cy="122" r="5.5" fill="#fbbf24" stroke={v.stroke} strokeWidth="2.5" />
+      </g>
+    )}
+    {zubehoer.kopfhoerer && (
+      <g className="kz-kopfhoerer">
+        <path d="M44 84 q0 -46 36 -46 q36 0 36 46" fill="none" stroke="#1f2937" strokeWidth="7" strokeLinecap="round" />
+        <rect x="34" y="72" width="18" height="26" rx="7" fill="#374151" stroke={v.stroke} strokeWidth="3.5" />
+        <rect x="108" y="72" width="18" height="26" rx="7" fill="#374151" stroke={v.stroke} strokeWidth="3.5" />
+        <rect x="37" y="79" width="12" height="12" rx="4" fill="#f472b6" />
+      </g>
+    )}
+    {zubehoer.heiligenschein && (
+      <g className="kz-heiligenschein">
+        <ellipse cx="80" cy="16" rx="27" ry="8" fill="none" stroke="#fbbf24" strokeWidth="6" />
+        <ellipse cx="80" cy="16" rx="27" ry="8" fill="none" stroke="#fef3c7" strokeWidth="2" />
+      </g>
+    )}
+    {zubehoer.schleife && (
+      <g className="kz-schleife">
+        <path d="M112 44 l-16 -10 v20 Z" fill="#fb7185" stroke={v.stroke} strokeWidth="3.5" strokeLinejoin="round" />
+        <path d="M112 44 l16 -10 v20 Z" fill="#fb7185" stroke={v.stroke} strokeWidth="3.5" strokeLinejoin="round" />
+        <circle cx="112" cy="44" r="5" fill="#f43f5e" stroke={v.stroke} strokeWidth="3" />
+      </g>
+    )}
+    </>
+  );
+}
 
 export default CatVariant;
 export { VARIANTS };

@@ -1,4 +1,4 @@
-import CatVariant from '../cat/CatVariant.jsx';
+import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { PLAETZE } from './einrichtung.js';
 import {
   FreierPlatz, Futterautomat, Gedankenblase, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
@@ -17,6 +17,7 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
 */
 export default function Szene({ moebel, frei, napf, katze, fell, zubehoer, onKatze }) {
   const { pos, richtung, dauer, laeuft, blase, art } = katze;
+  const pose = poseFuer({ laeuft, art });
   return (
     <svg className="zimmer-szene" viewBox="0 0 1024 768" preserveAspectRatio="xMidYMid meet"
          role="img" aria-label="Katzenzimmer">
@@ -65,7 +66,7 @@ export default function Szene({ moebel, frei, napf, katze, fell, zubehoer, onKat
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g
-        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} tut-${art}`}
+        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} tut-${art} pose-${pose}`}
         style={{ transform: `translate(${pos.x - KATZE / 2}px, ${pos.y - KATZE + 12}px)`, transitionDuration: `${dauer}ms` }}
         onClick={onKatze}
         role="button"
@@ -76,10 +77,17 @@ export default function Szene({ moebel, frei, napf, katze, fell, zubehoer, onKat
         <g className="zimmer-katze-koerper" style={{ transform: `scaleX(${-richtung})` }}>
           <g className="zimmer-katze-hops">
             <svg width={KATZE} height={KATZE} viewBox="0 0 200 200" overflow="visible">
-              <CatVariant index={fell} active={laeuft} zubehoer={zubehoer} />
+              <KatzePose pose={pose} fell={fell} aktiv={laeuft} zubehoer={zubehoer} />
             </svg>
           </g>
         </g>
+        {pose === 'schlafen' && (
+          <g className="zimmer-zzz" aria-hidden="true" fill="#6b7280" fontWeight="800" fontFamily="Roboto, system-ui, sans-serif">
+            <text x={KATZE * 0.3} y="70" fontSize="22">z</text>
+            <text x={KATZE * 0.3} y="70" fontSize="28">Z</text>
+            <text x={KATZE * 0.3} y="70" fontSize="34">Z</text>
+          </g>
+        )}
         <g transform={`translate(${KATZE * 0.62} -58)`}><Gedankenblase was={blase} /></g>
       </g>
     </svg>
