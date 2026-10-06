@@ -5,6 +5,7 @@ import { PLAETZE } from './einrichtung.js';
 import { KLO } from './klo.js';
 import NamensFeld from '../labels/NamensFeld.jsx';
 import EinrichtenKarten from './EinrichtenKarten.jsx';
+import { KleiderschrankKarten, LadenKarten } from './GarderobeKarten.jsx';
 import Szene from './Szene.jsx';
 import SpielFederangel from './SpielFederangel.jsx';
 import SpielLeckerli from './SpielLeckerli.jsx';
@@ -37,10 +38,6 @@ const BEREICHE = [
 ];
 
 /* Was in den noch nicht gebauten Bereichen kommt – ehrlich statt Attrappe. */
-const KOMMT = {
-  laden: { etappe: 4, text: 'Möbel, Felle und Zubehör mit Vorschau – man sieht vor dem Kauf, wie es aussieht.' },
-  kleiderschrank: { etappe: 4, text: 'Felle und Zubehör anlegen und wechseln, die Krone eingeschlossen.' },
-};
 
 const FUTTER = [
   { id: 'trocken', name: 'Trockenfutter', menge: 20, preis: 3, farbe: '#fde68a' },
@@ -112,7 +109,7 @@ function SpieleKarten({ onSpiel }) {
   );
 }
 
-function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft }) {
+function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
   const titel = BEREICHE.find((b) => b.id === bereich)?.titel;
   return (
     <div className="zimmer-blatt-huelle" onClick={onZu}>
@@ -127,6 +124,7 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft }) {
           </button>
         </header>
 
+        <div className="zimmer-blatt-inhalt">
         {bereich === 'fuettern' ? (
           <div className="zimmer-karten">
             {FUTTER.map((f) => {
@@ -185,12 +183,12 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft }) {
           <SpieleKarten onSpiel={onSpiel} />
         ) : bereich === 'einrichten' ? (
           <EinrichtenKarten zustand={zustand} onGekauft={onGekauft} />
+        ) : bereich === 'laden' ? (
+          <LadenKarten zustand={zustand} onGekauft={onAngezogen} />
         ) : (
-          <div className="zimmer-kommt">
-            <strong>Kommt in Etappe {KOMMT[bereich].etappe}</strong>
-            <p>{KOMMT[bereich].text}</p>
-          </div>
+          <KleiderschrankKarten zustand={zustand} />
         )}
+        </div>
       </section>
     </div>
   );
@@ -357,7 +355,8 @@ export default function Zimmer({ zustand, onZu }) {
         </nav>
         )}
 
-        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft} />}
+        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft}
+                                  onAngezogen={(a) => setErgebnis(`${a.name} gekauft – ${zustand.name} trägt es`)} />}
       </div>
     </div>
   );

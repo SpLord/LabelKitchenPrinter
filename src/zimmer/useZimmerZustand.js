@@ -245,6 +245,7 @@ export default function useZimmerZustand() {
     wachstum,
     besitz: laden.besitz,
     kaufen: laden.kaufeUndLege,
+    umschalten: laden.umschalten,
     angelegt: laden.angelegt,
     // Kein Zufallsfell mehr: sie behält ihr Fell, bis man ein anderes anlegt
     fell: laden.fellVariante ?? 0,

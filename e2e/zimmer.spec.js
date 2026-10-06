@@ -336,3 +336,37 @@ test('Selbstheilung: zwölf Stunden gut versorgt → wieder gesund, ohne Medizin
   });
   await expect(page.locator('.kuechen-karte')).not.toContainText('ist krank');
 });
+
+/* ── Etappe 4: Laden und Kleiderschrank ───────────────────────────────── */
+test('Laden: Brille kaufen – sie trägt sie sofort, die Karte sagt „im Schrank“', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_klo: kloStand({}), zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Laden/ }).click();
+  const karte = page.locator('.zimmer-karte[data-artikel="brille"]');
+  await karte.locator('.zimmer-preis').click();
+  await expect(page.locator('.zimmer-geld')).toContainText('0');
+  await expect(page.locator('.zimmer-geld')).not.toContainText('500');
+  await expect(karte).toContainText('im Schrank');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Brille gekauft');
+  // An der Katze im Zimmer: die Brille ist gezeichnet
+  await page.locator('.zimmer-blatt-zu').click();
+  await expect(page.locator('.zimmer-szene .kz-brille').first()).toBeAttached();
+});
+
+test('Kleiderschrank: an- und ablegen, Standardfell zurück', async ({ page }) => {
+  await zimmerAuf(page, {
+    zimmer_klo: kloStand({}), zimmer_geschenk: schichtTag(0),
+    cat_besitz: JSON.stringify(['halsband', 'fell-ginger']),
+    cat_angelegt: JSON.stringify({ fell: 'fell-ginger' }),
+  });
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Kleiderschrank/ }).click();
+  const halsband = page.locator('.zimmer-wahl[data-artikel="halsband"]');
+  await expect(halsband).toHaveAttribute('aria-pressed', 'false');
+  await halsband.click();
+  await expect(halsband).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.zimmer-schrank-spiegel .kz-halsband')).toBeAttached();
+
+  await expect(page.locator('.zimmer-wahl[data-artikel="fell-ginger"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.zimmer-wahl', { hasText: 'Standard' }).click();
+  await expect(page.locator('.zimmer-wahl', { hasText: 'Standard' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.zimmer-wahl[data-artikel="fell-ginger"]')).toHaveAttribute('aria-pressed', 'false');
+});
