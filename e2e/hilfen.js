@@ -84,6 +84,20 @@ export const test = basis.extend({
     await benutze(page);
     if (fehler.length) throw new Error('Seitenfehler: ' + [...new Set(fehler)].join(' | '));
   },
+  // Das alte Spiel – bis Etappe 8 als Notausgang unter ?alt
+  alteSeite: async ({ page }, benutze) => {
+    await echtesDymoBlocken(page);
+    await page.addInitScript(dymoFaelschen(), [['DYMO Küche'], true, PNG]);
+    await page.addInitScript(spielstand(), STAND_SATT);
+    const fehler = [];
+    page.on('pageerror', (e) => fehler.push(String(e)));
+    await page.goto('/?alt');
+    // Auf die Druckererkennung warten statt auf die Uhr – spart je Test rund
+    // eine Sekunde und ist zuverlässiger als ein fester Wert.
+    await page.waitForSelector('.status-indicator .online', { timeout: 15_000 });
+    await benutze(page);
+    if (fehler.length) throw new Error('Seitenfehler: ' + [...new Set(fehler)].join(' | '));
+  },
 });
 
 export { expect } from '@playwright/test';

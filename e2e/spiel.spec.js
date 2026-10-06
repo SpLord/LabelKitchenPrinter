@@ -7,7 +7,7 @@ const mitStand = async (page, werte) => {
   await echtesDymoBlocken(page);
   await page.addInitScript(dymoFaelschen(), [['DYMO Küche'], true, PNG]);
   await page.addInitScript(spielstand(), { ...STAND_SATT, ...werte });
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online', { timeout: 15_000 });
 };
 

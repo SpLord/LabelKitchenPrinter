@@ -13,7 +13,7 @@ const mitMuenzen = async (page, stand, weitere = {}) => {
       // frisches Profil.
     } catch { /* gesperrt */ }
   }, [stand, weitere]);
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
   (await menuepunkt(page, /Katzenladen/)).click();
   await expect(page.locator('.gimmick-panel.laden')).toBeVisible();

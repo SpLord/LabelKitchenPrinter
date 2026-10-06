@@ -106,13 +106,36 @@ function Blatt({ bereich, zustand, onZu }) {
                 </article>
               );
             })}
-            <article className="zimmer-karte zimmer-karte-info">
-              <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
-                <path d="M40 8 C26 28 22 36 22 42 a18 18 0 0 0 36 0 c0 -6 -4 -14 -18 -34 Z" fill="#60a5fa" {...K} />
-              </svg>
-              <h3>Wasser</h3>
-              <p>Immer frisch und kostenlos – sie trinkt, wenn sie Durst hat.</p>
-            </article>
+            {zustand.krank ? (
+              <article className="zimmer-karte zimmer-karte-wichtig">
+                <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+                  <g {...K}><rect x="14" y="22" width="52" height="28" rx="10" fill="#fde68a" /><path d="M34 36 h12 M40 30 v12" strokeWidth="3.5" /></g>
+                </svg>
+                <h3>Medizin</h3>
+                <p>{zustand.medizinPreis > 0 ? 'Macht sie sofort wieder gesund.' : 'Kostenlos, wenn die Münzen nicht reichen.'}</p>
+                <button className="zimmer-preis" onClick={zustand.medizinGeben}>
+                  {zustand.medizinPreis > 0 ? <><span className="zimmer-muenze" aria-hidden="true" /> {zustand.medizinPreis}</> : 'kostenlos'}
+                </button>
+              </article>
+            ) : zustand.notrationMoeglich ? (
+              <article className="zimmer-karte zimmer-karte-wichtig">
+                <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+                  <g {...K}><path d="M18 10 h44 l6 54 h-56 Z" fill="#fef3c7" /><path d="M30 34 h20 M40 24 v20" stroke="#16a34a" strokeWidth="5" /></g>
+                </svg>
+                <h3>Notration</h3>
+                <p>Keine Münzen? Einmal am Tag gibt es kostenlos +20.</p>
+                <button className="zimmer-preis" disabled={zustand.notrationHeute} onClick={zustand.notrationGeben}>kostenlos</button>
+                {zustand.notrationHeute && <small>Morgen wieder</small>}
+              </article>
+            ) : (
+              <article className="zimmer-karte zimmer-karte-info">
+                <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+                  <path d="M40 8 C26 28 22 36 22 42 a18 18 0 0 0 36 0 c0 -6 -4 -14 -18 -34 Z" fill="#60a5fa" {...K} />
+                </svg>
+                <h3>Wasser</h3>
+                <p>Immer frisch und kostenlos – sie trinkt, wenn sie Durst hat.</p>
+              </article>
+            )}
           </div>
         ) : (
           <div className="zimmer-kommt">

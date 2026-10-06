@@ -18,7 +18,7 @@ const mitKatze = async (page, werte = {}) => {
     cat_coinCount: 900, cat_coinPeak: 1410, cat_lastSeen: Date.now(), cat_fwDone: '1',
     cat_hunger: 90, cat_thirst: 90, cat_freude: 40, ...werte,
   });
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
   await page.locator('.cat-sprite svg').first().waitFor();
 };

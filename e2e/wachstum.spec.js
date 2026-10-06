@@ -7,7 +7,7 @@ const mitWerten = async (page, werte, zeit) => {
     try { for (const [k, v] of Object.entries(w)) localStorage.setItem(k, String(v)); } catch { /* gesperrt */ }
   }, { cat_coinCount: 900, cat_coinPeak: 1410, cat_hunger: 90, cat_thirst: 90,
        cat_freude: 70, cat_lastSeen: Date.now(), cat_fwDone: '1', ...werte });
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
 };
 

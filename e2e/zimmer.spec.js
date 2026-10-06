@@ -1,10 +1,10 @@
 import { test, expect, grundaufbau, warteAufDrucke } from './hilfen.js';
 
 /*
-  Katzenzimmer, Etappe 1 – hinter dem Schalter ?zimmer.
+  Katzenzimmer – seit 1.5.0 Standard auf der Hauptseite. Das alte Spiel ist
+  bis zum Aufräumen nur noch unter ?alt erreichbar.
 
-  Das Wichtigste zuerst: ohne Schalter bleibt die Küche, wie sie ist, und mit
-  Schalter druckt sie genauso. Das Zimmer ist Spielerei; der Etikettendruck
+  Das Wichtigste zuerst: die Küche druckt mit dem Zimmer genauso wie vorher. Das Zimmer ist Spielerei; der Etikettendruck
   ist die Arbeit.
 */
 const oeffnen = async (page, pfad, werte = {}) => {
@@ -16,34 +16,34 @@ const oeffnen = async (page, pfad, werte = {}) => {
   await page.waitForSelector('.status-indicator .online');
 };
 
-test('ohne Schalter: alte Katze, keine Karte', async ({ page }) => {
-  await oeffnen(page, '/');
+test('Notausgang ?alt: alte Katze, keine Karte', async ({ page }) => {
+  await oeffnen(page, '/?alt');
   await expect(page.locator('.cat-sprite')).toHaveCount(1);
   await expect(page.locator('.kuechen-karte')).toHaveCount(0);
 });
 
-test('mit Schalter: Karte statt Katze, nichts über den Etikettenknöpfen', async ({ page }) => {
-  await oeffnen(page, '/?zimmer');
+test('Hauptseite: Karte statt Katze, nichts über den Etikettenknöpfen', async ({ page }) => {
+  await oeffnen(page, '/');
   await expect(page.locator('.kuechen-karte')).toBeVisible();
   await expect(page.locator('.cat-sprite')).toHaveCount(0);
   await expect(page.locator('.kuechen-karte')).toContainText('Mails');
   await expect(page.locator('.kuechen-karte')).toContainText('500');
 });
 
-test('mit Schalter druckt die Küche wie immer', async ({ page }) => {
-  await oeffnen(page, '/?zimmer');
+test('die Küche druckt wie immer', async ({ page }) => {
+  await oeffnen(page, '/');
   await page.getByRole('button', { name: /^Steak/ }).first().click();
   expect((await warteAufDrucke(page, 1))[0].felder.Name).toBe('Steak');
 });
 
 test('die Karte zeigt, was ihr fehlt', async ({ page }) => {
-  await oeffnen(page, '/?zimmer', { cat_thirst: 20 });
+  await oeffnen(page, '/', { cat_thirst: 20 });
   await expect(page.locator('.kuechen-karte')).toContainText('hat Durst');
   await expect(page.locator('.kuechen-karte-punkt')).toBeVisible();
 });
 
 test('Zimmer öffnen, Napf füllen, zurück in die Küche', async ({ page }) => {
-  await oeffnen(page, '/?zimmer', { zimmer_napf: 10 });
+  await oeffnen(page, '/', { zimmer_napf: 10 });
   await page.locator('.kuechen-karte').click();
   await expect(page.locator('.zimmer-szene')).toBeVisible();
   await expect(page.locator('.zimmer-name')).toContainText('Mails');
@@ -62,7 +62,7 @@ test('Zimmer öffnen, Napf füllen, zurück in die Küche', async ({ page }) => 
 });
 
 test('voller Napf lässt sich nicht weiter füllen', async ({ page }) => {
-  await oeffnen(page, '/?zimmer', { zimmer_napf: 100 });
+  await oeffnen(page, '/', { zimmer_napf: 100 });
   await page.locator('.kuechen-karte').click();
   await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
   await expect(page.locator('.zimmer-karte', { hasText: 'Trockenfutter' }).locator('.zimmer-preis')).toBeDisabled();
@@ -70,10 +70,41 @@ test('voller Napf lässt sich nicht weiter füllen', async ({ page }) => {
 });
 
 test('gekaufte Ausstattung steht im Zimmer', async ({ page }) => {
-  await oeffnen(page, '/?zimmer', { cat_besitz: JSON.stringify(['kratzbaum', 'trinkbrunnen']) });
+  await oeffnen(page, '/', { cat_besitz: JSON.stringify(['kratzbaum', 'trinkbrunnen']) });
   await page.locator('.kuechen-karte').click();
   await expect(page.locator('[data-moebel="kratzbaum"]')).toHaveCount(1);
   await expect(page.locator('[data-moebel="trinkbrunnen"]')).toHaveCount(1);
   await expect(page.locator('[data-moebel="wassernapf"]')).toHaveCount(0);
   await expect(page.locator('[data-moebel="kuschelhoehle"]')).toHaveCount(0);
+});
+
+test('die Karte ist unübersehbar ein Knopf zum Zimmer', async ({ page }) => {
+  await oeffnen(page, '/');
+  await expect(page.locator('.kuechen-karte')).toContainText('Zimmer ›');
+  // Sie liegt oben und nimmt den Tipp – vorher lag die Kopfleiste darüber
+  const mitte = await page.locator('.kuechen-karte').boundingBox();
+  const oben = await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.kuechen-karte'),
+    [mitte.x + mitte.width / 2, mitte.y + mitte.height / 2]);
+  expect(oben).toBe(true);
+});
+
+test('ohne Münzen gibt es einmal am Tag eine Notration', async ({ page }) => {
+  await oeffnen(page, '/', { cat_coinCount: 0, cat_coinPeak: 0, zimmer_napf: 0 });
+  await page.locator('.kuechen-karte').click();
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
+  const karte = page.locator('.zimmer-karte', { hasText: 'Notration' });
+  await karte.locator('.zimmer-preis').click();
+  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 20 % voll');
+  await expect(karte.locator('.zimmer-preis')).toBeDisabled();
+  await expect(karte).toContainText('Morgen wieder');
+});
+
+test('kranke Katze: Medizin hilft, notfalls kostenlos', async ({ page }) => {
+  await oeffnen(page, '/', { cat_coinCount: 10, cat_krank: '1', cat_hunger: 30, cat_thirst: 30 });
+  await page.locator('.kuechen-karte').click();
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
+  const karte = page.locator('.zimmer-karte', { hasText: 'Medizin' });
+  await expect(karte).toContainText('kostenlos');
+  await karte.locator('.zimmer-preis').click();
+  await expect(page.locator('.zimmer-karte', { hasText: 'Medizin' })).toHaveCount(0);
 });

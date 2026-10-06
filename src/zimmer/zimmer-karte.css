@@ -45,6 +45,13 @@
   font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums;
 }
 
+.kuechen-karte-los {
+  margin-left: 4px; padding: 6px 12px; border-radius: 999px;
+  background: #fbbf24; border: 3px solid #2f2a26;
+  font-weight: 800; font-size: 0.95rem; white-space: nowrap;
+}
+.kuechen-karte { padding-right: 8px; }
+
 /* Gezeichnete Münze – ersetzt das 🪙-Emoji */
 .zimmer-muenze {
   display: inline-block; width: 1.15em; height: 1.15em; border-radius: 50%; flex: none;

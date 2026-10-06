@@ -138,6 +138,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-karte p { margin: 0; font-size: 1.4cqw; color: #6b7280; line-height: 1.35; }
 .zimmer-karte small { font-size: 1.25cqw; color: #b45309; font-weight: 700; }
 .zimmer-karte-info { background: #f0f8ff; }
+.zimmer-karte-wichtig { background: #fff7e0; }
 
 .zimmer-preis {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.7cqw;

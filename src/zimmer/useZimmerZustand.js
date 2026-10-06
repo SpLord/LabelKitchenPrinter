@@ -3,12 +3,15 @@ import useCatCoins from '../cat/useCatCoins.js';
 import useCatNeeds from '../cat/useCatNeeds.js';
 import useKatzenladen from '../cat/useKatzenladen.js';
 import useWachstum from '../cat/useWachstum.js';
-import { bedarf, schlaeft } from '../cat/tamagotchi.js';
-import { FREUNDSCHAFT_FUETTERN } from '../cat/wachstum.js';
+import { MEDIZIN_PREIS, bedarf, schlaeft } from '../cat/tamagotchi.js';
+import { FREUNDSCHAFT_FUETTERN, tagesSchluessel } from '../cat/wachstum.js';
 import { einrichtung } from './einrichtung.js';
 import { wirkung } from './verhalten.js';
 
 const KEY_NAPF = 'zimmer_napf';
+const KEY_NOTRATION = 'zimmer_notration';
+export const NOTRATION = 20;      // so viel kommt kostenlos in den Napf
+export const BILLIGSTES_FUTTER = 3;
 
 const lesenZahl = (key, ersatz) => {
   try {
@@ -74,6 +77,38 @@ export default function useZimmerZustand() {
     return true;
   }, [muenzen, napf, wachstum]);
 
+  /*
+    Keine Sackgasse: Wer keine Münzen fürs billigste Futter hat, bekommt einmal
+    am Tag eine Notration. Vorher stand auf einem Gerät ohne Münzen eine
+    hungrige Katze, die sich nicht füttern liess (Analyse 2026-10-06).
+  */
+  const [notrationAm, setNotrationAm] = useState(() => {
+    try { return localStorage.getItem(KEY_NOTRATION); } catch { return null; }
+  });
+  const notrationHeute = notrationAm === tagesSchluessel();
+  const notrationMoeglich = muenzen.stand < BILLIGSTES_FUTTER && napf < 100;
+  const notrationGeben = useCallback(() => {
+    if (notrationHeute || !notrationMoeglich) return false;
+    setNapf((v) => Math.min(100, v + NOTRATION));
+    const heute = tagesSchluessel();
+    setNotrationAm(heute);
+    try { localStorage.setItem(KEY_NOTRATION, heute); } catch { /* gesperrt */ }
+    return true;
+  }, [notrationHeute, notrationMoeglich]);
+
+  /*
+    Medizin wie bisher für 40 Münzen – mit weniger ist sie kostenlos, damit eine
+    kranke Katze nie festsitzt. Die Selbstheilung kommt mit Etappe 3.
+  */
+  const { heilen } = beduerfnisse;
+  const medizinPreis = muenzen.stand >= MEDIZIN_PREIS ? MEDIZIN_PREIS : 0;
+  const medizinGeben = useCallback(() => {
+    if (!beduerfnisse.krank) return false;
+    if (medizinPreis > 0) muenzen.setStand((c) => c - medizinPreis);
+    heilen();
+    return true;
+  }, [beduerfnisse.krank, medizinPreis, muenzen, heilen]);
+
   const was = bedarf({
     hunger: beduerfnisse.hunger, thirst: beduerfnisse.thirst, freude: beduerfnisse.freude, krank: beduerfnisse.krank,
   });
@@ -96,6 +131,11 @@ export default function useZimmerZustand() {
     frei,
     napf,
     napfFuellen,
+    notrationMoeglich,
+    notrationHeute,
+    notrationGeben,
+    medizinPreis,
+    medizinGeben,
     bedarf: was,
     lageRef,
     anwendenRef,

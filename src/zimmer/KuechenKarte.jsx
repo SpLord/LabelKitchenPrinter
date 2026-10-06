@@ -36,6 +36,8 @@ export default function KuechenKarte({ zustand, onOeffnen }) {
         <span className="zimmer-muenze" aria-hidden="true" />
         {zustand.muenzen}
       </span>
+      {/* Damit niemand rätseln muss, dass das ein Knopf ist */}
+      <span className="kuechen-karte-los">Zimmer ›</span>
     </button>
   );
 }

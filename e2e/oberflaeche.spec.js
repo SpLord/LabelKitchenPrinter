@@ -21,13 +21,13 @@ const ueberlappungen = (page, sels) => page.evaluate((liste) => {
   return treffer;
 }, sels);
 
-test('nichts überdeckt sich in der Kopfleiste', async ({ seite }) => {
+test('nichts überdeckt sich in der Kopfleiste', async ({ alteSeite: seite }) => {
   // Die Münzanzeige der Katze liegt fixiert oben links; die Kopfleiste muss
   // ausweichen. Genau hier lag schon zweimal ein Fehler.
   expect(await ueberlappungen(seite, SCHWEBEND)).toEqual([]);
 });
 
-test('auch mit Fehlermeldung bleibt alles frei', async ({ seite }) => {
+test('auch mit Fehlermeldung bleibt alles frei', async ({ alteSeite: seite }) => {
   await seite.fill('.side-rail .input-group input', 'Testetikett');
   await seite.evaluate(() => { window.dymo = undefined; });
   await seite.click('.side-rail .input-group button');
@@ -35,7 +35,7 @@ test('auch mit Fehlermeldung bleibt alles frei', async ({ seite }) => {
   expect(await ueberlappungen(seite, SCHWEBEND)).toEqual([]);
 });
 
-test('das Hütchenspiel steht mittig auf dem Bildschirm', async ({ seite }) => {
+test('das Hütchenspiel steht mittig auf dem Bildschirm', async ({ alteSeite: seite }) => {
   // Es wurde früher innerhalb des Katzen-Sprites gerendert, dessen
   // Transform-Animation den Bezugsrahmen bildete – das Brett klebte an der
   // Katze und wanderte mit ihr.
@@ -55,7 +55,7 @@ test('das Hütchenspiel steht mittig auf dem Bildschirm', async ({ seite }) => {
   expect(mass.abweichungY).toBeLessThan(2);
 });
 
-test('beim Merken ist die Münze wirklich zu sehen', async ({ seite }) => {
+test('beim Merken ist die Münze wirklich zu sehen', async ({ alteSeite: seite }) => {
   const knopf = await menuepunkt(seite, /Hütchenspiel/);
   await knopf.click();
   await seite.waitForSelector('.shell-coin');
@@ -81,7 +81,7 @@ test('beim Merken ist die Münze wirklich zu sehen', async ({ seite }) => {
 */
 const BREITEN = [1920, 1600, 1440, 1401, 1366, 1280, 1201, 1100, 1024, 900, 820, 768];
 
-test('die Kopfleiste bleibt über alle Breiten frei', async ({ seite }) => {
+test('die Kopfleiste bleibt über alle Breiten frei', async ({ alteSeite: seite }) => {
   const kaputt = [];
   for (const breite of BREITEN) {
     await seite.setViewportSize({ width: breite, height: 800 });
@@ -99,7 +99,7 @@ test('die Kopfleiste bleibt über alle Breiten frei', async ({ seite }) => {
 */
 test('auch mit zwei Druckern bleibt die Leiste frei', async ({ page }) => {
   await grundaufbau(page, ['DYMO Küche', 'DYMO Bar']);
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
   await expect(page.locator('.drucker-wahl')).toBeVisible();
 
@@ -121,7 +121,7 @@ test('auch mit zwei Druckern bleibt die Leiste frei', async ({ page }) => {
 */
 test('die Leiste weicht auch einer ungewöhnlich breiten Münzanzeige aus', async ({ page }) => {
   await grundaufbau(page, ['DYMO Küche', 'DYMO Bar']);
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
 
   const kaputt = [];

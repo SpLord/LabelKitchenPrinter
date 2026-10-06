@@ -17,14 +17,18 @@ import { datumsText, verwendbarBis } from './print/etikett.js';
 import { meldeDruckfehler } from './fehler/bugsink.js';
 
 /*
-  Das neue Katzenzimmer entsteht hinter ?zimmer (Design 2026-10-06). Ohne den
-  Schalter wird davon nichts geladen, die Küche bleibt unverändert. Mit ihm
-  läuft die alte Katze nicht – zwei Katzen liessen dieselben Werte doppelt
-  verfallen.
+  Das Katzenzimmer ist seit 1.5.0 Standard (Design 2026-10-06). Erst sollte es
+  hinter ?zimmer entstehen, bis es fertig ist – das hiess für den Nutzer: Adresse
+  tippen, zwei Spiele nebeneinander, und auf der Hauptseite änderte sich
+  nichts. Also gleich umgestellt.
+
+  Das alte Spiel bleibt bis zum Aufräumen (Etappe 8) als Notausgang unter
+  ?alt erreichbar. Nie beide zugleich: zwei Katzen liessen dieselben Werte
+  doppelt verfallen.
 */
 const ZimmerModus = lazy(() => import('./zimmer/ZimmerModus.jsx'));
 const ZIMMER_MODUS = (() => {
-  try { return new URLSearchParams(window.location.search).has('zimmer'); } catch { return false; }
+  try { return !new URLSearchParams(window.location.search).has('alt'); } catch { return true; }
 })();
 import useSchichtDatum from './print/useSchichtDatum.js';
 

@@ -5,7 +5,7 @@ const mitZustand = async (page, werte) => {
   await page.addInitScript((w) => {
     try { for (const [k, v] of Object.entries(w)) localStorage.setItem(k, String(v)); } catch { /* gesperrt */ }
   }, { cat_coinCount: 900, cat_coinPeak: 1410, cat_lastSeen: Date.now(), cat_fwDone: '1', ...werte });
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
 };
 
@@ -93,7 +93,7 @@ test('frisches Gerät startet mit satter Katze, nicht bei null', async ({ page }
   await page.addInitScript(() => {
     try { localStorage.setItem('cat_coinCount', '900'); localStorage.setItem('cat_fwDone', '1'); } catch { /* gesperrt */ }
   });
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
 
   const werte = await page.evaluate(() => ({

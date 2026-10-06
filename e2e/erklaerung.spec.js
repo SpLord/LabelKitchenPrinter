@@ -16,7 +16,7 @@ const mitStand = async (page, werte = {}) => {
     cat_coinCount: 900, cat_coinPeak: 1410, cat_lastSeen: Date.now(), cat_fwDone: '1',
     cat_hunger: 72, cat_thirst: 64, cat_freude: 55, ...werte,
   });
-  await page.goto('/');
+  await page.goto('/?alt');
   await page.waitForSelector('.status-indicator .online');
 };
 
