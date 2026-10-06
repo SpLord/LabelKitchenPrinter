@@ -148,6 +148,8 @@ jobs:
                    'location = /api/9/envelope/'; do
             printf '%s' "$KONF" | grep -qF "$d" || { echo "fehlt in der Konfiguration: $d"; exit 1; }
           done
+          # Die Startseite darf nicht ungefragt aus dem Zwischenspeicher kommen
+          curl -sI localhost:8081/ | grep -qi '^cache-control: no-cache' || { echo "Startseite ohne no-cache"; exit 1; }
           # Der Etikettenspeicher läuft unverändert
           test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8081/daten/etiketten.json)" = 204
           echo "Rauchtest bestanden"
