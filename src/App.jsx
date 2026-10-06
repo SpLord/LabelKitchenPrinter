@@ -5,8 +5,6 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import './styles.css';
 import ErrorBoundary from './ErrorBoundary.jsx';
-import CatSprite from './CatSprite.jsx';
-import PlayOverlay from './PlayOverlay.jsx';
 import LabelEditor from './LabelEditor.jsx';
 import useEtiketten from './labels/useEtiketten.js';
 import {
@@ -17,19 +15,11 @@ import { datumsText, verwendbarBis } from './print/etikett.js';
 import { meldeDruckfehler } from './fehler/bugsink.js';
 
 /*
-  Das Katzenzimmer ist seit 1.5.0 Standard (Design 2026-10-06). Erst sollte es
-  hinter ?zimmer entstehen, bis es fertig ist – das hiess für den Nutzer: Adresse
-  tippen, zwei Spiele nebeneinander, und auf der Hauptseite änderte sich
-  nichts. Also gleich umgestellt.
-
-  Das alte Spiel bleibt bis zum Aufräumen (Etappe 8) als Notausgang unter
-  ?alt erreichbar. Nie beide zugleich: zwei Katzen liessen dieselben Werte
-  doppelt verfallen.
+  Das Katzenzimmer (Design 2026-10-06) als eigener, nachgeladener Teil: Karte
+  und Katze in der Kopfleiste, das Zimmer als Vollbild darüber. Das alte
+  Spiel (CatSprite, Spielzeug-Overlay, Laser) ist mit Etappe 8 entfernt.
 */
 const ZimmerModus = lazy(() => import('./zimmer/ZimmerModus.jsx'));
-const ZIMMER_MODUS = (() => {
-  try { return !new URLSearchParams(window.location.search).has('alt'); } catch { return true; }
-})();
 import useSchichtDatum from './print/useSchichtDatum.js';
 
 export default function App() {
@@ -39,15 +29,8 @@ export default function App() {
   const [drucker, setDrucker] = useState([]);          // alle gefundenen
   const [anzahl, setAnzahl] = useState(MIN_ANZAHL);    // Etiketten je Druck
   const [previewSrc, setPreviewSrc] = useState(null);
-  const [play, setPlay] = useState(null); // toy target for cat
-  const [laserMode, setLaserMode] = useState(false);
-  const [laserDragging, setLaserDragging] = useState(false);
-  const [suppressSpawn, setSuppressSpawn] = useState(false);
   const [error, setError] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
-
-  // Aktuelle Spielzeugposition – von PlayOverlay geschrieben, von der Katze gelesen
-  const toyPosRef = useRef(null);
 
   const merkeDruckerRef = useRef(() => {});
 
@@ -77,7 +60,6 @@ export default function App() {
   const etikettDatum = useSchichtDatum();
   // Zuletzt gezeigte Vorschau, damit ein Datumswechsel genau sie neu rendert
   const letzteVorschauRef = useRef({ text: '', tage: null });
-  const debugUi = (input || '').trim().toUpperCase() === 'BATCAT';
 
   // Druckerstatus prüfen (DYMO)
   useEffect(() => {
@@ -143,77 +125,7 @@ export default function App() {
     };
   }, []);
 
-  // Global click to spawn toy when clicking on background areas
-  useEffect(() => {
-    // Im Zimmer-Modus gibt es in der Küche kein Spielzeug mehr
-    if (ZIMMER_MODUS) return undefined;
-    const handler = (e) => {
-  if (suppressSpawn) return; // placement active
-  if (laserMode) return; // no spawn while laser active
-      // ignore if clicking on interactive or inside main layout/status
-      const interactiveTags = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A', 'IMG', 'LABEL']);
-      if (interactiveTags.has(e.target.tagName)) return;
-      if (
-        e.target.closest('.button-group') ||
-        e.target.closest('.date-section') ||
-        e.target.closest('.preview-section') ||
-        e.target.closest('.status-indicator') ||
-        e.target.closest('.react-datepicker') ||
-        e.target.closest('.custom-datepicker') ||
-        e.target.closest('.react-datepicker__month-container') ||
-        e.target.closest('.react-datepicker__day') ||
-        e.target.closest('.react-datepicker__navigation') ||
-        e.target.closest('.app-bar') ||
-        e.target.closest('.editor-overlay') ||
-        e.target.closest('.version-badge') ||
-        e.target.closest('.cat-sprite')
-      ) return;
-      // viewport click position
-      const x = e.clientX;
-      const y = e.clientY;
-      // spawn ball or mouse (50/50)
-      const kind = Math.random() < 0.5 ? 'ball' : 'mouse';
-      const id = Date.now();
-      toyPosRef.current = { id, kind, x, y };
-      setPlay({ id, kind, x, y });
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [laserMode, suppressSpawn]);
-
-  // Laserpointer: folgt nur bei gedrücktem Finger/Zeiger (Drag)
-  useEffect(() => {
-    if (!laserMode) return;
-    const onPointerDown = (e) => {
-      setLaserDragging(true);
-      setPlay({ id: 'laser', kind: 'laser', x: e.clientX, y: e.clientY });
-    };
-    const onPointerMove = (e) => {
-      if (!laserDragging) return;
-      setPlay({ id: 'laser', kind: 'laser', x: e.clientX, y: e.clientY });
-    };
-    const endLaser = () => {
-      setLaserDragging(false);
-      setPlay((p) => (p && p.kind === 'laser' ? null : p));
-    };
-    document.addEventListener('pointerdown', onPointerDown, { passive: true });
-    document.addEventListener('pointermove', onPointerMove, { passive: true });
-    document.addEventListener('pointerup', endLaser, { passive: true });
-    document.addEventListener('pointercancel', endLaser, { passive: true });
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', endLaser);
-      document.removeEventListener('pointercancel', endLaser);
-    };
-  }, [laserMode, laserDragging]);
-
-
   const printLabel = (text, tage = null) => {
-    if (debugUi) {
-      // BATCAT-Modus: keine Drucke
-      return;
-    }
     if (!text) return showError('Bitte Text eingeben.');
 
     const framework = window?.dymo?.label?.framework;
@@ -290,27 +202,9 @@ export default function App() {
   return (
     <>
       {/* Spielerei isoliert: stürzt sie ab, druckt die App trotzdem weiter */}
-      {ZIMMER_MODUS ? (
-        <ErrorBoundary label="Das Katzenzimmer" silent>
-          <Suspense fallback={null}><ZimmerModus /></Suspense>
-        </ErrorBoundary>
-      ) : (
-      <ErrorBoundary label="Die Katze" silent>
-        <CatSprite
-          play={play}
-          onCatch={() => setPlay(null)}
-          debugUi={debugUi}
-          laserMode={laserMode}
-          onToggleLaser={() => {
-            setLaserMode((v) => !v);
-            if (laserMode) setPlay((p) => (p && p.kind === 'laser' ? null : p));
-          }}
-          setSuppressSpawn={setSuppressSpawn}
-          toyPosRef={toyPosRef}
-        />
-        <PlayOverlay play={play} setPlay={setPlay} posRef={toyPosRef} />
+      <ErrorBoundary label="Das Katzenzimmer" silent>
+        <Suspense fallback={null}><ZimmerModus /></Suspense>
       </ErrorBoundary>
-      )}
       {editorOpen && (
         <ErrorBoundary label="Der Etiketten-Editor">
           <LabelEditor

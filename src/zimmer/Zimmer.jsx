@@ -378,7 +378,8 @@ export default function Zimmer({ zustand, onZu }) {
                fell={zustand.fell} zubehoer={zustand.angelegt} onKatze={streicheln} onPutzen={putzen}
                neu={neuesMoebel} onFrei={() => setBereich('einrichten')}
                geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} rollt={rollt}
-               tageszeit={zeit} besuch={besuch} fund={zustand.fundOffen} onFund={fundAufheben} />
+               tageszeit={zeit} besuch={besuch} fund={zustand.fundOffen} onFund={fundAufheben}
+               groesse={zustand.wachstum.phase.groesse} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"

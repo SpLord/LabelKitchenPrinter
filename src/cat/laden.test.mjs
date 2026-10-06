@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ALLE, FELLE, ZUBEHOER, ablegen, angelegtesFell, anlegen, artikel,
-  AUSSTATTUNG, effekte, fortschritt, istAngelegt, istAusstattung, istFell, kaufen, putzeBesitz,
+  AUSSTATTUNG, effekte, istAngelegt, istAusstattung, istFell, kaufen, putzeBesitz,
 } from './laden.js';
 import { VARIANTS } from './felle.js';
 
@@ -74,13 +74,6 @@ test('laden: gespeicherter Besitz wird gesäubert', () => {
   assert.deepEqual(putzeBesitz(null), []);
 });
 
-test('laden: Fortschritt', () => {
-  const f = fortschritt(['halsband', 'hut']);
-  assert.equal(f.gekauft, 2);
-  assert.equal(f.gesamt, ALLE.length);
-  assert.equal(f.ausgegeben, 250 + 1800);
-});
-
 test('laden: istFell trennt die Kategorien', () => {
   assert.equal(istFell('fell-blau'), true);
   assert.equal(istFell('hut'), false);
@@ -100,7 +93,7 @@ test('laden: Ausstattung gehört zum Katalog und ist kein Fell', () => {
 
 test('laden: ohne Besitz ändert Ausstattung nichts', () => {
   assert.deepEqual(effekte([]), {
-    hungerFaktor: 1, durstFaktor: 1, freudeFaktor: 1, schlafErholung: false, muenzBonus: 0,
+    hungerFaktor: 1, durstFaktor: 1, freudeFaktor: 1, schlafErholung: false, glueckspfote: false,
   });
   assert.deepEqual(effekte(null), effekte([]), 'kaputter Speicher darf nicht durchschlagen');
 });
@@ -110,7 +103,7 @@ test('laden: gekaufte Ausstattung wirkt sofort und dauerhaft', () => {
   assert.equal(effekte(['trinkbrunnen']).durstFaktor, 0.75);
   assert.equal(effekte(['kratzbaum']).freudeFaktor, 0.7);
   assert.equal(effekte(['kuschelhoehle']).schlafErholung, true);
-  assert.equal(effekte(['glueckspfote']).muenzBonus, 1);
+  assert.equal(effekte(['glueckspfote']).glueckspfote, true);
 });
 
 test('laden: Ausstattung wirkt unabhängig voneinander', () => {
@@ -118,7 +111,7 @@ test('laden: Ausstattung wirkt unabhängig voneinander', () => {
   assert.equal(e.hungerFaktor, 0.75);
   assert.equal(e.durstFaktor, 1, 'nicht Gekauftes bleibt wirkungslos');
   assert.equal(e.freudeFaktor, 0.7);
-  assert.equal(e.muenzBonus, 1);
+  assert.equal(e.glueckspfote, true);
 });
 
 test('laden: Ausstattung wird nicht an- und abgelegt, sie läuft einfach', () => {

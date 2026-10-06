@@ -19,7 +19,7 @@ test('Zufriedenheit fällt tagsüber ohne Not um den Stundenwert', async ({ page
     try {
       const stand = {
         cat_hunger: 80, cat_thirst: 80, cat_freude: 70,
-        cat_coinPeak: 2000, cat_coinCount: 500,
+        cat_coinCount: 500,
         cat_lastSeen: startzeit, cat_fwDone: '1',
       };
       for (const [k, v] of Object.entries(stand)) localStorage.setItem(k, String(v));

@@ -1,8 +1,8 @@
 import { test, expect, grundaufbau, warteAufDrucke } from './hilfen.js';
 
 /*
-  Katzenzimmer – seit 1.5.0 Standard auf der Hauptseite. Das alte Spiel ist
-  bis zum Aufräumen nur noch unter ?alt erreichbar.
+  Katzenzimmer – seit 1.5.0 Standard auf der Hauptseite, seit Etappe 8 das
+  einzige Katzenspiel.
 
   Das Wichtigste zuerst: die Küche druckt mit dem Zimmer genauso wie vorher. Das Zimmer ist Spielerei; der Etikettendruck
   ist die Arbeit.
@@ -12,22 +12,15 @@ const oeffnen = async (page, pfad, werte = {}) => {
   await page.addInitScript((w) => {
     try { for (const [k, v] of Object.entries(w)) localStorage.setItem(k, String(v)); } catch { /* gesperrt */ }
   // zimmer_herzen_gesehen: 5 – sonst läge die Herz-Feier über jedem Test
-  }, { cat_coinCount: 500, cat_coinPeak: 1410, cat_lastSeen: Date.now(), cat_fwDone: '1', cat_hunger: 80, cat_thirst: 80,
+  }, { cat_coinCount: 500, cat_lastSeen: Date.now(), cat_fwDone: '1', cat_hunger: 80, cat_thirst: 80,
     zimmer_herzen_gesehen: 5, ...werte });
   await page.goto(pfad);
   await page.waitForSelector('.status-indicator .online');
 };
 
-test('Notausgang ?alt: alte Katze, keine Karte', async ({ page }) => {
-  await oeffnen(page, '/?alt');
-  await expect(page.locator('.cat-sprite')).toHaveCount(1);
-  await expect(page.locator('.kuechen-karte')).toHaveCount(0);
-});
-
-test('Hauptseite: Karte statt alter Katze', async ({ page }) => {
+test('Hauptseite: die Karte zeigt Name und Münzen', async ({ page }) => {
   await oeffnen(page, '/');
   await expect(page.locator('.kuechen-karte')).toBeVisible();
-  await expect(page.locator('.cat-sprite')).toHaveCount(0);
   await expect(page.locator('.kuechen-karte')).toContainText('Mieze');
   await expect(page.locator('.kuechen-karte')).toContainText('500');
 });
@@ -129,7 +122,7 @@ test('die Karte ist unübersehbar ein Knopf zum Zimmer', async ({ page }) => {
 });
 
 test('ohne Münzen gibt es einmal am Tag eine Notration', async ({ page }) => {
-  await oeffnen(page, '/', { cat_coinCount: 0, cat_coinPeak: 0, zimmer_napf: 0 });
+  await oeffnen(page, '/', { cat_coinCount: 0, zimmer_napf: 0 });
   await page.locator('.kuechen-karte').click();
   await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
   const karte = page.locator('.zimmer-karte', { hasText: 'Notration' });

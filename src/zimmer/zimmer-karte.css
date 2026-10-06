@@ -5,14 +5,17 @@
 
 .kuechen-karte {
   position: fixed;
-  top: 10px;
+  top: 6px;
   right: 14px;
   z-index: 70;   /* über der Kopfleiste (55), wie früher die Münzleiste */
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 60px;
-  padding: 4px 18px 4px 18px;
+  /* Kompakt: die Kopfleiste reserviert oben 52 px (oberflaeche.css). Mit 60 px
+     Höhe ragte die Karte bei 1024 px und zwei Druckern über die Knöpfe –
+     gefunden von e2e/hauptseite.spec.js. */
+  min-height: 44px;
+  padding: 2px 18px 2px 18px;
   border: 3.5px solid #2f2a26;
   border-radius: 999px;
   background: #fff8ee;
@@ -75,6 +78,7 @@
 .kuechen-katze:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; border-radius: 12px; }
 .kuechen-katze-koerper {
   display: block; width: 100%; height: 100%;
+  transform-origin: 50% 100%;   /* Kitten kleiner, Füsse bleiben unten */
   transition: transform 180ms ease;
 }
 .kuechen-katze.pose-laufen .kuechen-katze-koerper svg { animation: zimmer-hops 0.42s ease-in-out infinite; transform-origin: 50% 100%; }

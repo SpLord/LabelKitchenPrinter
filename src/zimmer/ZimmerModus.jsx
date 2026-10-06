@@ -6,8 +6,7 @@ import Zimmer from './Zimmer.jsx';
 
 /*
   Das Katzenspiel auf der Hauptseite (Design 2026-10-06): Karte und
-  Küchenkatze in der Kopfleiste, das Zimmer als Vollbild darüber. Das alte
-  Spiel gibt es nur noch unter ?alt.
+  Küchenkatze in der Kopfleiste, das Zimmer als Vollbild darüber.
 
   Der Zustand lebt hier genau einmal und wird an Karte und Zimmer gereicht –
   zwei Instanzen der Hooks würden dieselben Werte doppelt verfallen lassen.

@@ -24,10 +24,7 @@ import { clampNeed, conditionOf } from './needs.js';
   2026-10-06: 2 %/h – eine Spielrunde am Tag hält sie oben.
 */
 export const FREUDE_VERFALL_PRO_STUNDE = 2;
-export const FREUDE_FANGEN = 12;      // Spielzeug erwischt – das eigentliche Spielen
-export const FREUDE_AUFRAEUMEN = 4;   // Häufchen weggeklickt
 export const FREUDE_STREICHELN = 3;
-export const FREUDE_LECKERLI = 8;
 
 /*
   Ungepflegtes zieht zusätzlich: Hunger oder Durst am Boden drücken die
@@ -102,10 +99,6 @@ export const gesamtzustand = ({ hunger, thirst, freude = 50, krank = false }, je
   if (grund.key === 'munter' && clampNeed(freude) >= 80) return stufe('gluecklich');
   return stufe(grund.key === 'munter' ? 'munter' : 'normal');
 };
-
-/* Münzertrag nach Gesamtzustand – ersetzt die frühere Rechnung nach Bedürfnissen. */
-export const ertrag = (basis, lage, jetzt = new Date()) =>
-  Math.max(0, Math.round(basis * gesamtzustand(lage, jetzt).faktor));
 
 /* Was der Katze gerade fehlt – für ihre Sprüche und die Anzeige. */
 export const bedarf = ({ hunger, thirst, freude = 50, haeufchen = 0, krank = false }) => {

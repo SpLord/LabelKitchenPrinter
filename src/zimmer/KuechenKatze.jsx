@@ -61,15 +61,30 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
     return () => { ro.disconnect(); mo.disconnect(); window.removeEventListener('resize', neu); };
   }, []);
 
-  // Ändert sich der Streifen, sofort hinein – ohne Laufen, ohne Übergang
+  /*
+    Ändert sich der Streifen, sofort hinein – ohne Laufen, ohne Übergang.
+    Läuft sie gerade, zählt die SICHTBARE Stelle, nicht das Ziel: mitten im
+    Weg kann sie schon unter der Karte stehen. Und eine kürzere
+    transition-duration hält einen laufenden Übergang nicht an – erst ein
+    neuer transform-Wert tut das. (Gefunden von e2e/hauptseite.spec.js.)
+  */
+  const knopfRef = useRef(null);
   useEffect(() => {
     if (!zone) return;
-    const { x } = katzeRef.current;
     const halb = G / 2;
+    const k = katzeRef.current;
+    let x = k.x;
+    if (k.art === 'laufen' && knopfRef.current && kopf) {
+      x = knopfRef.current.getBoundingClientRect().left - kopf.getBoundingClientRect().left + halb;
+    }
     const mitte = (zone.links + zone.rechts) / 2;
     const passt = x !== null && x >= zone.links + halb && x <= zone.rechts - halb;
-    if (!passt) setKatze((k) => ({ ...k, x: x === null ? mitte : Math.min(Math.max(x, zone.links + halb), zone.rechts - halb), dauer: 0, art: k.art === 'laufen' ? 'sitzen' : k.art }));
-  }, [zone]);
+    if (passt && k.art !== 'laufen') return;
+    const sicher = x === null ? mitte : Math.min(Math.max(x, zone.links + halb), zone.rechts - halb);
+    // Ein Hauch Versatz, damit sich der transform-Wert sicher ändert
+    const neu = Math.abs(sicher - k.x) < 0.01 ? sicher + 0.01 : sicher;
+    setKatze((alt) => ({ ...alt, x: neu, dauer: 0, art: alt.art === 'laufen' ? 'sitzen' : alt.art }));
+  }, [zone, kopf]);
 
   // Tagesablauf: eine Entscheidung nach der anderen
   const sichtbar = zone !== null && katze.x !== null;
@@ -77,7 +92,10 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
     if (!sichtbar) return undefined;
     let uhr;
     const weiter = () => {
-      const z = zoneRef.current;
+      // Frisch messen: zwischen Grössenänderung und neuem Rendern wäre zoneRef
+      // noch der alte Streifen, und sie liefe unter die Karte
+      const el = document.querySelector('.app-bar');
+      const z = el ? messen(el) : zoneRef.current;
       const k = katzeRef.current;
       if (!z || k.x === null) return;
       const s = naechsterSchritt(lageRef.current, z, k.x);
@@ -104,6 +122,7 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
       : katze.art === 'liegen' ? 'krank' : 'sitzen';
   return createPortal(
     <button
+      ref={knopfRef}
       type="button"
       className={`kuechen-katze pose-${pose}`}
       style={{
@@ -113,7 +132,8 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
       onClick={onOeffnen}
       aria-label={`${zustand.name} ${zustandsText(zustand)} – Katzenzimmer öffnen`}
     >
-      <span className="kuechen-katze-koerper" style={{ transform: `scaleX(${-katze.richtung})` }}>
+      <span className="kuechen-katze-koerper"
+            style={{ transform: `scale(${-katze.richtung * zustand.wachstum.phase.groesse}, ${zustand.wachstum.phase.groesse})` }}>
         <KatzePose pose={pose} fell={zustand.fell} zubehoer={zustand.angelegt} aktiv={katze.art === 'laufen'} />
       </span>
       {pose === 'schlafen' && <span className="kuechen-katze-zzz" aria-hidden="true">z<b>Z</b></span>}

@@ -19,7 +19,7 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
 */
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
-  tageszeit = 'tag', besuch = null, fund = null, onFund = () => {},
+  tageszeit = 'tag', besuch = null, fund = null, onFund = () => {}, groesse = 1,
 }) {
   const licht = LICHT[tageszeit] ?? LICHT.tag;
   // Frisch gekauftes Möbel ploppt einmal auf
@@ -114,7 +114,8 @@ export default function Szene({
       >
         <ellipse cx={KATZE / 2} cy={KATZE - 14} rx="52" ry="9" fill="#9c6b3e" opacity="0.3" filter="url(#zimmer-weich)" />
         {/* Spiegeln und Wippen auf getrennten Ebenen – beide brauchen transform */}
-        <g className="zimmer-katze-koerper" style={{ transform: `scaleX(${-richtung})` }}>
+        {/* Grösse nach Wachstumsphase: Kitten sind sichtbar kleiner, die Füsse bleiben am Boden */}
+        <g className="zimmer-katze-koerper" style={{ transform: `scale(${-richtung * groesse}, ${groesse})` }}>
           <g className="zimmer-katze-hops">
             <svg width={KATZE} height={KATZE} viewBox="0 0 200 200" overflow="visible">
               <KatzePose pose={pose} fell={fell} aktiv={laeuft} zubehoer={zubehoer} />

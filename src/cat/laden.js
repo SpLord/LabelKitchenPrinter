@@ -68,7 +68,7 @@ export const AUSSTATTUNG = [
   },
   {
     id: 'glueckspfote', name: 'Glückspfote', preis: 2600, emoji: '🍀',
-    wirkung: 'Jeder Münzfund bringt eine Münze mehr.',
+    wirkung: 'Das tägliche Geschenk fällt ein Viertel grösser aus.',
   },
 ];
 
@@ -88,7 +88,8 @@ export const effekte = (besitz) => {
     durstFaktor: b.includes('trinkbrunnen') ? 0.75 : 1,
     freudeFaktor: b.includes('kratzbaum') ? 0.7 : 1,
     schlafErholung: b.includes('kuschelhoehle'),
-    muenzBonus: b.includes('glueckspfote') ? 1 : 0,
+    // Geschenk +25 % (src/zimmer/geschenk.js) – früher eine Münze mehr je Münzfund
+    glueckspfote: b.includes('glueckspfote'),
   };
 };
 
@@ -141,9 +142,3 @@ export const angelegtesFell = (angelegt) => {
   return f ? f.variante : null;
 };
 
-/* Fortschritt für die Anzeige: wie viel vom Laden ist schon erreicht? */
-export const fortschritt = (besitz) => ({
-  gekauft: besitz.length,
-  gesamt: ALLE.length,
-  ausgegeben: besitz.reduce((s, id) => s + (artikel(id)?.preis ?? 0), 0),
-});

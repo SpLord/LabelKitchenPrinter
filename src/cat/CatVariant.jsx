@@ -2,7 +2,7 @@ import { VARIANTS } from './felle.js';
 
 /*
   Aussehen der Katze als SVG.
-  Rein darstellend, ohne Zustand – deshalb aus CatSprite herausgelöst.
+  Rein darstellend, ohne Zustand.
 
   Die Bewegung (Schwanz, Ohren, Augen, Pfoten) liegt bewusst in styles.css
   und nicht mehr als SMIL im Markup: SMIL lief im Hauptthread und kostete

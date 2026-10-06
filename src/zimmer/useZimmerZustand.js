@@ -148,7 +148,7 @@ export default function useZimmerZustand() {
   const { setStand: setzeMuenzen } = muenzen;
   const geschenkOeffnen = useCallback(() => {
     const r = abholen({
-      abgeholt, pflege: pflegeStand, herzen: wachstum.herzen, glueckspfote: laden.besitz.includes('glueckspfote'),
+      abgeholt, pflege: pflegeStand, herzen: wachstum.herzen, glueckspfote: laden.wirkung.glueckspfote,
       zweites: zweitesGeschenk,
     }, new Date());
     if (r.muenzen <= 0) return 0;
@@ -156,7 +156,7 @@ export default function useZimmerZustand() {
     schreibenText(KEY_GESCHENK, r.abgeholt);
     setzeMuenzen((c) => c + r.muenzen);
     return r.muenzen;
-  }, [abgeholt, pflegeStand, wachstum.herzen, laden.besitz, setzeMuenzen, zweitesGeschenk]);
+  }, [abgeholt, pflegeStand, wachstum.herzen, laden.wirkung, setzeMuenzen, zweitesGeschenk]);
 
   // Fundstücke (fünftes Herz): einmal je Schichttag gewürfelt, im Minutentakt geprüft
   const [fund, setFund] = useState(() => fundLesen(lesenText(KEY_FUND)));

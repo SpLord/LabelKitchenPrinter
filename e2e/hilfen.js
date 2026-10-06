@@ -45,7 +45,7 @@ export const spielstand = (werte) => (v) => {
 };
 
 export const STAND_SATT = {
-  cat_coinCount: 900, cat_coinPeak: 1410,
+  cat_coinCount: 900,
   cat_hunger: 85, cat_thirst: 85, cat_lastSeen: Date.now(),
 };
 
@@ -84,40 +84,9 @@ export const test = basis.extend({
     await benutze(page);
     if (fehler.length) throw new Error('Seitenfehler: ' + [...new Set(fehler)].join(' | '));
   },
-  // Das alte Spiel – bis Etappe 8 als Notausgang unter ?alt
-  alteSeite: async ({ page }, benutze) => {
-    await echtesDymoBlocken(page);
-    await page.addInitScript(dymoFaelschen(), [['DYMO Küche'], true, PNG]);
-    await page.addInitScript(spielstand(), STAND_SATT);
-    const fehler = [];
-    page.on('pageerror', (e) => fehler.push(String(e)));
-    await page.goto('/?alt');
-    // Auf die Druckererkennung warten statt auf die Uhr – spart je Test rund
-    // eine Sekunde und ist zuverlässiger als ein fester Wert.
-    await page.waitForSelector('.status-indicator .online', { timeout: 15_000 });
-    await benutze(page);
-    if (fehler.length) throw new Error('Seitenfehler: ' + [...new Set(fehler)].join(' | '));
-  },
 });
 
 export { expect } from '@playwright/test';
-
-/* Das Gimmick-Menü der Katze öffnen und einen Eintrag treffen. */
-export const menuepunkt = async (page, muster) => {
-  if (await page.locator('.gimmick-panel button', { hasText: muster }).count()) {
-    return page.locator('.gimmick-panel button', { hasText: muster }).first();
-  }
-  const anzahl = await page.locator('.gimmick-toggle-inline').count();
-  for (let i = 0; i < anzahl; i += 1) {
-    await page.locator('.gimmick-toggle-inline').nth(i).click();
-    await page.waitForTimeout(250);
-    const treffer = page.locator('.gimmick-panel button', { hasText: muster });
-    if (await treffer.count()) return treffer.first();
-    await page.locator('.gimmick-toggle-inline').nth(i).click();
-    await page.waitForTimeout(150);
-  }
-  throw new Error(`Menüpunkt nicht gefunden: ${muster}`);
-};
 
 /*
   Gedruckt wird erst, wenn die Etikettenvorlage geladen ist – der Aufruf landet
@@ -129,35 +98,4 @@ export const warteAufDrucke = async (page, anzahl) => {
     { message: `erwartet: ${anzahl} Druckauftrag/Druckaufträge`, timeout: 10_000 },
   ).toBe(anzahl);
   return page.evaluate(() => window.__drucke);
-};
-
-/*
-  Die Katze streicheln – zuverlässig.
-
-  Seit 1.3.4 gibt die Katze einen Tipp an das Bedienelement darunter weiter
-  (sie verschluckte vorher Etikett-Tipps). Ein Test, der einfach auf die Katze
-  tippt, streichelt deshalb nur, wenn sie zufällig über freier Fläche steht –
-  auf dem Tablet in rund 60 % der Fälle. Hier werden die Bedienelemente für
-  den einen Tipp stillgelegt und ein Punkt gesucht, an dem die Katze oben liegt.
-*/
-export const streichleKatze = async (page) => {
-  const punkt = await page.evaluate(() => {
-    document.querySelectorAll('button, a, input, select, textarea, label, [role=button], .react-datepicker').forEach((e) => {
-      if (!e.closest('.cat-sprite')) { e.dataset.vorStreicheln = e.style.pointerEvents; e.style.pointerEvents = 'none'; }
-    });
-    const r = document.querySelector('.cat-sprite svg').getBoundingClientRect();
-    for (let i = 1; i <= 7; i += 1) for (let j = 1; j <= 7; j += 1) {
-      const x = r.left + (r.width * i) / 8;
-      const y = r.top + (r.height * j) / 8;
-      if (document.elementsFromPoint(x, y)[0]?.closest('.cat-sprite')) return { x, y };
-    }
-    return null;
-  });
-  if (!punkt) throw new Error('Katze liegt vollständig unter anderen Elementen');
-  await page.mouse.click(punkt.x, punkt.y);
-  await page.evaluate(() => {
-    document.querySelectorAll('[data-vor-streicheln]').forEach((e) => {
-      e.style.pointerEvents = e.dataset.vorStreicheln; delete e.dataset.vorStreicheln;
-    });
-  });
 };

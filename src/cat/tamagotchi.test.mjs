@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   FREUDE_VERFALL_PRO_STUNDE, KRANK_NACH_STUNDEN, KRANK_SCHWELLE, STUFEN,
-  bedarf, ertrag, freudeVerfall, gesamtzustand, schlaeft, wirdKrank,
+  bedarf, freudeVerfall, gesamtzustand, schlaeft, wirdKrank,
 } from './tamagotchi.js';
 
 const um = (h) => new Date(`2026-08-31T${String(h).padStart(2, '0')}:30:00`);
@@ -54,23 +54,6 @@ test('tamagotchi: hohe Zufriedenheit hebt über munter hinaus', () => {
   assert.equal(gesamtzustand({ hunger: 90, thirst: 90, freude: 40 }, um(14)).key, 'munter');
   // Ohne erfüllte Grundbedürfnisse hilft Zufriedenheit nicht
   assert.equal(gesamtzustand({ hunger: 20, thirst: 90, freude: 100 }, um(14)).key, 'traege');
-});
-
-test('tamagotchi: Ertrag folgt dem Zustand', () => {
-  assert.equal(ertrag(2, { hunger: 90, thirst: 90, freude: 90 }, um(14)), 4, 'glücklich verdoppelt');
-  assert.equal(ertrag(2, { hunger: 90, thirst: 90, freude: 40 }, um(14)), 3);
-  assert.equal(ertrag(2, { hunger: 50, thirst: 50 }, um(14)), 2);
-  assert.equal(ertrag(2, { hunger: 20, thirst: 20 }, um(14)), 1);
-  assert.equal(ertrag(2, { hunger: 5, thirst: 5 }, um(14)), 0);
-  assert.equal(ertrag(2, satt, um(23)), 0, 'im Schlaf nichts');
-  assert.equal(ertrag(2, { ...satt, krank: true }, um(14)), 0, 'krank nichts');
-});
-
-test('tamagotchi: Ertrag ist nie negativ oder gebrochen', () => {
-  for (const h of [0, 14, 15, 39, 40, 69, 70, 100]) {
-    const v = ertrag(3, { hunger: h, thirst: h, freude: h }, um(14));
-    assert.ok(Number.isInteger(v) && v >= 0, `ungültig bei ${h}: ${v}`);
-  }
 });
 
 test('tamagotchi: Bedarf nennt beim Namen, was fehlt', () => {
