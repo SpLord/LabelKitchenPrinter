@@ -22,12 +22,50 @@ test('Notausgang ?alt: alte Katze, keine Karte', async ({ page }) => {
   await expect(page.locator('.kuechen-karte')).toHaveCount(0);
 });
 
-test('Hauptseite: Karte statt Katze, nichts über den Etikettenknöpfen', async ({ page }) => {
+test('Hauptseite: Karte statt alter Katze', async ({ page }) => {
   await oeffnen(page, '/');
   await expect(page.locator('.kuechen-karte')).toBeVisible();
   await expect(page.locator('.cat-sprite')).toHaveCount(0);
   await expect(page.locator('.kuechen-karte')).toContainText('Mails');
   await expect(page.locator('.kuechen-karte')).toContainText('500');
+});
+
+/* Die Küchenkatze lebt im freien Streifen der Kopfleiste (1.8.0). Ob sie
+   gerade läuft, steuert der Test nicht – er prüft nur, was immer gelten muss. */
+const ueberlappt = (page) => page.evaluate(() => {
+  const k = document.querySelector('.kuechen-katze');
+  if (!k) return null;
+  const a = k.getBoundingClientRect();
+  return [...document.querySelectorAll('button, select, input, .status-indicator, .kuechen-karte')]
+    .filter((e) => e !== k && !k.contains(e))
+    .filter((e) => {
+      const b = e.getBoundingClientRect();
+      return b.width > 0 && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    })
+    .map((e) => e.className || e.tagName);
+});
+
+test('Küchenkatze: Mails sitzt in der Kopfleiste und verdeckt nichts', async ({ page }, info) => {
+  await oeffnen(page, '/');
+  await expect(page.locator('.app-bar .kuechen-katze')).toBeVisible();
+  for (let i = 0; i < 4; i += 1) {
+    expect(await ueberlappt(page), `${info.project.name}, Messung ${i}`).toEqual([]);
+    await page.waitForTimeout(700);
+  }
+});
+
+test('Küchenkatze: ein Tipp auf sie öffnet das Zimmer', async ({ page }) => {
+  await oeffnen(page, '/');
+  // dispatchEvent statt click: sie darf dabei gerade laufen
+  await page.locator('.kuechen-katze').dispatchEvent('click');
+  await expect(page.locator('.zimmer')).toBeVisible();
+  await expect(page.locator('.kuechen-katze')).toHaveCount(0);
+});
+
+test('Küchenkatze: Durst steht als Denkblase über ihr', async ({ page }) => {
+  await oeffnen(page, '/', { cat_thirst: 20 });
+  await expect(page.locator('.kuechen-katze .kuechen-katze-blase')).toBeVisible();
+  await expect(page.locator('.kuechen-katze')).toHaveAttribute('aria-label', /hat Durst/);
 });
 
 test('die Küche druckt wie immer', async ({ page }) => {

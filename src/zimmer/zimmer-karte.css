@@ -58,3 +58,34 @@
   background: radial-gradient(circle, #fbbf24 0 34%, #d97706 35% 46%, #fbbf24 47%);
   border: 3px solid #2f2a26; box-sizing: border-box;
 }
+
+/* ==========================================
+   Küchenkatze – läuft im freien Streifen der Kopfleiste
+   ========================================== */
+.kuechen-katze {
+  position: absolute; left: 0; top: 0;
+  width: 88px; height: 88px; padding: 0; margin: 0;
+  border: 0; background: none; cursor: pointer;
+  transition-property: transform; transition-timing-function: linear;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1;
+}
+.kuechen-katze:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; border-radius: 12px; }
+.kuechen-katze-koerper {
+  display: block; width: 100%; height: 100%;
+  transition: transform 180ms ease;
+}
+.kuechen-katze.pose-laufen .kuechen-katze-koerper svg { animation: zimmer-hops 0.42s ease-in-out infinite; transform-origin: 50% 100%; }
+.kuechen-katze:active .kuechen-katze-koerper { filter: brightness(1.08); }
+.kuechen-katze-blase { position: absolute; left: 62px; top: -14px; width: 46px; height: 40px; pointer-events: none; }
+.kuechen-katze-zzz {
+  position: absolute; left: 6px; top: 6px; pointer-events: none;
+  font: 800 15px/1 Roboto, system-ui, sans-serif; color: #6b7280;
+  animation: kuechen-zzz 3s ease-in-out infinite;
+}
+.kuechen-katze-zzz b { font-size: 21px; margin-left: 2px; }
+@keyframes kuechen-zzz { 0%, 100% { transform: translateY(4px); opacity: 0.4; } 50% { transform: translateY(-6px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .kuechen-katze { transition-duration: 0ms !important; }
+  .kuechen-katze-zzz, .kuechen-katze.pose-laufen .kuechen-katze-koerper svg { animation: none; }
+}
