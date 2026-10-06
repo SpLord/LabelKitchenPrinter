@@ -137,6 +137,17 @@ jobs:
           if docker logs mit 2>&1 | grep -q 00000000000000000000000000000000; then
             echo "Schlüssel in den Container-Logs"; exit 1
           fi
+          # Der Tunnel leitet richtig weiter: die tatsächlich geladene
+          # Konfiguration muss die tragenden Direktiven enthalten. Ob TLS und
+          # Bugsink wirklich mitspielen, zeigt erst der Test gegen das echte
+          # Bugsink nach dem Ausrollen – bugsink.invalid ist nie erreichbar.
+          KONF=$(docker exec mit nginx -T 2>/dev/null)
+          for d in 'sentry_key=00000000000000000000000000000000' 'set $args ""' \
+                   'proxy_ssl_verify on' 'proxy_ssl_verify_depth 3' \
+                   'limit_req zone=bugsink_gesamt' 'proxy_set_header Cookie ""' \
+                   'location = /api/9/envelope/'; do
+            printf '%s' "$KONF" | grep -qF "$d" || { echo "fehlt in der Konfiguration: $d"; exit 1; }
+          done
           # Der Etikettenspeicher läuft unverändert
           test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8081/daten/etiketten.json)" = 204
           echo "Rauchtest bestanden"

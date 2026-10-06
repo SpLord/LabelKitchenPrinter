@@ -67,6 +67,12 @@ export const bereinigeKruemel = (k) => {
     if (typeof d.status_code === 'number') data.status_code = d.status_code;
     return { ...k, data };
   }
+  if (k.category === 'navigation') {
+    const d = k.data ?? {};
+    const data = {};
+    for (const s of ['from', 'to']) if (typeof d[s] === 'string') data[s] = ohneQuery(d[s]);
+    return { ...k, data };
+  }
   return k;
 };
 

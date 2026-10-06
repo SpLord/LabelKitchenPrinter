@@ -26,21 +26,31 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # SENTRY_DSN. Es läuft vor nginx (Mechanismus des offiziellen Images).
 COPY --chmod=755 docker/40-bugsink.sh /docker-entrypoint.d/40-bugsink.sh
 
-# Variante ohne Tracking schon ins Image legen, damit nginx auch ohne
-# Startskript nie an einem fehlenden include scheitert – und die Konfiguration
-# hier im Build in BEIDEN Varianten prüfen: ein Fehler darin legt sonst erst
-# in der Küche den Drucker lahm.
-RUN SENTRY_DSN= /docker-entrypoint.d/40-bugsink.sh \
-    && nginx -t \
-    && SENTRY_DSN=https://00000000000000000000000000000000@bugsink.invalid/9 /docker-entrypoint.d/40-bugsink.sh \
-    && nginx -t \
-    && SENTRY_DSN= /docker-entrypoint.d/40-bugsink.sh
 
 # Ablage für die gemeinsamen Etiketten. Wird als Volume gemountet; die
 # Rechte aus dem Image werden beim ersten Anlegen übernommen, damit der
 # nginx-Arbeitsprozess hineinschreiben darf.
 RUN mkdir -p /var/lib/labelkitchen/.tmp \
     && chown -R nginx:nginx /var/lib/labelkitchen
+
+# Erst NACH dem Anlegen von /var/lib/labelkitchen/.tmp: nginx -t legt den
+# Zwischenpfad des Etikettenspeichers an und scheiterte sonst (CI, 06.10.2026).
+#
+# Variante ohne Tracking schon ins Image legen, damit nginx auch ohne
+# Startskript nie an einem fehlenden include scheitert – und die Konfiguration
+# hier im Build in BEIDEN Varianten prüfen: ein Fehler darin legt sonst erst
+# in der Küche den Drucker lahm.
+#
+# Das Skript fällt bei ungültiger Konfiguration still auf "ohne Tracking"
+# zurück – zur Laufzeit gewollt. Hier aber muss die AKTIVE Variante
+# herauskommen, sonst bliebe der Build grün, obwohl Bugsink nie ginge
+# (etwa wenn das CA-Bündel für die Zertifikatsprüfung fehlt).
+RUN SENTRY_DSN= /docker-entrypoint.d/40-bugsink.sh \
+    && nginx -t \
+    && SENTRY_DSN=https://00000000000000000000000000000000@bugsink.invalid/9 /docker-entrypoint.d/40-bugsink.sh \
+    && grep -q 'proxy_ssl_verify on' /etc/nginx/bugsink.conf \
+    && nginx -t \
+    && SENTRY_DSN= /docker-entrypoint.d/40-bugsink.sh
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

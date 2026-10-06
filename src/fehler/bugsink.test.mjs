@@ -53,6 +53,10 @@ test('Krümel: Konsole fällt weg, Netzwerk nur Methode, Pfad und Status', () =>
     bereinigeKruemel({ category: 'fetch', data: { method: 'PUT', url: '/daten/etiketten.json?t=1', status_code: 500, body: 'x' } }),
     { category: 'fetch', data: { method: 'PUT', url: '/daten/etiketten.json', status_code: 500 } },
   );
+  assert.deepEqual(
+    bereinigeKruemel({ category: 'navigation', data: { from: '/?a=1#x', to: '/b?c=2' } }),
+    { category: 'navigation', data: { from: '/', to: '/b' } },
+  );
   assert.deepEqual(bereinigeKruemel({ category: 'ui.click', message: 'button' }),
     { category: 'ui.click', message: 'button' });
 });
