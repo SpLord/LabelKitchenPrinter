@@ -1,6 +1,7 @@
 
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import DatePicker from "react-datepicker";
+import DatePicker, { registerLocale } from "react-datepicker";
+import { de } from 'date-fns/locale/de';
 import "react-datepicker/dist/react-datepicker.css";
 
 import './styles.css';
@@ -20,6 +21,9 @@ import { meldeDruckfehler } from './fehler/bugsink.js';
   Spiel (CatSprite, Spielzeug-Overlay, Laser) ist mit Etappe 8 entfernt.
 */
 const ZimmerModus = lazy(() => import('./zimmer/ZimmerModus.jsx'));
+
+// Kalender auf Deutsch: Monatsnamen, Wochentage, Montag als erster Tag
+registerLocale('de', de);
 import useSchichtDatum from './print/useSchichtDatum.js';
 
 export default function App() {
@@ -269,6 +273,7 @@ export default function App() {
                 generatePreview(text || input, tage);
               }}
               inline
+              locale="de"
               calendarClassName="custom-datepicker"
             />
             {/* Ein abweichendes Datum muss auffallen: es landet auf Lebensmitteln */}

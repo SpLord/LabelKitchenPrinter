@@ -84,3 +84,9 @@ test('Vorschau zeigt nach einem Datumswechsel das neue Datum – mit Haltbarkeit
   // Früher: altes Datum, und die Haltbarkeit fiel ganz weg
   await expect.poll(() => page.evaluate(() => window.__vorschau?.Datum ?? '')).toBe('04.10. → 07.10.');
 });
+
+test('Kalender spricht Deutsch: Monatsname und Wochentage', async ({ seite }) => {
+  await expect(seite.locator('.react-datepicker__current-month')).toHaveText(/Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember/);
+  await expect(seite.locator('.react-datepicker__day-names')).toContainText('Mo');
+  await expect(seite.locator('.react-datepicker__day-names')).not.toContainText('Su');
+});

@@ -58,3 +58,9 @@ test('fernspeicher: Ablegen meldet Fehlschläge statt sie zu schlucken', async (
   assert.deepEqual(await ablegen(GRUPPEN, async () => antwort(403)), { ok: false, grund: 'HTTP 403' });
   assert.deepEqual(await ablegen(GRUPPEN, async () => { throw new Error('weg'); }), { ok: false, grund: 'nicht erreichbar' });
 });
+
+test('holen: bricht die Verbindung beim Lesen des Inhalts ab, ist das ein Fehler, keine Ausnahme', async () => {
+  const fetcher = async () => ({ ok: true, status: 200, text: async () => { throw new TypeError('network error'); } });
+  const r = await holen(fetcher);
+  assert.equal(r.zustand, 'fehler');
+});

@@ -46,7 +46,15 @@ export const holen = async (fetcher = mitZeitlimit) => {
   if (antwort.status === 204 || antwort.status === 404) return { zustand: 'leer' };
   if (!antwort.ok) return { zustand: 'fehler', grund: `HTTP ${antwort.status}` };
 
-  const text = await antwort.text();
+  // Auch das Lesen des Inhalts kann abbrechen (Netz weg mitten in der
+  // Antwort). Vorher lag das ausserhalb des try: die Ablehnung ging
+  // unbehandelt durch und der Start-Abgleich blieb hängen.
+  let text;
+  try {
+    text = await antwort.text();
+  } catch {
+    return { zustand: 'fehler', grund: 'Antwort abgebrochen' };
+  }
   if (!text.trim()) return { zustand: 'leer' };
 
   const gelesen = readBackup(text);
