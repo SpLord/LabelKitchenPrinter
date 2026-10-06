@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { meldeFehler } from './fehler/bugsink.js';
 
 /*
   ErrorBoundary
@@ -20,7 +21,14 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Serverseitiges Logging gibt es hier nicht – Konsole ist die einzige Spur.
+    /*
+      An Bugsink melden. Ohne das lief der useMemo-Absturz von April bis
+      August 2026 unbemerkt in der Küche: die Boundary hielt den Druck am
+      Laufen, aber niemand erfuhr, dass das Hütchenspiel tot war.
+    */
+    meldeFehler(error, {
+      extra: { bereich: this.props.label || 'unbenannt', componentStack: info?.componentStack },
+    });
     console.error(
       `[ErrorBoundary${this.props.label ? ': ' + this.props.label : ''}]`,
       error,

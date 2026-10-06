@@ -32,6 +32,8 @@ export default {
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
+    // Bugsink gruppiert nach Release – nur die package.json-Version, ohne Build-Kennung
+    __APP_RELEASE__: JSON.stringify(`labelkitchen@${pkg.version}`),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
   },
 };

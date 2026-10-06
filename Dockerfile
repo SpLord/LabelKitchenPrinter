@@ -22,6 +22,20 @@ FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Bugsink: das Startskript erzeugt beim Start /etc/nginx/bugsink.conf aus
+# SENTRY_DSN. Es läuft vor nginx (Mechanismus des offiziellen Images).
+COPY --chmod=755 docker/40-bugsink.sh /docker-entrypoint.d/40-bugsink.sh
+
+# Variante ohne Tracking schon ins Image legen, damit nginx auch ohne
+# Startskript nie an einem fehlenden include scheitert – und die Konfiguration
+# hier im Build in BEIDEN Varianten prüfen: ein Fehler darin legt sonst erst
+# in der Küche den Drucker lahm.
+RUN SENTRY_DSN= /docker-entrypoint.d/40-bugsink.sh \
+    && nginx -t \
+    && SENTRY_DSN=https://00000000000000000000000000000000@bugsink.invalid/9 /docker-entrypoint.d/40-bugsink.sh \
+    && nginx -t \
+    && SENTRY_DSN= /docker-entrypoint.d/40-bugsink.sh
+
 # Ablage für die gemeinsamen Etiketten. Wird als Volume gemountet; die
 # Rechte aus dem Image werden beim ersten Anlegen übernommen, damit der
 # nginx-Arbeitsprozess hineinschreiben darf.

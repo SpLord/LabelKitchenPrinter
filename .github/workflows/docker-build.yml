@@ -52,6 +52,13 @@ jobs:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Nie zwei Bau-Läufe gleichzeitig: sonst kann ein älterer Lauf sein
+    # :latest NACH einem neueren pushen, und Portainer zöge das alte Image in
+    # die Küche. Wartende Läufe reihen sich ein; GitHub behält davon nur den
+    # neuesten, und der ist der richtige.
+    concurrency:
+      group: bauen-und-ausrollen
+      cancel-in-progress: false
     # Zum Nachziehen des deploy-Branches am Ende des Jobs
     permissions:
       contents: write
@@ -79,16 +86,67 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Docker Image
+      # Erst lokal bauen und starten, dann pushen: Portainer zieht jedes
+      # gepushte :latest binnen einer Minute in die Küche. Ein Image, das nicht
+      # startet, darf dort nie ankommen.
+      - name: Image bauen (lokal)
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          load: true
+          push: false
           build-args: |
             APP_VERSION=${{ steps.version.outputs.tag }}
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}
+
+      - name: Rauchtest – startet das Image mit und ohne Bugsink?
+        env:
+          IMG: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}
+          # Syntaktisch gültig, Host existiert nicht: der Tunnel muss dann 502
+          # liefern, nginx aber trotzdem laufen.
+          SCHEIN_DSN: https://00000000000000000000000000000000@bugsink.invalid/9
+        run: |
+          set -eu
+          docker run -d --name ohne   -p 8081:80 "$IMG"
+          docker run -d --name mit    -p 8082:80 -e SENTRY_DSN="$SCHEIN_DSN" "$IMG"
+          docker run -d --name kaputt -p 8083:80 -e SENTRY_DSN=nicht-gueltig "$IMG"
+          for p in 8081 8082 8083; do
+            for i in $(seq 1 20); do curl -fsS "localhost:$p/" >/dev/null 2>&1 && break; sleep 0.5; done
+            curl -fsS "localhost:$p/" >/dev/null
+          done
+          status() { curl -s -o /dev/null -w '%{http_code}' -X POST "localhost:$1/api/9/envelope/" -d x; }
+
+          # Ohne DSN: kein Tracking, kein Tunnel
+          curl -fsS localhost:8081/api/client-config | grep -q '"enabled":false'
+          test "$(status 8081)" = 404
+          # Mit DSN: freigegeben, Tunnel vorhanden (Ziel unerreichbar -> 502)
+          curl -fsS localhost:8082/api/client-config | grep -q '"enabled":true'
+          curl -fsS localhost:8082/api/client-config | grep -q '"projekt":"9"'
+          test "$(status 8082)" = 502
+          # Kaputter DSN verhindert den Start nicht, schaltet nur ab
+          curl -fsS localhost:8083/api/client-config | grep -q '"enabled":false'
+          # Der Schlüssel taucht weder beim Browser noch in den Logs auf.
+          # Bewusst if/exit statt "! befehl": ein mit ! verneinter Befehl
+          # bricht unter set -e nicht ab – die Prüfung wäre zahnlos.
+          if curl -fsS localhost:8082/api/client-config | grep -q 00000000000000000000000000000000; then
+            echo "Schlüssel in /api/client-config sichtbar"; exit 1
+          fi
+          docker logs mit 2>&1 | grep -q 'Fehlertracking aktiv'
+          if docker logs mit 2>&1 | grep -q 00000000000000000000000000000000; then
+            echo "Schlüssel in den Container-Logs"; exit 1
+          fi
+          # Der Etikettenspeicher läuft unverändert
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8081/daten/etiketten.json)" = 204
+          echo "Rauchtest bestanden"
+
+      - name: Rauchtest – Logs bei Fehlschlag
+        if: failure()
+        run: for c in ohne mit kaputt; do echo "== $c"; docker logs "$c" 2>&1 | tail -20; done
+
+      - name: Image pushen
+        run: docker push --all-tags ${{ env.IMAGE_NAME }}
 
       # Portainer beobachtet den deploy-Branch, nicht main. Er wird erst hier
       # nachgezogen – also nachdem das Image wirklich in der Registry liegt.

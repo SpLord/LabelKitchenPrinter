@@ -14,6 +14,7 @@ import {
   begrenzeAnzahl, drucke, druckerNamen, waehleDrucker,
 } from './print/drucker.js';
 import { datumsText, verwendbarBis } from './print/etikett.js';
+import { meldeDruckfehler } from './fehler/bugsink.js';
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -226,13 +227,21 @@ export default function App() {
         if (ergebnis.offen > 0) {
           // Wichtig ist die Zahl: der Rest muss nachgedruckt werden, nicht alles.
           const gesamt = ergebnis.gedruckt + ergebnis.offen;
+          meldeDruckfehler(ergebnis.grund, {
+            gedruckt: ergebnis.gedruckt, offen: ergebnis.offen, rueckfall: ergebnis.rueckfall, drucker: ziel,
+          });
           showError(
             `Nur ${ergebnis.gedruckt} von ${gesamt} Etiketten gedruckt – ` +
             `${ergebnis.offen} fehlen noch (${ergebnis.grund}).`
           );
         }
       })
-      .catch(err => showError('Fehler beim Drucken: ' + (err?.message || err)));
+      .catch(err => {
+        // Erwartbare Zustände wie "Framework nicht geladen" kommen gar nicht
+        // hierher (siehe oben). Was hier landet, ist ein echter Fehlschlag.
+        meldeDruckfehler(err?.message || String(err), { anzahl, drucker: printerName || null });
+        showError('Fehler beim Drucken: ' + (err?.message || err));
+      });
   };
 
   const generatePreview = (text, tage = null) => {

@@ -26,6 +26,7 @@ export default [
         dymo: 'readonly',
         // Von Vite zur Build-Zeit ersetzt (siehe vite.config.js → define)
         __APP_VERSION__: 'readonly',
+        __APP_RELEASE__: 'readonly',
         __BUILD_TIME__: 'readonly',
       },
       parserOptions: { ecmaFeatures: { jsx: true } },
