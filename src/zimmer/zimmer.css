@@ -1,0 +1,159 @@
+/* ==========================================
+   Katzenzimmer – Stil A "Comic mit Kontur"
+   Eine Formensprache für alles: dunkle Kontur, warme Flächen,
+   Gelb mit Münze heisst immer "kostet so viel".
+
+   Die Bühne hat das Seitenverhältnis des Küchentablets (4:3) und skaliert
+   als Ganzes. Masse in cqw (1 % der Bühnenbreite), damit Kopfleiste,
+   Menü und Blatt mit der Szene mitwachsen.
+   ========================================== */
+
+.zimmer {
+  --kontur: #2f2a26;
+  --flaeche: #fff8ee;
+  --gold: #fbbf24;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: #e3b88b;
+  color: var(--kontur);
+  /* Feste Reihenfolge statt system-ui: auf manchen Systemen ist das eine
+     Schreibmaschinenschrift. Auf dem Android-Tablet greift Roboto. */
+  font-family: Roboto, "Segoe UI", "Helvetica Neue", Arial, "DejaVu Sans", sans-serif;
+  animation: zimmer-auf 260ms ease-out;
+}
+@keyframes zimmer-auf { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+
+.zimmer-buehne {
+  position: relative;
+  width: min(100vw, calc(100dvh * 4 / 3));
+  aspect-ratio: 4 / 3;
+  container-type: inline-size;
+  overflow: hidden;
+}
+.zimmer-szene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ── Katze ─────────────────────────────────── */
+.zimmer-katze { transition-property: transform; transition-timing-function: linear; cursor: pointer; }
+.zimmer-katze-koerper { transform-box: fill-box; transform-origin: center; transition: transform 180ms ease; }
+.zimmer-katze-hops { transform-box: fill-box; transform-origin: 50% 100%; }
+.zimmer-katze.laeuft .zimmer-katze-hops { animation: zimmer-hops 0.42s ease-in-out infinite; }
+@keyframes zimmer-hops {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-5px) rotate(-1.5deg); }
+  75% { transform: translateY(-5px) rotate(1.5deg); }
+}
+.zimmer-blase { animation: zimmer-schweben 2.4s ease-in-out infinite; transform-box: fill-box; }
+@keyframes zimmer-schweben { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+.zimmer-strahl { stroke-dasharray: 9 7; animation: zimmer-fliessen 0.7s linear infinite; }
+@keyframes zimmer-fliessen { to { stroke-dashoffset: -16; } }
+.zimmer-pendel { transform-box: fill-box; transform-origin: 50% 0; animation: zimmer-pendeln 3s ease-in-out infinite; }
+@keyframes zimmer-pendeln { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+
+/* Herzchen beim Streicheln */
+.zimmer-herzchen {
+  position: absolute; width: 4.2cqw; height: 4.2cqw; translate: -50% 0;
+  pointer-events: none; animation: zimmer-herz 900ms ease-out forwards;
+}
+.zimmer-herzchen svg { width: 100%; height: 100%; display: block; }
+@keyframes zimmer-herz {
+  0% { opacity: 0; transform: translateY(1cqw) scale(0.4); }
+  25% { opacity: 1; transform: translateY(-1cqw) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-6cqw) scale(0.9); }
+}
+
+/* ── Knöpfe: eine Form für alle ────────────── */
+.zimmer-knopf {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.6cqw;
+  height: 4.8cqw; padding: 0 1.8cqw;
+  border: 0.4cqw solid var(--kontur); border-radius: 999px;
+  background: #fff; color: var(--kontur);
+  font: inherit; font-size: 1.8cqw; font-weight: 800;
+  box-shadow: 0 0.3cqw 0 var(--kontur);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw 0 var(--kontur); }
+.zimmer-knopf:focus-visible, .zimmer-menue button:focus-visible, .zimmer-preis:focus-visible { outline: 0.35cqw solid #f59e0b; outline-offset: 0.3cqw; }
+
+/* ── Kopfleiste ────────────────────────────── */
+.zimmer-kopf {
+  position: absolute; top: 1.4cqw; left: 1.4cqw; right: 1.4cqw;
+  display: flex; align-items: center; gap: 1.2cqw;
+}
+.zimmer-ringe { display: inline-flex; gap: 0.6cqw; }
+.zimmer-ring { width: 4.8cqw; height: 4.8cqw; display: inline-block; }
+.zimmer-name {
+  display: inline-flex; align-items: center; gap: 1cqw;
+  height: 4.8cqw; padding: 0 1.8cqw; margin-left: 1cqw;
+  border: 0.4cqw solid var(--kontur); border-radius: 999px; background: #fff;
+}
+.zimmer-name strong { font-size: 2cqw; font-weight: 800; }
+.zimmer-phase { font-size: 1.4cqw; color: #78350f; }
+.zimmer-herzen { display: inline-flex; gap: 0.2cqw; }
+.zimmer-herzen svg { width: 2.6cqw; height: 2.4cqw; }
+.zimmer-geld { margin-left: auto; font-variant-numeric: tabular-nums; cursor: default; }
+.zimmer-geld .zimmer-muenze, .zimmer-preis .zimmer-muenze { width: 2.4cqw; height: 2.4cqw; border-width: 0.35cqw; }
+
+/* ── Menüleiste unten ──────────────────────── */
+.zimmer-menue {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 9.4cqw;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--flaeche); border-top: 0.45cqw solid var(--kontur);
+}
+.zimmer-menue button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2cqw;
+  border: 0; background: transparent; color: var(--kontur);
+  font: inherit; font-size: 1.45cqw; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.zimmer-menue button svg { width: 4.6cqw; height: 4.6cqw; transition: transform 140ms ease; }
+.zimmer-menue button:active svg { transform: scale(0.9); }
+.zimmer-menue button.aktiv { background: #fde9c8; }
+
+/* ── Blatt von unten: dasselbe für jeden Bereich ── */
+.zimmer-blatt-huelle { position: absolute; inset: 0; background: rgba(47, 42, 38, 0.28); display: flex; align-items: flex-end; justify-content: center; }
+.zimmer-blatt {
+  position: relative; width: calc(100% - 7cqw); margin-bottom: 2cqw; padding: 1.6cqw 2.4cqw 2.4cqw;
+  background: var(--flaeche); border: 0.5cqw solid var(--kontur); border-radius: 2.6cqw;
+  box-shadow: 0 0.6cqw 0 var(--kontur);
+  animation: zimmer-blatt-hoch 240ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+@keyframes zimmer-blatt-hoch { from { transform: translateY(40%); opacity: 0; } to { transform: none; opacity: 1; } }
+.zimmer-blatt-griff { width: 5cqw; height: 0.7cqw; border-radius: 1cqw; background: #d6c3a8; margin: 0 auto 1cqw; }
+.zimmer-blatt-kopf { display: flex; align-items: center; gap: 1.2cqw; margin-bottom: 1.6cqw; }
+.zimmer-blatt-kopf h2 { margin: 0; font-size: 2.6cqw; font-weight: 800; }
+.zimmer-blatt-info { font-size: 1.5cqw; color: #78350f; }
+.zimmer-blatt-zu { margin-left: auto; width: 4.8cqw; padding: 0; }
+
+.zimmer-karten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.8cqw; }
+.zimmer-karte {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5cqw;
+  padding: 1.6cqw; background: #fff; border: 0.4cqw solid var(--kontur); border-radius: 2cqw;
+}
+.zimmer-karte-bild { width: 8cqw; height: 7cqw; }
+.zimmer-karte h3 { margin: 0; font-size: 1.9cqw; font-weight: 800; }
+.zimmer-karte p { margin: 0; font-size: 1.4cqw; color: #6b7280; line-height: 1.35; }
+.zimmer-karte small { font-size: 1.25cqw; color: #b45309; font-weight: 700; }
+.zimmer-karte-info { background: #f0f8ff; }
+
+.zimmer-preis {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.7cqw;
+  width: 100%; height: 4.6cqw; margin-top: 0.6cqw;
+  border: 0.4cqw solid var(--kontur); border-radius: 999px; background: var(--gold); color: var(--kontur);
+  font: inherit; font-size: 2cqw; font-weight: 800; box-shadow: 0 0.3cqw 0 var(--kontur); cursor: pointer;
+}
+.zimmer-preis:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw 0 var(--kontur); }
+.zimmer-preis:disabled { background: #eadbc6; color: #8a7a66; box-shadow: none; cursor: not-allowed; }
+
+.zimmer-kommt { padding: 1cqw 0.4cqw 0.6cqw; font-size: 1.7cqw; line-height: 1.5; }
+.zimmer-kommt strong { font-size: 1.9cqw; }
+.zimmer-kommt p { margin: 0.6cqw 0 0; color: #57534e; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zimmer, .zimmer-blatt, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
+  .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
+  .zimmer-katze { transition-duration: 0ms !important; }
+}

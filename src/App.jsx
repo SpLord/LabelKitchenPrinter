@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -15,6 +15,17 @@ import {
 } from './print/drucker.js';
 import { datumsText, verwendbarBis } from './print/etikett.js';
 import { meldeDruckfehler } from './fehler/bugsink.js';
+
+/*
+  Das neue Katzenzimmer entsteht hinter ?zimmer (Design 2026-10-06). Ohne den
+  Schalter wird davon nichts geladen, die Küche bleibt unverändert. Mit ihm
+  läuft die alte Katze nicht – zwei Katzen liessen dieselben Werte doppelt
+  verfallen.
+*/
+const ZimmerModus = lazy(() => import('./zimmer/ZimmerModus.jsx'));
+const ZIMMER_MODUS = (() => {
+  try { return new URLSearchParams(window.location.search).has('zimmer'); } catch { return false; }
+})();
 import useSchichtDatum from './print/useSchichtDatum.js';
 
 export default function App() {
@@ -130,6 +141,8 @@ export default function App() {
 
   // Global click to spawn toy when clicking on background areas
   useEffect(() => {
+    // Im Zimmer-Modus gibt es in der Küche kein Spielzeug mehr
+    if (ZIMMER_MODUS) return undefined;
     const handler = (e) => {
   if (suppressSpawn) return; // placement active
   if (laserMode) return; // no spawn while laser active
@@ -273,6 +286,11 @@ export default function App() {
   return (
     <>
       {/* Spielerei isoliert: stürzt sie ab, druckt die App trotzdem weiter */}
+      {ZIMMER_MODUS ? (
+        <ErrorBoundary label="Das Katzenzimmer" silent>
+          <Suspense fallback={null}><ZimmerModus /></Suspense>
+        </ErrorBoundary>
+      ) : (
       <ErrorBoundary label="Die Katze" silent>
         <CatSprite
           play={play}
@@ -288,6 +306,7 @@ export default function App() {
         />
         <PlayOverlay play={play} setPlay={setPlay} posRef={toyPosRef} />
       </ErrorBoundary>
+      )}
       {editorOpen && (
         <ErrorBoundary label="Der Etiketten-Editor">
           <LabelEditor

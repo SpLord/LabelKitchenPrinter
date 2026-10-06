@@ -1,0 +1,53 @@
+/* ==========================================
+   Küchenkarte – die Katze in der Küchenansicht
+   Stil A: dunkle Kontur, warme Fläche
+   ========================================== */
+
+.kuechen-karte {
+  position: fixed;
+  top: 10px;
+  right: 14px;
+  z-index: 70;   /* über der Kopfleiste (55), wie früher die Münzleiste */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 4px 18px 4px 6px;
+  border: 3.5px solid #2f2a26;
+  border-radius: 999px;
+  background: #fff8ee;
+  color: #2f2a26;
+  font: inherit;
+  font-family: Roboto, "Segoe UI", "Helvetica Neue", Arial, "DejaVu Sans", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #2f2a26;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.kuechen-karte:active { transform: translateY(2px); box-shadow: 0 1px 0 #2f2a26; }
+.kuechen-karte:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+
+.kuechen-karte-katze { position: relative; width: 52px; height: 52px; flex: none; }
+.kuechen-karte-punkt {
+  position: absolute; top: -2px; right: -2px; width: 16px; height: 16px;
+  border-radius: 50%; background: #3b82f6; border: 3px solid #2f2a26;
+  animation: karte-puls 2.4s ease-in-out infinite;
+}
+@keyframes karte-puls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .kuechen-karte-punkt { animation: none; } }
+
+.kuechen-karte-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.kuechen-karte-text strong { font-size: 1.05rem; font-weight: 800; }
+.kuechen-karte-text span { font-size: 0.82rem; color: #78350f; }
+
+.kuechen-karte-muenzen {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 8px;
+  font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums;
+}
+
+/* Gezeichnete Münze – ersetzt das 🪙-Emoji */
+.zimmer-muenze {
+  display: inline-block; width: 1.15em; height: 1.15em; border-radius: 50%; flex: none;
+  background: radial-gradient(circle, #fbbf24 0 34%, #d97706 35% 46%, #fbbf24 47%);
+  border: 3px solid #2f2a26; box-sizing: border-box;
+}
