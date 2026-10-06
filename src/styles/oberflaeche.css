@@ -453,6 +453,40 @@ input:focus-visible {
   text-align: center;
 }
 
+/*
+  Abweichendes Etikettendatum. Es landet auf Lebensmitteln – wer zurück-
+  datiert, soll es nicht übersehen können. Gilt nur bis zum Schichtwechsel.
+*/
+.date-current.abweichend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  color: #92400e;
+}
+.date-hinweis {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.date-current .date-zurueck {
+  min-height: 34px;
+  padding: 0.2rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 83, 9, 0.4);
+  background: #fff;
+  color: #92400e;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
 .side-rail .input-group {
   background: var(--surface);
   border: 1px solid var(--border);

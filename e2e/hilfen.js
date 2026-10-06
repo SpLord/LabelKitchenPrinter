@@ -25,7 +25,8 @@ export const dymoFaelschen = (drucker = ['DYMO Küche'], kannKopien = true) => (
           }
           window.__drucke.push({ ziel, params: params ?? null, felder: { ...felder } });
         },
-        render: () => png,
+        // Was zuletzt in der Vorschau stand – sonst ist sie im Test unsichtbar
+        render: () => { window.__vorschau = { ...felder }; return png; },
       };
     },
   };

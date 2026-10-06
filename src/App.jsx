@@ -15,6 +15,7 @@ import {
 } from './print/drucker.js';
 import { datumsText, verwendbarBis } from './print/etikett.js';
 import { meldeDruckfehler } from './fehler/bugsink.js';
+import useSchichtDatum from './print/useSchichtDatum.js';
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -53,18 +54,14 @@ export default function App() {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
   }, []);
 
-  // Vor 5 Uhr zählt der Tag noch zur vorherigen Schicht
-  const getEffectiveDate = () => {
-    const now = new Date();
-    const cutoff = new Date(now);
-    cutoff.setHours(5, 0, 0, 0);
-    if (now >= cutoff) return now;
-    const previous = new Date(now);
-    previous.setDate(previous.getDate() - 1);
-    return previous;
-  };
-
-  const [selectedDate, setSelectedDate] = useState(getEffectiveDate());
+  /*
+    Etikettendatum. Vorher einmal beim Laden berechnet – ein Tablet, das über
+    Nacht anblieb, druckte morgens das Vortagsdatum. Jetzt wird beim Druck
+    frisch aus der Uhr bestimmt (src/print/schicht.js).
+  */
+  const etikettDatum = useSchichtDatum();
+  // Zuletzt gezeigte Vorschau, damit ein Datumswechsel genau sie neu rendert
+  const letzteVorschauRef = useRef({ text: '', tage: null });
   const debugUi = (input || '').trim().toUpperCase() === 'BATCAT';
 
   // Druckerstatus prüfen (DYMO)
@@ -216,7 +213,7 @@ export default function App() {
       .then(labelXml => {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
-        label.setObjectText("Datum", datumsText(selectedDate, tage));
+        label.setObjectText("Datum", datumsText(etikettDatum.fuerDruck(), tage));
 
         const ziel = printerName || "DYMO LabelWriter 450";
         // Scheitert der Kopien-Parameter, wird einzeln gedruckt statt gar nicht
@@ -245,6 +242,7 @@ export default function App() {
   };
 
   const generatePreview = (text, tage = null) => {
+    letzteVorschauRef.current = { text, tage };
     const framework = window?.dymo?.label?.framework;
     if (!text || !framework) {
       setPreviewSrc(null);
@@ -259,7 +257,7 @@ export default function App() {
       .then(labelXml => {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
-        label.setObjectText("Datum", datumsText(selectedDate, tage));
+        label.setObjectText("Datum", datumsText(etikettDatum.fuerDruck(), tage));
         const base64 = label.render();
         setPreviewSrc(`data:image/png;base64,${base64}`);
       })
@@ -345,16 +343,35 @@ export default function App() {
 
           <div className="date-section">
             <DatePicker
-              selected={selectedDate}
+              selected={etikettDatum.datum}
               onChange={(date) => {
-                setSelectedDate(date);
-                generatePreview(input);
+                etikettDatum.waehlen(date);
+                // Genau das zuletzt gezeigte Etikett neu – samt Haltbarkeit,
+                // die hier früher verloren ging
+                const { text, tage } = letzteVorschauRef.current;
+                generatePreview(text || input, tage);
               }}
               inline
               calendarClassName="custom-datepicker"
             />
-            <div className="date-current">
-              📅 {selectedDate.toLocaleDateString("de-DE")}
+            {/* Ein abweichendes Datum muss auffallen: es landet auf Lebensmitteln */}
+            <div className={`date-current ${etikettDatum.abweichend ? 'abweichend' : ''}`}>
+              📅 {etikettDatum.datum.toLocaleDateString("de-DE")}
+              {etikettDatum.abweichend && (
+                <>
+                  <span className="date-hinweis">nicht heute</span>
+                  <button
+                    className="date-zurueck"
+                    onClick={() => {
+                      etikettDatum.zuruecksetzen();
+                      const { text, tage } = letzteVorschauRef.current;
+                      generatePreview(text || input, tage);
+                    }}
+                  >
+                    auf heute
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -416,7 +433,7 @@ export default function App() {
                     }}
                     disabled={printerStatus !== 'online'}
                     title={eintrag.tage
-                      ? `${eintrag.tage} Tage haltbar – verwendbar bis ${verwendbarBis(selectedDate, eintrag.tage).toLocaleDateString('de-DE')}`
+                      ? `${eintrag.tage} Tage haltbar – verwendbar bis ${verwendbarBis(etikettDatum.datum, eintrag.tage).toLocaleDateString('de-DE')}`
                       : undefined}
                   >
                     {eintrag.name}
