@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FREUDE_STREICHELN } from '../cat/tamagotchi.js';
 import { FREUNDSCHAFT_STREICHELN } from '../cat/wachstum.js';
 import { NAME } from './KuechenKarte.jsx';
 import Szene from './Szene.jsx';
+import SpielFederangel from './SpielFederangel.jsx';
+import SpielLeckerli from './SpielLeckerli.jsx';
+import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
+
+const KEY_LECKERLI = 'zimmer_leckerli_zuletzt';
+const leckerliZuletzt = () => { try { return localStorage.getItem(KEY_LECKERLI); } catch { return null; } };
 import useKatzeImZimmer from './useKatzeImZimmer.js';
 import './zimmer.css';
 
@@ -29,7 +35,6 @@ const BEREICHE = [
 
 /* Was in den noch nicht gebauten Bereichen kommt – ehrlich statt Attrappe. */
 const KOMMT = {
-  spielen: { etappe: 5, text: 'Laser, Ball und Maus als Spielsachen, der Leckerli-Regen als Fangspiel, das Hütchenspiel mit echten Bechern.' },
   laden: { etappe: 4, text: 'Möbel, Felle und Zubehör mit Vorschau – man sieht vor dem Kauf, wie es aussieht.' },
   kleiderschrank: { etappe: 4, text: 'Felle und Zubehör anlegen und wechseln, die Krone eingeschlossen.' },
   einrichten: { etappe: 4, text: 'Möbel per Tipp auf freie Stellplätze stellen oder umstellen.' },
@@ -68,7 +73,44 @@ function Herzen({ anzahl }) {
   );
 }
 
-function Blatt({ bereich, zustand, onZu }) {
+/* Spielen: kurze Spiele für die Pause, jedes etwa eine halbe Minute. */
+function SpieleKarten({ onSpiel }) {
+  const warten = wartezeit(leckerliZuletzt());
+  const minuten = Math.ceil(warten / 60_000);
+  return (
+    <div className="zimmer-karten">
+      <article className="zimmer-karte">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K}><path d="M70 2 L44 30" stroke="#a16207" strokeWidth="6" /><path d="M44 30 Q40 46 40 40" fill="none" strokeWidth="2" />
+            <path d="M40 34 C30 42 32 56 40 64 C48 56 50 42 40 34 Z" fill="#f472b6" strokeWidth="3" /></g>
+        </svg>
+        <h3>Federangel</h3>
+        <p>Feder führen, Mails jagt hinterher. Bringt Laune und Freundschaft.</p>
+        <button className="zimmer-preis" onClick={() => onSpiel('feder')}>spielen</button>
+      </article>
+      <article className="zimmer-karte">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K} strokeWidth="3.5"><path d="M30 14 q10 -10 20 0 q-10 10 -20 0 Z" fill="#fb923c" /><circle cx="56" cy="30" r="8" fill="#d6a15d" />
+            <path d="M14 46 h52 l-6 18 h-40 Z" fill="#ef4444" /><ellipse cx="40" cy="46" rx="26" ry="5" fill="#7f1d1d" /></g>
+        </svg>
+        <h3>Leckerli fangen</h3>
+        <p>Napf darunter schieben. Bis zu {LECKERLI.maxMuenzen} Münzen, einmal pro Stunde.</p>
+        <button className="zimmer-preis" disabled={warten > 0} onClick={() => onSpiel('leckerli')}>spielen</button>
+        {warten > 0 && <small>wieder in {minuten} min</small>}
+      </article>
+      <article className="zimmer-karte zimmer-karte-info">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K}><path d="M10 60 a30 30 0 0 1 60 0 Z" fill="#7a5a3a" /><ellipse cx="40" cy="48" rx="12" ry="9" fill="#d1d5db" />
+            <circle cx="35" cy="46" r="2" fill="#2f2a26" stroke="none" /><circle cx="45" cy="46" r="2" fill="#2f2a26" stroke="none" /></g>
+        </svg>
+        <h3>Mäuseloch</h3>
+        <p>Eine Spielzeugmaus lugt aus der Fußleiste – kommt als Nächstes.</p>
+      </article>
+    </div>
+  );
+}
+
+function Blatt({ bereich, zustand, onZu, onSpiel }) {
   const titel = BEREICHE.find((b) => b.id === bereich)?.titel;
   return (
     <div className="zimmer-blatt-huelle" onClick={onZu}>
@@ -137,6 +179,8 @@ function Blatt({ bereich, zustand, onZu }) {
               </article>
             )}
           </div>
+        ) : bereich === 'spielen' ? (
+          <SpieleKarten onSpiel={onSpiel} />
         ) : (
           <div className="zimmer-kommt">
             <strong>Kommt in Etappe {KOMMT[bereich].etappe}</strong>
@@ -153,12 +197,48 @@ export default function Zimmer({ zustand, onZu }) {
   const katze = useKatzeImZimmer(zustand.lageRef, zustand.anwendenRef);
   const [bereich, setBereich] = useState(null);
   const [herzchen, setHerzchen] = useState(0);
+  const [spiel, setSpiel] = useState(null);       // 'feder' | 'leckerli' | null
+  const [ergebnis, setErgebnis] = useState(null);
+
+  const spielStarten = (art) => {
+    setBereich(null);
+    if (art === 'leckerli') {
+      try { localStorage.setItem(KEY_LECKERLI, String(Date.now())); } catch { /* gesperrt */ }
+    }
+    setSpiel(art);
+  };
+
+  const { erfreuen, wachstum, setMuenzen } = zustand;
+  const { freigeben } = katze;
+  const federEnde = useCallback((faenge) => {
+    setSpiel(null);
+    freigeben();
+    setErgebnis(faenge > 0 ? `${faenge} ${faenge === 1 ? 'Fang' : 'Fänge'} – Mails ist zufrieden` : 'Mails hat die Feder nicht erwischt');
+  }, [freigeben]);
+  const leckerliEnde = useCallback((faenge) => {
+    setSpiel(null);
+    freigeben();
+    const muenzen = muenzenFuerRunde(faenge);
+    if (muenzen > 0) setMuenzen((c) => c + muenzen);
+    setErgebnis(muenzen > 0 ? `+${muenzen} Münzen` : 'Diesmal nichts gefangen');
+  }, [freigeben, setMuenzen]);
+  const federFang = useCallback(() => {
+    erfreuen(FEDER.laune);
+    wachstum.naeherKommen(1);
+    setHerzchen((n) => n + 1);
+  }, [erfreuen, wachstum]);
 
   useEffect(() => {
-    const taste = (e) => { if (e.key === 'Escape') (bereich ? setBereich(null) : onZu()); };
+    if (!ergebnis) return undefined;
+    const t = setTimeout(() => setErgebnis(null), 2600);
+    return () => clearTimeout(t);
+  }, [ergebnis]);
+
+  useEffect(() => {
+    const taste = (e) => { if (e.key === 'Escape' && !spiel) (bereich ? setBereich(null) : onZu()); };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [bereich, onZu]);
+  }, [bereich, onZu, spiel]);
 
   const streicheln = () => {
     zustand.erfreuen(FREUDE_STREICHELN);
@@ -203,6 +283,11 @@ export default function Zimmer({ zustand, onZu }) {
           </span>
         </header>
 
+        {spiel === 'feder' && <SpielFederangel katze={katze} onFang={federFang} onEnde={federEnde} />}
+        {spiel === 'leckerli' && <SpielLeckerli onEnde={leckerliEnde} />}
+        {ergebnis && <div className="zimmer-ergebnis" role="status">{ergebnis}</div>}
+
+        {!spiel && (
         <nav className="zimmer-menue" aria-label="Bereiche">
           {BEREICHE.map((b) => (
             <button key={b.id} className={bereich === b.id ? 'aktiv' : ''} onClick={() => setBereich(b.id)}>
@@ -211,8 +296,9 @@ export default function Zimmer({ zustand, onZu }) {
             </button>
           ))}
         </nav>
+        )}
 
-        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} />}
+        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} />}
       </div>
     </div>
   );
