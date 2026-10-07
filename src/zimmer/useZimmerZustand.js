@@ -23,6 +23,10 @@ const KEY_GUT_SEIT = 'zimmer_gut_seit';
 const KEY_FREUNDSCHAFT_HEUTE = 'zimmer_freundschaft_heute';
 const KEY_HERZEN_GESEHEN = 'zimmer_herzen_gesehen';
 const KEY_FUND = 'zimmer_fund';
+const KEY_BALL = 'zimmer_ball';
+
+/* Wohin der Ball nach einem Stupser rollt: irgendwo auf den freien Boden. */
+const ballZiel = () => ({ x: Math.round(220 + Math.random() * 700), y: Math.round(615 + Math.random() * 40) });
 
 const lesenText = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const schreibenText = (key, wert) => {
@@ -145,6 +149,12 @@ export default function useZimmerZustand() {
   const [abgeholt, setAbgeholt] = useState(() => lesenText(KEY_GESCHENK));
   const zweitesGeschenk = kann('zweitesGeschenk');
   const geschenkHeute = geschenkDa(abgeholt, new Date(jetzt), zweitesGeschenk);
+  // Wo gerade etwas steht, das kein Häufchen neben sich haben soll
+  const meidenRef = useRef([]);
+  meidenRef.current = [
+    geschenkHeute && { x: 790, y: 640 },
+    moebel.has('katzengras') && { x: 920, y: 662 },
+  ].filter(Boolean);
   const { setStand: setzeMuenzen } = muenzen;
   const geschenkOeffnen = useCallback(() => {
     const r = abholen({
@@ -199,10 +209,23 @@ export default function useZimmerZustand() {
   }, [beduerfnisse.krank, beduerfnisse.hunger, beduerfnisse.thirst, jetzt, heilenNeeds]);
   const hatKlo = moebel.has('katzenklo');
 
+  // Ball (2.4.0): liegt frei im Raum, gespeichert, damit er nach dem Neuladen
+  // dort liegt, wo sie ihn hingestupst hat
+  const [ball, setBall] = useState(() => {
+    try {
+      const b = JSON.parse(localStorage.getItem(KEY_BALL));
+      if (b && Number.isFinite(b.x) && Number.isFinite(b.y)) return { x: b.x, y: b.y };
+    } catch { /* kaputt oder gesperrt */ }
+    return { x: 700, y: 650 };
+  });
+  useEffect(() => {
+    try { localStorage.setItem(KEY_BALL, JSON.stringify(ball)); } catch { /* gesperrt */ }
+  }, [ball]);
+
   useEffect(() => {
     const pruefen = () => {
       setJetzt(Date.now());
-      setKlo((z) => nachholen(z, { hatKlo, jetzt: Date.now() }));
+      setKlo((z) => nachholen(z, { hatKlo, jetzt: Date.now(), meiden: meidenRef.current }));
     };
     pruefen();
     const uhr = setInterval(pruefen, NACHHOLEN_ALLE);
@@ -219,6 +242,7 @@ export default function useZimmerZustand() {
     napf,
     moebel,
     mussMal: faellig(klo, Date.now()),
+    ball,
     sonnenbad: kann('sonnenbad'),
     kloPlatz: hatKlo && klo.klo < KLO.kapazitaet,
   };
@@ -228,7 +252,8 @@ export default function useZimmerZustand() {
   hatKloRef.current = hatKlo;
   const anwenden = useCallback((art, ort = null) => {
     const w = wirkung(art, lageRef.current);
-    if (w.gang) setKlo((z) => gang(z, { hatKlo: hatKloRef.current, jetzt: Date.now(), ort }));
+    if (w.gang) setKlo((z) => gang(z, { hatKlo: hatKloRef.current, jetzt: Date.now(), ort, meiden: meidenRef.current }));
+    if (w.ball) setBall(ballZiel());
     if (w.hunger) fuettern(w.hunger);
     if (w.durst) traenken(w.durst);
     if (w.laune) erfreuen(w.laune);
@@ -304,6 +329,7 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    ball,
     nacht: schlaeft(new Date(jetzt)),
     jetzt,
     fundOffen: fund.offen,

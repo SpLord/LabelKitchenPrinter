@@ -14,7 +14,7 @@ import SpielMaeuseloch from './SpielMaeuseloch.jsx';
 import ShellGame, { STAKE } from '../ShellGame.jsx';
 import ErrorBoundary from '../ErrorBoundary.jsx';
 import { launeFuer } from './maeuseloch.js';
-import { BESUCH, besucher, tageszeit } from './tageszeit.js';
+import { BESUCH, besucher, tageszeit, wetter } from './tageszeit.js';
 import { FUNDSTUECKE } from './fundstuecke.js';
 import SpielLeckerli from './SpielLeckerli.jsx';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
@@ -380,7 +380,8 @@ export default function Zimmer({ zustand, onZu }) {
                neu={neuesMoebel} onFrei={() => setBereich('einrichten')}
                geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} rollt={rollt}
                tageszeit={zeit} besuch={besuch} fund={zustand.fundOffen} onFund={fundAufheben}
-               groesse={zustand.wachstum.phase.groesse} />
+               groesse={zustand.wachstum.phase.groesse}
+               wetterArt={wetter(new Date(zustand.jetzt))} ball={zustand.ball} springt={katze.springt} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"

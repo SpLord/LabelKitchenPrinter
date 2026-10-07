@@ -29,3 +29,18 @@ export function besucher(zeit, zufall = Math.random) {
 
 /* Wie oft jemand vorbeikommt: alle 25–60 Sekunden, für 7 Sekunden. */
 export const BESUCH = { abstandMin: 25_000, abstandMax: 60_000, dauer: 7_000 };
+
+/*
+  Wetter im Fenster (2.4.0): je Schichttag fest, damit es nicht flackert.
+  Im Winter (Dezember bis Februar) kann es schneien, sonst regnet es mal.
+*/
+const WINTER = ['sonne', 'wolken', 'schnee', 'schnee', 'wolken'];
+const SONST = ['sonne', 'sonne', 'wolken', 'regen', 'sonne'];
+export function wetter(jetzt = new Date()) {
+  // Schichttag: vor 5 Uhr zählt noch der Vortag
+  const d = new Date(jetzt.getTime() - 5 * 3_600_000);
+  const zahl = d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
+  const gemischt = (zahl * 2654435761) % 4294967296;
+  const liste = [11, 0, 1].includes(d.getMonth()) ? WINTER : SONST;
+  return liste[gemischt % liste.length];
+}

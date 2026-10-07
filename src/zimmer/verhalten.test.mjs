@@ -120,3 +120,29 @@ test('freie Zeit (2.3.0): sie putzt sich, streckt sich und gähnt – ohne dafü
     assert.equal(t.ort, null, `${a} bleibt am Platz`);
   }
 });
+
+test('2.4.0: Regal, Katzengras und Ball nur, wenn sie im Zimmer sind', () => {
+  const ohne = new Set();
+  for (let i = 0; i < 200; i += 1) ohne.add(naechsteTaetigkeit(satt, () => i / 200).art);
+  for (const a of ['regal', 'knabbern', 'ball']) assert.ok(!ohne.has(a), `${a} ohne Möbel`);
+
+  const mit = { ...satt, moebel: new Set(['wandregal', 'katzengras', 'ball']), ball: { x: 700, y: 640 } };
+  const arten = new Set();
+  for (let i = 0; i < 200; i += 1) arten.add(naechsteTaetigkeit(mit, () => i / 200).art);
+  for (const a of ['regal', 'knabbern', 'ball']) assert.ok(arten.has(a), `${a} fehlt`);
+});
+
+test('2.4.0: zum Ball läuft sie dorthin, wo er gerade liegt', () => {
+  const mit = { ...satt, moebel: new Set(['ball']), ball: { x: 700, y: 640 } };
+  let t;
+  for (let i = 0; i < 200 && t?.art !== 'ball'; i += 1) t = naechsteTaetigkeit(mit, () => i / 200);
+  assert.equal(t.ort.y, 640);
+  assert.ok(Math.abs(t.ort.x - 700) <= 60, 'neben dem Ball');
+});
+
+test('2.4.0: Wirkung – Regal und Knabbern heben die Laune, der Ball rollt weg', () => {
+  assert.ok(wirkung('regal', satt).laune > 0);
+  assert.ok(wirkung('knabbern', satt).laune > 0);
+  assert.equal(wirkung('ball', satt).ball, true);
+  assert.ok(wirkung('ball', satt).laune > 0);
+});

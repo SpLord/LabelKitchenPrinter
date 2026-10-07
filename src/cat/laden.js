@@ -47,6 +47,18 @@ export const ZUBEHOER = [
 */
 export const AUSSTATTUNG = [
   {
+    id: 'ball', name: 'Spielball', preis: 80, emoji: '⚽',
+    wirkung: 'Sie stupst ihn von selbst an und jagt ihm nach.',
+  },
+  {
+    id: 'katzengras', name: 'Katzengras', preis: 120, emoji: '🌱',
+    wirkung: 'Sie knabbert daran – das tut ihrer Laune gut.',
+  },
+  {
+    id: 'wandregal', name: 'Wandregal', preis: 250, emoji: '🪜',
+    wirkung: 'Sie springt hinauf und hält von oben Ausschau.',
+  },
+  {
     id: 'katzenklo', name: 'Katzenklo', preis: 150, emoji: '🚽',
     wirkung: 'Sie geht aufs Klo, statt ins Zimmer zu machen.',
   },

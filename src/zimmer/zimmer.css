@@ -48,6 +48,29 @@
 .zimmer-katze-hops { transform-box: fill-box; transform-origin: 50% 100%; }
 .zimmer-katze.laeuft .zimmer-katze-hops { animation: zimmer-hops 0.42s ease-in-out infinite; }
 
+/* Mehr Zimmer (2.4.0) ─────────────────────── */
+/* Sprung aufs Regal: Bogen über der Strecke (800 ms wie SPRUNG_DAUER) */
+.zimmer-katze.springt { transition-timing-function: cubic-bezier(.45,.05,.55,.95); }
+.zimmer-katze.springt .zimmer-katze-hops { animation: zimmer-sprung 800ms cubic-bezier(.3,.6,.4,1) !important; }
+@keyframes zimmer-sprung {
+  0% { transform: none; } 12% { transform: translateY(6px) scale(1.08, 0.9); }
+  45% { transform: translateY(-70px) scale(0.95, 1.06); } 88% { transform: translateY(0) scale(1.06, 0.92); } 100% { transform: none; }
+}
+/* Ball rollt an seine neue Stelle und dreht sich dabei */
+.zimmer-ball { transition: transform 1100ms cubic-bezier(.2,.7,.3,1); }
+.zimmer-ball-dreh { transform-box: fill-box; transform-origin: 50% 50%; transition: transform 1100ms cubic-bezier(.2,.7,.3,1); }
+/* Katzengras wiegt sich */
+.zimmer-gras { transform-box: fill-box; transform-origin: 50% 100%; animation: zimmer-gras 3.2s ease-in-out infinite; }
+@keyframes zimmer-gras { 0%, 100% { transform: skewX(-4deg); } 50% { transform: skewX(4deg); } }
+/* Wetter */
+.zimmer-regen { animation: zimmer-regen 0.6s linear infinite; }
+@keyframes zimmer-regen { from { transform: translate(0, -40px); } to { transform: translate(-12px, 40px); } }
+.zimmer-schnee { animation: zimmer-schnee 6s linear infinite; }
+@keyframes zimmer-schnee { from { transform: translate(0, -60px); } to { transform: translate(-10px, 60px); } }
+.zimmer-wolke { animation: zimmer-wolke 18s ease-in-out infinite alternate; }
+.zimmer-wolke.langsam { animation-duration: 26s; }
+@keyframes zimmer-wolke { from { transform: translateX(-20px); } to { transform: translateX(30px); } }
+
 /* Flüssiger (2.3.0) ─────────────────────────
    Posenwechsel federt kurz; Profil-Posen blinzeln; Gähnen, Putzen, Strecken. */
 g.pose-ein, span.pose-ein > svg { transform-box: fill-box; transform-origin: 50% 100%; animation: pose-ein 260ms cubic-bezier(.3,1.5,.5,1); }
@@ -336,6 +359,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
   .zimmer-fund, .zimmer-funkeln, .zimmer-fluegel, .zimmer-lampenschein, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   g.pose-ein, span.pose-ein > svg, .pose-augen, .pose-gaehnen, .pose-putzen, .pose-dehnen,
+  .zimmer-katze.springt .zimmer-katze-hops, .zimmer-gras, .zimmer-regen, .zimmer-schnee, .zimmer-wolke,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }
 }

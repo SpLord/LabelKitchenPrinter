@@ -148,3 +148,10 @@ test('gang: nie direkt neben Napf oder Wasser – sie macht nicht neben ihr Futt
     for (const m of KLO.meiden) assert.ok(Math.hypot(h.x - m.x, h.y - m.y) >= KLO.abstandMoebel, `${h.x}/${h.y} zu nah an ${m.x}/${m.y}`);
   }
 });
+
+test('gang: zusätzlich gemiedene Stellen (Geschenk, Katzengras) bleiben frei', () => {
+  const meiden = [{ x: 790, y: 640 }];
+  let z = leer(T0);
+  for (let i = 0; i < KLO.maxHaeufchen; i += 1) z = gang(z, { hatKlo: false, jetzt: T0 + i, ort: { x: 790, y: 640 }, zufall: Math.random, meiden });
+  for (const h of z.haeufchen) assert.ok(Math.hypot(h.x - 790, h.y - 640) >= KLO.abstandMoebel);
+});

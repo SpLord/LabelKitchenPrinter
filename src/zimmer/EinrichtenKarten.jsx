@@ -1,5 +1,5 @@
 import { AUSSTATTUNG } from '../cat/laden.js';
-import { Futterautomat, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen } from './Moebel.jsx';
+import { Ball, Futterautomat, Katzengras, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wandregal } from './Moebel.jsx';
 
 const K = { stroke: '#2f2a26', strokeLinejoin: 'round', strokeLinecap: 'round' };
 
@@ -9,6 +9,9 @@ const K = { stroke: '#2f2a26', strokeLinejoin: 'round', strokeLinecap: 'round' }
   seinen Massen in Moebel.jsx (Anker = Mitte der Standfläche bei 0/0).
 */
 const VORSCHAU = {
+  ball:          { box: '-30 -42 60 50', bild: <Ball x={0} y={0} /> },
+  katzengras:    { box: '-44 -96 88 104', bild: <Katzengras x={0} y={0} /> },
+  wandregal:     { box: '-112 -40 196 264', bild: <><rect x="-75" y="-7" width="150" height="14" rx="5" fill="#a16207" stroke="#2f2a26" strokeWidth="5" /><Wandregal x={0} y={0} /></> },
   katzenklo:     { box: '-74 -70 148 82', bild: <Katzenklo x={0} y={0} fuellung={0} /> },
   trinkbrunnen:  { box: '-60 -90 120 100', bild: <Trinkbrunnen x={0} y={0} /> },
   futterautomat: { box: '-60 -150 120 160', bild: <><Futterautomat x={0} y={0} /><Napf x={0} y={0} fuellung={60} /></> },

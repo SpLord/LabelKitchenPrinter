@@ -28,7 +28,13 @@ export const ORTE = {
   fenster:   { x: 214, y: 300, richtung: 1 },
   liegen:    { x: 640, y: 660, richtung: -1 },
   klo:       { x: 118, y: 662, richtung: 1 },
+  // 2.4.0
+  regal:     { x: 495, y: 250, richtung: -1 },
+  gras:      { x: 872, y: 668, richtung: 1 },
 };
+export const REGAL_LAUNE = 2;
+export const KNABBER_LAUNE = 2;
+export const BALL_LAUNE = 3;
 
 const BODEN = { links: 180, rechts: 960, oben: 568, unten: 680 };
 
@@ -86,6 +92,13 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     { art: 'strecken', gewicht: 1, dauer: 2_600 },
     { art: 'gaehnen', gewicht: 1, dauer: 2_200 },
     moebel.has('kratzbaum') && { art: 'kratzen', gewicht: 2, ort: ORTE.kratzbaum, dauer: 6_000 },
+    // 2.4.0: hinauf aufs Regal, am Katzengras knabbern, den Ball anstupsen
+    moebel.has('wandregal') && { art: 'regal', gewicht: 2, ort: ORTE.regal, dauer: 10_000 },
+    moebel.has('katzengras') && { art: 'knabbern', gewicht: 2, ort: ORTE.gras, dauer: 4_000 },
+    moebel.has('ball') && lage.ball && {
+      art: 'ball', gewicht: 3, dauer: 1_800,
+      ort: { x: lage.ball.x + (lage.ball.x > 512 ? -46 : 46), y: lage.ball.y, richtung: lage.ball.x > 512 ? 1 : -1 },
+    },
   ].filter(Boolean);
   const wahl = gewichtet(frei, zufall);
   const ort = wahl.ort ?? (wahl.art === 'bummeln' ? bummelOrt(zufall) : null);
@@ -109,6 +122,9 @@ export function wirkung(art, lage) {
     case 'fenster': return { laune: lage.sonnenbad ? FENSTER_LAUNE * 3 : FENSTER_LAUNE };
     case 'klo':
     case 'haeufchen': return { gang: true };
+    case 'regal': return { laune: REGAL_LAUNE };
+    case 'knabbern': return { laune: KNABBER_LAUNE };
+    case 'ball': return { laune: BALL_LAUNE, ball: true };
     default: return {};
   }
 }

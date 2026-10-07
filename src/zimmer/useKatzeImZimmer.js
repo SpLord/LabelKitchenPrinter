@@ -3,6 +3,9 @@ import { ORTE, naechsteTaetigkeit, wegDauer } from './verhalten.js';
 
 /* Beim Spielen rennt sie – doppelt so schnell wie beim Bummeln. */
 const JAGDTEMPO = 320;
+/* Höhenunterschied ab dem sie springt statt läuft (Regal, 2.4.0). */
+const SPRUNG_AB = 150;
+const SPRUNG_DAUER = 800;
 const jagdDauer = (von, nach) =>
   Math.max(220, Math.round((Math.hypot(nach.x - von.x, nach.y - von.y) / JAGDTEMPO) * 1000));
 
@@ -29,7 +32,7 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
   const gefuehrtRef = useRef(false);
   const durchgangRef = useRef(null);
   const [katze, setKatze] = useState({
-    pos: start, richtung: -1, dauer: 0, laeuft: false, art: 'sitzen', blase: null,
+    pos: start, richtung: -1, dauer: 0, laeuft: false, art: 'sitzen', blase: null, springt: false,
   });
 
   const warte = useCallback((ms, f) => {
@@ -44,15 +47,17 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
       const t = naechsteTaetigkeit(lageRef.current);
       const von = posRef.current;
       const nach = t.ort ?? von;
-      const weg = t.ort ? wegDauer(von, nach) : 0;
+      // Hinauf aufs Regal oder herunter: ein Sprung im Bogen statt schräg zu gleiten
+      const springt = Boolean(t.ort) && Math.abs(nach.y - von.y) > SPRUNG_AB;
+      const weg = !t.ort ? 0 : springt ? SPRUNG_DAUER : wegDauer(von, nach);
       const richtungUnterwegs = nach.x < von.x - 2 ? -1 : nach.x > von.x + 2 ? 1 : (von.richtung ?? -1);
       posRef.current = { x: nach.x, y: nach.y, richtung: nach.richtung ?? richtungUnterwegs };
 
-      setKatze({ pos: { x: nach.x, y: nach.y }, richtung: richtungUnterwegs, dauer: weg, laeuft: weg > 0, art: t.art, blase: t.blase });
+      setKatze({ pos: { x: nach.x, y: nach.y }, richtung: richtungUnterwegs, dauer: weg, laeuft: weg > 0, art: t.art, blase: t.blase, springt });
 
       // Angekommen: zum Ziel hin ausrichten, dann die Tätigkeit
       warte(weg, () => {
-        setKatze((k) => ({ ...k, laeuft: false, dauer: 0, richtung: nach.richtung ?? k.richtung }));
+        setKatze((k) => ({ ...k, laeuft: false, dauer: 0, springt: false, richtung: nach.richtung ?? k.richtung }));
         warte(t.dauer, () => {
           anwendenRef.current?.(t.art, nach);
           setKatze((k) => ({ ...k, blase: null }));
@@ -72,7 +77,7 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
     const dauer = jagdDauer(von, ort);
     const richtung = ort.x < von.x - 2 ? -1 : ort.x > von.x + 2 ? 1 : (von.richtung ?? -1);
     posRef.current = { x: ort.x, y: ort.y, richtung };
-    setKatze({ pos: { x: ort.x, y: ort.y }, richtung, dauer, laeuft: dauer > 250, art: 'jagen', blase: null });
+    setKatze({ pos: { x: ort.x, y: ort.y }, richtung, dauer, laeuft: dauer > 250, art: 'jagen', blase: null, springt: false });
     warte(dauer, () => setKatze((k) => ({ ...k, laeuft: false, dauer: 0 })));
   }, [warte]);
 

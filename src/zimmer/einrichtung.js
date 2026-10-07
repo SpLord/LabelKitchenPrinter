@@ -33,11 +33,17 @@ export function einrichtung(besitz) {
   if (hat.has('kratzbaum')) moebel.add('kratzbaum');
   if (hat.has('kuschelhoehle')) moebel.add('kuschelhoehle');
   if (hat.has('katzenklo')) moebel.add('katzenklo');
+  // 2.4.0: Regal an die Wand, Katzengras nach vorn; der Ball liegt frei im Raum
+  if (hat.has('wandregal')) moebel.add('wandregal');
+  if (hat.has('katzengras')) moebel.add('katzengras');
+  if (hat.has('ball')) moebel.add('ball');
 
   const belegt = new Set(['napf', 'wasser']);
   if (moebel.has('kratzbaum')) belegt.add('kratzbaum');
   if (moebel.has('kuschelhoehle')) belegt.add('hoehle');
   if (moebel.has('katzenklo')) belegt.add('klo');
+  if (moebel.has('wandregal')) belegt.add('regal');
+  if (moebel.has('katzengras')) belegt.add('vorne');
   const frei = Object.keys(PLAETZE).filter((p) => !belegt.has(p));
 
   return { moebel, frei };

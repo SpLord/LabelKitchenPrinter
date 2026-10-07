@@ -32,3 +32,12 @@ test('kaputter Besitz wirft nicht', () => {
 test('jeder freie Platz ist ein bekannter Stellplatz', () => {
   for (const p of einrichtung([]).frei) assert.ok(PLAETZE[p], p);
 });
+
+test('2.4.0: Wandregal an der Wand, Katzengras vorne, der Ball braucht keinen Platz', () => {
+  const e = einrichtung(['wandregal', 'katzengras', 'ball']);
+  assert.ok(e.moebel.has('wandregal'));
+  assert.ok(e.moebel.has('katzengras'));
+  assert.ok(e.moebel.has('ball'));
+  assert.ok(!e.frei.includes('regal'));
+  assert.ok(!e.frei.includes('vorne'));
+});

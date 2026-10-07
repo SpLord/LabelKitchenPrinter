@@ -31,3 +31,20 @@ test('besucher: tagsüber Vogel oder Schmetterling, nachts die Motte', () => {
   assert.equal(besucher('morgen', () => 0.1), 'vogel');
   assert.equal(besucher('nacht', () => 0.5), 'motte');
 });
+
+import { wetter } from './tageszeit.js';
+
+test('wetter: je Tag fest, im Winter auch Schnee, im Sommer nie', () => {
+  const tag = new Date(2026, 6, 10, 9);
+  assert.equal(wetter(tag), wetter(new Date(2026, 6, 10, 20)), 'gleicher Tag, gleiches Wetter');
+  const sommer = new Set();
+  const winter = new Set();
+  for (let d = 1; d <= 60; d += 1) {
+    sommer.add(wetter(new Date(2026, 6, d % 28 + 1, 12)));
+    winter.add(wetter(new Date(2027, 0, d % 28 + 1, 12)));
+  }
+  assert.ok(!sommer.has('schnee'));
+  assert.ok(winter.has('schnee'));
+  for (const w of [...sommer, ...winter]) assert.ok(['sonne', 'wolken', 'regen', 'schnee'].includes(w));
+  assert.ok(sommer.size >= 2, 'nicht jeden Tag dasselbe');
+});

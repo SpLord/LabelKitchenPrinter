@@ -519,3 +519,46 @@ test('Vollbild-Knopf ist da', async ({ page }) => {
   await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
   await expect(page.getByRole('button', { name: 'Vollbild' })).toBeVisible();
 });
+
+/* ── 2.4.0: Regal, Ball, Katzengras, Wetter ───────────────────────────── */
+import { wetter } from '../src/zimmer/tageszeit.js';
+
+const mitAllem = { zimmer_geschenk: '2026-10-07|1', cat_besitz: JSON.stringify(['wandregal', 'katzengras', 'ball']) };
+const katzeZiel = (page) => page.locator('.zimmer-katze').evaluate((k) => k.getAttribute('style'));
+
+test('Regal: sie springt hinauf (Bogen) und sitzt oben', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-07T12:00:00') });
+  await zimmerAuf(page, mitAllem);
+  let oben = false;
+  for (let i = 0; i < 200 && !oben; i += 1) {
+    await page.clock.runFor(3_000);
+    oben = await page.locator('.zimmer-katze.tut-regal').count() > 0;
+  }
+  expect(oben).toBe(true);
+  // Ziel des Übergangs: Füsse auf dem Regalbrett (y 250 → translate-y 112)
+  expect(await katzeZiel(page)).toMatch(/translate\([^,]+,\s*112px\)/);
+});
+
+test('Ball: nach einem Stupser rollt er an eine neue Stelle', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-07T12:00:00') });
+  await zimmerAuf(page, { ...mitAllem, zimmer_ball: JSON.stringify({ x: 700, y: 650 }) });
+  const ball = page.locator('[data-moebel="ball"]');
+  await expect(ball).toBeAttached();
+  const vorher = await ball.getAttribute('style');
+  let gerollt = false;
+  for (let i = 0; i < 200 && !gerollt; i += 1) {
+    await page.clock.runFor(3_000);
+    gerollt = (await ball.getAttribute('style')) !== vorher;
+  }
+  expect(gerollt).toBe(true);
+});
+
+test('Wetter: das Fenster zeigt das Wetter des Tages', async ({ page }) => {
+  // Einen Tag suchen, an dem es nicht einfach sonnig ist
+  let tag = new Date('2026-10-01T12:00:00');
+  for (let i = 0; i < 40 && wetter(tag) === 'sonne'; i += 1) tag = new Date(tag.getTime() + 86_400_000);
+  const art = wetter(tag);
+  await page.clock.install({ time: tag });
+  await zimmerAuf(page, mitAllem);
+  await expect(page.locator(`[data-wetter="${art}"]`)).toBeAttached();
+});

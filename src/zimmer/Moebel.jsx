@@ -173,6 +173,52 @@ export function Geschenk({ x, y, onOeffnen }) {
   );
 }
 
+/* Wandregal (2.4.0): Kissen aufs vorhandene Regal, Stufen an der Wand hinauf. */
+export function Wandregal({ x, y }) {
+  return (
+    <g {...strich} data-moebel="wandregal">
+      {[[x - 70, y + 200], [x - 40, y + 140], [x - 10, y + 80]].map(([sx, sy]) => (
+        <g key={sy}>
+          <path d={`M${sx - 30} ${sy} h60`} strokeWidth={4} />
+          <rect x={sx - 30} y={sy - 10} width="60" height="12" rx="4" fill="#a16207" />
+        </g>
+      ))}
+      <path d={`M${x - 66} ${y - 6} q66 -26 132 0 q0 10 -8 12 h-116 q-8 -2 -8 -12 Z`} fill="#93c5fd" />
+      <path d={`M${x - 40} ${y - 14} q40 -10 80 0`} fill="none" stroke="#dbeafe" strokeWidth={3} />
+    </g>
+  );
+}
+
+/* Spielball – rollt per CSS-Übergang an seine neue Stelle (zimmer.css). */
+export function Ball({ x, y }) {
+  return (
+    <g className="zimmer-ball" style={{ transform: `translate(${x}px, ${y}px)` }} data-moebel="ball">
+      <Schatten x={0} y={2} rx={20} />
+      <g className="zimmer-ball-dreh" style={{ transform: `rotate(${x * 2}deg)` }} {...strich} strokeWidth={4}>
+        <circle cx="0" cy="-16" r="16" fill="#ef4444" />
+        <path d="M-15 -20 q15 8 30 0" fill="none" stroke="#fde047" strokeWidth={5} />
+        <circle cx="-6" cy="-24" r="3" fill="#fff" stroke="none" />
+      </g>
+    </g>
+  );
+}
+
+/* Katzengras im Topf. */
+export function Katzengras({ x, y }) {
+  return (
+    <g transform={`translate(${x} ${y})`} {...strich} data-moebel="katzengras">
+      <Schatten x={0} y={4} rx={34} />
+      <g className="zimmer-gras" fill="none" stroke="#16a34a" strokeWidth={4}>
+        {[-18, -10, -2, 6, 14, 20].map((dx, i) => (
+          <path key={dx} d={`M${dx} -30 q${i % 2 ? 6 : -6} -24 ${i % 2 ? 2 : -4} -${40 + (i % 3) * 8}`} />
+        ))}
+      </g>
+      <path d="M-28 -32 h56 l-8 32 h-40 Z" fill="#c2410c" />
+      <path d="M-30 -32 h60" strokeWidth={6} />
+    </g>
+  );
+}
+
 export function FreierPlatz({ x, y, art }) {
   const farbe = '#a0896c';
   return (

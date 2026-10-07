@@ -89,3 +89,37 @@ export function FundstueckBild({ id }) {
       return <circle r="12" fill="#d1d5db" {...K} strokeWidth="3" />;
   }
 }
+
+/* Wetter im Fenster (2.4.0) – innerhalb des Fenster-Ausschnitts gezeichnet. */
+export function Wetter({ art }) {
+  if (art === 'wolken') {
+    return (
+      <g data-wetter="wolken" fill="#e5e7eb" stroke="#2f2a26" strokeWidth="3.5">
+        <path className="zimmer-wolke" d="M96 200 q4 -20 24 -16 q8 -18 28 -8 q20 -6 22 14 q12 4 6 16 h-74 q-12 -2 -6 -6 Z" />
+        <path className="zimmer-wolke langsam" d="M170 150 q4 -16 20 -12 q8 -14 24 -6 q16 -4 18 12 q10 4 4 12 h-60 q-10 -2 -6 -6 Z" />
+      </g>
+    );
+  }
+  if (art === 'regen') {
+    return (
+      <g data-wetter="regen">
+        <rect x="70" y="110" width="200" height="180" fill="#64748b" opacity="0.35" />
+        <g className="zimmer-regen" stroke="#bfdbfe" strokeWidth="3" strokeLinecap="round">
+          {Array.from({ length: 14 }, (_, i) => (
+            <path key={i} d={`M${84 + i * 14} ${100 + (i * 37) % 120} l-6 14`} />
+          ))}
+        </g>
+      </g>
+    );
+  }
+  if (art === 'schnee') {
+    return (
+      <g data-wetter="schnee" className="zimmer-schnee" fill="#fff">
+        {Array.from({ length: 16 }, (_, i) => (
+          <circle key={i} cx={82 + (i * 23) % 180} cy={104 + (i * 41) % 170} r={2 + (i % 3)} />
+        ))}
+      </g>
+    );
+  }
+  return null;
+}

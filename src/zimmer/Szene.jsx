@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { PLAETZE } from './einrichtung.js';
-import { Besucher, FundstueckBild, Gestirn, Wandlampe } from './Fensterwelt.jsx';
+import { Besucher, FundstueckBild, Gestirn, Wandlampe, Wetter } from './Fensterwelt.jsx';
 import { LICHT } from './tageszeit.js';
 import {
-  FreierPlatz, Futterautomat, Gedankenblase, Geschenk, Haeufchen, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
+  Ball, FreierPlatz, Futterautomat, Gedankenblase, Geschenk, Haeufchen, Katzengras, Wandregal, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
 } from './Moebel.jsx';
 
 const KONTUR = '#2f2a26';
@@ -53,6 +53,7 @@ function useAusschnitt() {
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
   tageszeit = 'tag', besuch = null, fund = null, onFund = () => {}, groesse = 1,
+  wetterArt = 'sonne', ball = null, springt = false,
 }) {
   const licht = LICHT[tageszeit] ?? LICHT.tag;
   const { svgRef, viewBox } = useAusschnitt();
@@ -90,7 +91,8 @@ export default function Szene({
         {/* Tageszeit nach der echten Uhr (Etappe 7) und wer am Fenster vorbeikommt */}
         <g clipPath="url(#zimmer-fenster)">
           <Gestirn art={licht.gestirn} />
-          {tageszeit !== 'nacht' && <path d="M92 168 q14 -16 30 -4 q12 -10 22 4" fill="#fff" strokeWidth="3.5" />}
+          {tageszeit !== 'nacht' && wetterArt === 'sonne' && <path d="M92 168 q14 -16 30 -4 q12 -10 22 4" fill="#fff" strokeWidth="3.5" />}
+          <Wetter art={wetterArt} />
           {besuch && <g key={besuch.id}><Besucher art={besuch.art} /></g>}
         </g>
         <path d="M170 110 V290 M70 200 H270" strokeWidth="6" />
@@ -112,6 +114,8 @@ export default function Szene({
       ))}
 
       {/* Möbel – hinten zuerst, damit vorne Liegendes darüber gezeichnet wird */}
+      {moebel.has('wandregal') && <g className={plopp('wandregal')}><Wandregal {...PLAETZE.regal} /></g>}
+      {moebel.has('katzengras') && <g className={plopp('katzengras')}><Katzengras {...PLAETZE.vorne} /></g>}
       {moebel.has('kuschelhoehle') && <g className={plopp('kuschelhoehle')}><Kuschelhoehle {...PLAETZE.hoehle} /></g>}
       {moebel.has('kratzbaum') && <g className={plopp('kratzbaum')}><Kratzbaum {...PLAETZE.kratzbaum} /></g>}
       {moebel.has('futterautomat') && <g className={plopp('futterautomat')}><Futterautomat {...PLAETZE.napf} /></g>}
@@ -128,6 +132,7 @@ export default function Szene({
       ))}
 
       {geschenk && <Geschenk x={790} y={640} onOeffnen={onGeschenk} />}
+      {moebel.has('ball') && ball && <Ball x={ball.x} y={ball.y} />}
       {fund && (
         <g transform="translate(380 652)" className="zimmer-tippbar" onClick={onFund}
            role="button" aria-label="Fundstück aufheben" data-fund={fund}>
@@ -142,7 +147,7 @@ export default function Szene({
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g
-        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} ${rollt ? 'rollt' : ''} tut-${art} pose-${pose}`}
+        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} ${rollt ? 'rollt' : ''} ${springt ? 'springt' : ''} tut-${art} pose-${pose}`}
         style={{ transform: `translate(${pos.x - KATZE / 2}px, ${pos.y - KATZE + 12}px)`, transitionDuration: `${dauer}ms` }}
         onClick={onKatze}
         role="button"
