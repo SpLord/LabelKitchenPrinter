@@ -304,6 +304,7 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    nacht: schlaeft(new Date(jetzt)),
     jetzt,
     fundOffen: fund.offen,
     gefunden: fund.gefunden,

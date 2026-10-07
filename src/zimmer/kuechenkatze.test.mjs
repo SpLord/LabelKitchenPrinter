@@ -63,3 +63,61 @@ test('blaseFuer: dringendstes Bedürfnis zuerst, sonst keine Blase', () => {
   assert.equal(blaseFuer({ krank: false, bedarf: ['hunger'] }), 'hunger');
   assert.equal(blaseFuer({ krank: false, bedarf: ['dreck'] }), null);
 });
+
+// ── 2.2.0: freie Böden unter den Spalten, Springen zwischen Ebenen ──────
+import { freieBoeden, waehleEbene } from './kuechenkatze.js';
+
+const R2 = (left, top, right, bottom) => ({ left, top, right, bottom });
+
+test('freieBoeden: Lücke unter einer kurzen Spalte wird zum Boden', () => {
+  const b = freieBoeden({
+    fenster: { breite: 1024, hoehe: 768 },
+    spalten: [R2(282, 128, 513, 618), R2(529, 128, 761, 950), R2(777, 128, 1008, 852)],
+    hindernisse: [R2(16, 128, 266, 745)],
+  });
+  assert.equal(b.length, 1);
+  assert.equal(b[0].links, 282 + KUECHENKATZE.abstand);
+  assert.equal(b[0].rechts, 513 - KUECHENKATZE.abstand);
+  assert.equal(b[0].boden, 768 - KUECHENKATZE.randUnten);
+});
+
+test('freieBoeden: zu niedrige Lücke zählt nicht', () => {
+  const b = freieBoeden({ fenster: { breite: 1024, hoehe: 768 }, spalten: [R2(282, 128, 513, 700)], hindernisse: [] });
+  assert.deepEqual(b, []);
+});
+
+test('freieBoeden: ein Hindernis in der Lücke (Fehlermeldung, Versionsanzeige) macht sie unbrauchbar', () => {
+  const b = freieBoeden({
+    fenster: { breite: 1024, hoehe: 768 },
+    spalten: [R2(282, 128, 513, 500)],
+    hindernisse: [R2(300, 700, 480, 740)],
+  });
+  assert.deepEqual(b, []);
+});
+
+test('freieBoeden: ist die Spalte nach oben weggescrollt, ist darunter wirklich Platz', () => {
+  // In der Spalte kommt nichts mehr – der Bereich bis zum unteren Rand ist leer
+  const b = freieBoeden({ fenster: { breite: 1024, hoehe: 768 }, spalten: [R2(282, -900, 513, -300)], hindernisse: [] });
+  assert.equal(b.length, 1);
+});
+
+test('waehleEbene: meist bleibt sie, manchmal springt sie auf eine andere', () => {
+  const ebenen = [{ id: 'kopf' }, { id: 'boden-0' }];
+  assert.equal(waehleEbene(ebenen, 'kopf', () => 0.9).id, 'kopf');
+  assert.equal(waehleEbene(ebenen, 'kopf', () => 0.05).id, 'boden-0');
+  assert.equal(waehleEbene([{ id: 'kopf' }], 'kopf', () => 0.01).id, 'kopf');
+  // Ihre Ebene ist weg (weggescrollt) → irgendeine andere
+  assert.equal(waehleEbene(ebenen, 'boden-7', () => 0.9).id, 'kopf');
+});
+
+import { spruchZumEtikett } from './kuechenkatze.js';
+
+test('spruchZumEtikett: nennt das Etikett, kurz, und kürzt lange Namen', () => {
+  const s = spruchZumEtikett('Steak', () => 0);
+  assert.ok(s.includes('Steak'));
+  assert.ok(s.length <= 28, s);
+  const lang = spruchZumEtikett('Sehr langer Name für eine Sauce mit Trüffel', () => 0.5);
+  assert.ok(lang.length <= 28, lang);
+  assert.ok(lang.includes('…'));
+  assert.equal(spruchZumEtikett('', () => 0), 'Mjam!');
+});

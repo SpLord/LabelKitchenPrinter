@@ -154,6 +154,10 @@ export default function App() {
         if (ergebnis.rueckfall) {
           console.warn('[druck] Kopien-Parameter abgelehnt, einzeln gedruckt:', ergebnis.grund);
         }
+        // Die Küchenkatze freut sich über jedes gedruckte Etikett
+        if (ergebnis.gedruckt > 0) {
+          window.dispatchEvent(new CustomEvent('etikett-gedruckt', { detail: { name: text } }));
+        }
         if (ergebnis.offen > 0) {
           // Wichtig ist die Zahl: der Rest muss nachgedruckt werden, nicht alles.
           const gesamt = ergebnis.gedruckt + ergebnis.offen;

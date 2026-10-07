@@ -1,148 +1,181 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import KatzePose from './KatzePose.jsx';
 import { Gedankenblase } from './Moebel.jsx';
 import { zustandsText } from './KuechenKarte.jsx';
-import { KUECHENKATZE, blaseFuer, freieZone, naechsterSchritt } from './kuechenkatze.js';
+import { FREUDE_STREICHELN } from '../cat/tamagotchi.js';
+import { FREUNDSCHAFT_STREICHELN } from '../cat/wachstum.js';
+import { KUECHENKATZE, blaseFuer, naechsterSchritt, spruchZumEtikett, waehleEbene } from './kuechenkatze.js';
+import useKuechenEbenen from './useKuechenEbenen.js';
 
 const G = KUECHENKATZE.groesse;
+const SPRUNG = 650;            // ms für einen Sprung zwischen Ebenen
+const MENUE_OFFEN = 5000;      // so lange bleibt die Blase nach einem Tipp
+const FUTTER = { menge: 20, preis: 3 };
 
-/* Freier Streifen der Kopfleiste, in Koordinaten der Kopfleiste selbst. */
-function messen(kopf) {
-  const karte = document.querySelector('.kuechen-karte');
-  const k = kopf.getBoundingClientRect();
-  const teile = [...kopf.children]
-    .filter((el) => !el.classList.contains('kuechen-katze'))
-    .map((el) => el.getBoundingClientRect());
-  const z = freieZone({ kopf: k, teile, karte: karte?.getBoundingClientRect() ?? null });
-  if (!z) return null;
-  return { links: z.links - k.left, rechts: z.rechts - k.left, boden: z.boden - k.top };
-}
+const klemmen = (x, e) => Math.min(Math.max(x, e.links + G / 2), e.rechts - G / 2);
 
 /*
-  Die Katze auf der Etikettenseite: läuft im freien Streifen der Kopfleiste,
-  setzt sich, schläft nachts, liegt krank und zeigt in einer Denkblase, was
-  ihr fehlt. Ein Tipp auf sie öffnet das Zimmer.
+  Die Katze auf der Etikettenseite (2.2.0).
 
-  Sie hängt per Portal IN der Kopfleiste: die ist sticky, also wandert die
-  Katze beim Scrollen von selbst mit und kann nie über den Etiketten landen.
-  Bewegung per CSS-Übergang auf transform (wie im Zimmer).
+  Sie läuft im freien Streifen der Kopfleiste und springt in freie Böden
+  unter kürzeren Spalten – nie über Etikettenknöpfe (useKuechenEbenen misst
+  laufend, was frei ist). Antippen: sie schnurrt, Herzchen, und eine kleine
+  Blase bietet Füttern und das Zimmer an. Wird ein Etikett gedruckt, freut sie
+  sich darüber.
+
+  Position fest im Fenster (position: fixed) in Bildschirmkoordinaten;
+  Bewegung per CSS-Übergang auf transform.
 */
 export default function KuechenKatze({ zustand, onOeffnen }) {
-  const [kopf, setKopf] = useState(null);
-  const [zone, setZone] = useState(null);
-  const [katze, setKatze] = useState({ x: null, art: 'sitzen', richtung: -1, dauer: 0 });
+  const ebenen = useKuechenEbenen();
+  const [katze, setKatze] = useState({ ebene: null, x: null, art: 'sitzen', richtung: -1, dauer: 0, springt: false });
+  const [menue, setMenue] = useState(false);
+  const [spruch, setSpruch] = useState(null);
+  const [herzen, setHerzen] = useState(0);
   const katzeRef = useRef(katze);
   katzeRef.current = katze;
+  const ebenenRef = useRef(ebenen);
+  ebenenRef.current = ebenen;
   const lageRef = useRef(zustand);
   lageRef.current = zustand;
-  const zoneRef = useRef(zone);
-  zoneRef.current = zone;
-
-  // Kopfleiste finden und den freien Streifen bei jeder Änderung neu messen
-  useEffect(() => {
-    const el = document.querySelector('.app-bar');
-    if (!el) return undefined;
-    setKopf(el);
-    const neu = () => setZone((alt) => {
-      const z = messen(el);
-      if (!z || !alt) return z;
-      return z.links === alt.links && z.rechts === alt.rechts && z.boden === alt.boden ? alt : z;
-    });
-    neu();
-    const ro = new ResizeObserver(neu);
-    ro.observe(el);
-    const karte = document.querySelector('.kuechen-karte');
-    if (karte) ro.observe(karte);
-    [...el.children].forEach((c) => ro.observe(c));
-    const mo = new MutationObserver(neu);
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-    window.addEventListener('resize', neu);
-    return () => { ro.disconnect(); mo.disconnect(); window.removeEventListener('resize', neu); };
-  }, []);
-
-  /*
-    Ändert sich der Streifen, sofort hinein – ohne Laufen, ohne Übergang.
-    Läuft sie gerade, zählt die SICHTBARE Stelle, nicht das Ziel: mitten im
-    Weg kann sie schon unter der Karte stehen. Und eine kürzere
-    transition-duration hält einen laufenden Übergang nicht an – erst ein
-    neuer transform-Wert tut das. (Gefunden von e2e/hauptseite.spec.js.)
-  */
   const knopfRef = useRef(null);
-  useEffect(() => {
-    if (!zone) return;
-    const halb = G / 2;
-    const k = katzeRef.current;
-    let x = k.x;
-    if (k.art === 'laufen' && knopfRef.current && kopf) {
-      x = knopfRef.current.getBoundingClientRect().left - kopf.getBoundingClientRect().left + halb;
-    }
-    const mitte = (zone.links + zone.rechts) / 2;
-    const passt = x !== null && x >= zone.links + halb && x <= zone.rechts - halb;
-    if (passt && k.art !== 'laufen') return;
-    const sicher = x === null ? mitte : Math.min(Math.max(x, zone.links + halb), zone.rechts - halb);
-    // Ein Hauch Versatz, damit sich der transform-Wert sicher ändert
-    const neu = Math.abs(sicher - k.x) < 0.01 ? sicher + 0.01 : sicher;
-    setKatze((alt) => ({ ...alt, x: neu, dauer: 0, art: alt.art === 'laufen' ? 'sitzen' : alt.art }));
-  }, [zone, kopf]);
 
-  // Tagesablauf: eine Entscheidung nach der anderen
-  const sichtbar = zone !== null && katze.x !== null;
+  // Ebenen geändert (Scrollen, Grösse, neue Fehlermeldung …): ist sie noch auf
+  // freiem Grund? Sonst sofort an eine sichere Stelle – an der SICHTBAREN
+  // Position gemessen, ein laufender Übergang wird damit abgebrochen.
   useEffect(() => {
-    if (!sichtbar) return undefined;
+    if (!ebenen.length) return;
+    const k = katzeRef.current;
+    const hier = ebenen.find((e) => e.id === k.ebene);
+    let x = k.x;
+    if (k.art === 'laufen' && knopfRef.current) {
+      const r = knopfRef.current.getBoundingClientRect();
+      x = r.left + G / 2;
+    }
+    if (hier && x !== null && x === klemmen(x, hier) && k.art !== 'laufen') return;
+    const ziel = hier ?? ebenen[0];
+    const neuX = x === null ? (ziel.links + ziel.rechts) / 2 : klemmen(x, ziel);
+    setKatze((alt) => ({
+      ...alt, ebene: ziel.id, x: Math.abs(neuX - (alt.x ?? 0)) < 0.01 ? neuX + 0.01 : neuX,
+      dauer: 0, springt: false, art: alt.art === 'laufen' ? 'sitzen' : alt.art,
+    }));
+  }, [ebenen]);
+
+  // Tagesablauf: laufen, sitzen, manchmal auf eine andere Ebene springen
+  const da = ebenen.length > 0 && katze.x !== null;
+  useEffect(() => {
+    if (!da) return undefined;
     let uhr;
     const weiter = () => {
-      // Frisch messen: zwischen Grössenänderung und neuem Rendern wäre zoneRef
-      // noch der alte Streifen, und sie liefe unter die Karte
-      const el = document.querySelector('.app-bar');
-      const z = el ? messen(el) : zoneRef.current;
       const k = katzeRef.current;
-      if (!z || k.x === null) return;
-      const s = naechsterSchritt(lageRef.current, z, k.x);
+      const alle = ebenenRef.current;
+      const lage = lageRef.current;
+      if (!alle.length || k.x === null) return;
+      const hier = alle.find((e) => e.id === k.ebene) ?? alle[0];
+      const ruhig = lage.krank || lage.nacht;
+      const ziel = ruhig ? hier : waehleEbene(alle, hier.id);
+      if (ziel.id !== hier.id) {
+        const x = ziel.links + Math.random() * Math.max(0, ziel.rechts - ziel.links - G) + G / 2;
+        setKatze({ ebene: ziel.id, x, art: 'laufen', richtung: x > k.x ? 1 : -1, dauer: SPRUNG, springt: true });
+        // Etwas länger als der Sprung: erst sicher gelandet wird sie wieder antippbar
+        uhr = setTimeout(() => {
+          setKatze((alt) => ({ ...alt, art: 'sitzen', dauer: 0, springt: false }));
+          uhr = setTimeout(weiter, 2_500);
+        }, SPRUNG + 150);
+        return;
+      }
+      const s = naechsterSchritt(lage, hier, k.x);
       if (s.art === 'laufen') {
-        setKatze({ x: s.x, art: 'laufen', richtung: s.x > k.x ? 1 : -1, dauer: s.dauer });
+        setKatze({ ebene: hier.id, x: s.x, art: 'laufen', richtung: s.x > k.x ? 1 : -1, dauer: s.dauer, springt: false });
         uhr = setTimeout(() => {
           setKatze((alt) => ({ ...alt, art: 'sitzen', dauer: 0 }));
           uhr = setTimeout(weiter, 2_500);
         }, s.dauer);
       } else {
-        setKatze((alt) => ({ ...alt, art: s.art, dauer: 0 }));
+        setKatze((alt) => ({ ...alt, art: s.art, dauer: 0, springt: false }));
         uhr = setTimeout(weiter, s.dauer);
       }
     };
     uhr = setTimeout(weiter, 1_500);
     return () => clearTimeout(uhr);
-  }, [sichtbar]);
+  }, [da]);
 
-  if (!kopf || !sichtbar) return null;
+  // Ein Etikett wurde gedruckt: sie freut sich darüber
+  useEffect(() => {
+    const gedruckt = (e) => setSpruch({ id: Date.now(), text: spruchZumEtikett(e.detail?.name) });
+    window.addEventListener('etikett-gedruckt', gedruckt);
+    return () => window.removeEventListener('etikett-gedruckt', gedruckt);
+  }, []);
+  useEffect(() => {
+    if (!spruch) return undefined;
+    const t = setTimeout(() => setSpruch(null), 2600);
+    return () => clearTimeout(t);
+  }, [spruch]);
+  useEffect(() => {
+    if (!menue) return undefined;
+    const t = setTimeout(() => setMenue(false), MENUE_OFFEN);
+    return () => clearTimeout(t);
+  }, [menue]);
+
+  if (!da) return null;
+  const ebene = ebenen.find((e) => e.id === katze.ebene) ?? ebenen[0];
+
+  const antippen = () => {
+    // Streicheln: wie im Zimmer, mit Tagesgrenze für die Freundschaft
+    zustand.erfreuen(FREUDE_STREICHELN);
+    zustand.naeher('streicheln', FREUNDSCHAFT_STREICHELN);
+    zustand.pflege('streicheln');
+    setHerzen((n) => n + 1);
+    setMenue(true);
+  };
+  const fuettern = () => {
+    if (zustand.napfFuellen(FUTTER.menge, FUTTER.preis)) setSpruch({ id: Date.now(), text: 'Danke! Mjam!' });
+    setMenue(false);
+  };
+  const futterGeht = zustand.napf < 100 && zustand.muenzen >= FUTTER.preis;
 
   const blase = blaseFuer(zustand);
   const pose = katze.art === 'laufen' ? 'laufen'
     : katze.art === 'schlafen' ? 'schlafen'
       : katze.art === 'liegen' ? 'krank' : 'sitzen';
-  return createPortal(
-    <button
-      ref={knopfRef}
-      type="button"
-      className={`kuechen-katze pose-${pose}`}
-      style={{
-        transform: `translate(${katze.x - G / 2}px, ${zone.boden - G}px)`,
-        transitionDuration: `${katze.dauer}ms`,
-      }}
-      onClick={onOeffnen}
-      aria-label={`${zustand.name} ${zustandsText(zustand)} – Katzenzimmer öffnen`}
-    >
-      <span className="kuechen-katze-koerper"
-            style={{ transform: `scale(${-katze.richtung * zustand.wachstum.phase.groesse}, ${zustand.wachstum.phase.groesse})` }}>
-        <KatzePose pose={pose} fell={zustand.fell} zubehoer={zustand.angelegt} aktiv={katze.art === 'laufen'} />
-      </span>
-      {pose === 'schlafen' && <span className="kuechen-katze-zzz" aria-hidden="true">z<b>Z</b></span>}
-      {blase && pose !== 'schlafen' && (
-        <svg className="kuechen-katze-blase" viewBox="0 0 84 72" aria-hidden="true">
-          <Gedankenblase was={blase} />
-        </svg>
+  // Blase unter der Katze, wenn oben kein Platz ist (Kopfleiste)
+  const unten = ebene.boden < 200;
+  const groesse = zustand.wachstum.phase.groesse;
+  return (
+    <div className={`kuechen-katze-ebene ${katze.springt ? 'springt' : ''}`}
+         // Wo sie gerade hin darf – für Tests und zum Nachsehen im Browser
+         data-ebenen={JSON.stringify(ebenen.map((e) => [e.id, Math.round(e.links), Math.round(e.rechts), Math.round(e.boden)]))}
+         style={{ transform: `translate(${katze.x - G / 2}px, ${ebene.boden - G}px)`, transitionDuration: `${katze.dauer}ms` }}>
+      <button
+        ref={knopfRef}
+        type="button"
+        className={`kuechen-katze pose-${pose}`}
+        onClick={antippen}
+        aria-label={`${zustand.name} ${zustandsText(zustand)} – streicheln`}
+      >
+        <span className="kuechen-katze-koerper"
+              style={{ transform: `scale(${-katze.richtung * groesse}, ${groesse})` }}>
+          <KatzePose pose={pose} fell={zustand.fell} zubehoer={zustand.angelegt} aktiv={katze.art === 'laufen'} />
+        </span>
+        {pose === 'schlafen' && <span className="kuechen-katze-zzz" aria-hidden="true">z<b>Z</b></span>}
+        {blase && pose !== 'schlafen' && !menue && !spruch && (
+          <svg className="kuechen-katze-blase" viewBox="0 0 84 72" aria-hidden="true">
+            <Gedankenblase was={blase} />
+          </svg>
+        )}
+      </button>
+      {herzen > 0 && <span key={herzen} className="kuechen-katze-herz" aria-hidden="true" />}
+      {spruch && !menue && (
+        <span key={spruch.id} className={`kuechen-katze-spruch ${unten ? 'unten' : ''}`} role="status">{spruch.text}</span>
       )}
-    </button>,
-    kopf,
+      {menue && (
+        <div className={`kuechen-katze-menue ${unten ? 'unten' : ''}`} role="group" aria-label={`${zustand.name} – was tun?`}>
+          <button type="button" onClick={fuettern} disabled={!futterGeht}>
+            Füttern <span className="zimmer-muenze" aria-hidden="true" /> {FUTTER.preis}
+          </button>
+          <button type="button" className="los" onClick={() => { setMenue(false); onOeffnen(); }}>Zimmer ›</button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -25,14 +25,16 @@ test('Hauptseite: die Karte zeigt Name und Münzen', async ({ page }) => {
   await expect(page.locator('.kuechen-karte')).toContainText('500');
 });
 
-/* Die Küchenkatze lebt im freien Streifen der Kopfleiste (1.8.0). Ob sie
-   gerade läuft, steuert der Test nicht – er prüft nur, was immer gelten muss. */
+/* Die Küchenkatze läuft in der Kopfleiste und auf freien Böden (2.2.0). Ob sie
+   gerade läuft oder springt, steuert der Test nicht – er prüft nur, was immer
+   gelten muss. Im Sprung ist sie nicht antippbar und zählt deshalb nicht. */
 const ueberlappt = (page) => page.evaluate(() => {
+  const ebene = document.querySelector('.kuechen-katze-ebene');
   const k = document.querySelector('.kuechen-katze');
-  if (!k) return null;
+  if (!k || ebene.classList.contains('springt')) return [];
   const a = k.getBoundingClientRect();
-  return [...document.querySelectorAll('button, select, input, .status-indicator, .kuechen-karte')]
-    .filter((e) => e !== k && !k.contains(e))
+  return [...document.querySelectorAll('button, select, input, .status-indicator, .kuechen-karte, .button-group, .side-rail > *')]
+    .filter((e) => e !== k && !k.contains(e) && !ebene.contains(e))
     .filter((e) => {
       const b = e.getBoundingClientRect();
       return b.width > 0 && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -40,21 +42,59 @@ const ueberlappt = (page) => page.evaluate(() => {
     .map((e) => e.className || e.tagName);
 });
 
-test('Küchenkatze: sie sitzt in der Kopfleiste und verdeckt nichts', async ({ page }, info) => {
+test('Küchenkatze: sie verdeckt nie ein Etikett oder einen Knopf – auch nach Sprüngen', async ({ page }, info) => {
   await oeffnen(page, '/');
-  await expect(page.locator('.app-bar .kuechen-katze')).toBeVisible();
-  for (let i = 0; i < 4; i += 1) {
+  await expect(page.locator('.kuechen-katze')).toBeVisible();
+  for (let i = 0; i < 16; i += 1) {
     expect(await ueberlappt(page), `${info.project.name}, Messung ${i}`).toEqual([]);
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(500);
   }
 });
 
-test('Küchenkatze: ein Tipp auf sie öffnet das Zimmer', async ({ page }) => {
-  await oeffnen(page, '/');
+test('Küchenkatze: Antippen streichelt und bietet Füttern und Zimmer an', async ({ page }) => {
+  await oeffnen(page, '/', { zimmer_napf: 10 });
   // dispatchEvent statt click: sie darf dabei gerade laufen
   await page.locator('.kuechen-katze').dispatchEvent('click');
+  const menue = page.getByRole('group', { name: /was tun/ });
+  await expect(menue).toBeVisible();
+  await expect(page.locator('.kuechen-katze-herz')).toBeAttached();
+  await menue.getByRole('button', { name: /Füttern/ }).dispatchEvent('click');
+  await expect(page.locator('.kuechen-karte')).toContainText('497');
+  await expect(page.locator('.kuechen-katze-spruch')).toContainText('Danke');
+
+  await page.locator('.kuechen-katze').dispatchEvent('click');
+  await page.getByRole('group', { name: /was tun/ }).getByRole('button', { name: 'Zimmer ›' }).dispatchEvent('click');
   await expect(page.locator('.zimmer')).toBeVisible();
   await expect(page.locator('.kuechen-katze')).toHaveCount(0);
+});
+
+test('Küchenkatze: freut sich über ein gedrucktes Etikett', async ({ page }) => {
+  await oeffnen(page, '/');
+  await page.getByRole('button', { name: /^Steak/ }).first().click();
+  await warteAufDrucke(page, 1);
+  await expect(page.locator('.kuechen-katze-spruch')).toContainText('Steak');
+});
+
+test('Küchenkatze: auf dem Tablet gibt es die freie Lücke unter „Fleisch“, und dort liegt nichts', async ({ page }, info) => {
+  test.skip(info.project.name !== 'tablet', 'gemessen am 1024er-Tablet');
+  await oeffnen(page, '/');
+  await expect(page.locator('.kuechen-katze-ebene')).toHaveAttribute('data-ebenen', /boden-/);
+  const treffer = await page.evaluate(() => {
+    const ebenen = JSON.parse(document.querySelector('.kuechen-katze-ebene').dataset.ebenen);
+    const boeden = ebenen.filter(([id]) => id.startsWith('boden-'));
+    const raus = [];
+    for (const [id, links, rechts, boden] of boeden) {
+      const f = { left: links, right: rechts, top: boden - 100, bottom: boden };
+      for (const el of document.querySelectorAll('button, input, select, .button-group, .side-rail > *')) {
+        if (el.closest('.kuechen-katze-ebene')) continue;
+        const b = el.getBoundingClientRect();
+        if (b.width && f.left < b.right && f.right > b.left && f.top < b.bottom && f.bottom > b.top) raus.push(`${id} ⨯ ${el.className || el.tagName}`);
+      }
+    }
+    return { anzahl: boeden.length, raus };
+  });
+  expect(treffer.anzahl).toBeGreaterThan(0);
+  expect(treffer.raus).toEqual([]);
 });
 
 test('Küchenkatze: Durst steht als Denkblase über ihr', async ({ page }) => {

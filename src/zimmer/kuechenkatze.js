@@ -15,6 +15,8 @@ export const KUECHENKATZE = {
   abstand: 14,       // Luft zu Knöpfen und Karte
   bodenEinzug: 4,    // steht knapp über der Unterkante der Kopfleiste
   minZone: 110,      // schmaler → keine Katze
+  randUnten: 10,     // Abstand des Bodens zum unteren Bildschirmrand
+  sprungChance: 0.25,
   tempo: 70,         // px pro Sekunde – gemütlich, nicht hektisch
   minWeg: 900,       // ms
   pauseSitzen: [5_000, 12_000],
@@ -64,4 +66,49 @@ export function blaseFuer({ krank, bedarf }) {
   if (bedarf.includes('durst')) return 'durst';
   if (bedarf.includes('hunger')) return 'hunger';
   return null;
+}
+
+/*
+  Freie Böden (2.2.0): Unter kürzeren Spalten bleibt bis zum unteren
+  Bildschirmrand Platz – dort darf sie auch hin. Nur wenn die Lücke hoch und
+  breit genug ist und nichts anderes darin liegt (Fehlermeldung,
+  Versionsanzeige, Seitenleiste).
+*/
+const schneidet = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+export function freieBoeden({ fenster, spalten, hindernisse }) {
+  const boeden = [];
+  spalten.forEach((s, i) => {
+    const oben = Math.max(0, s.bottom + KUECHENKATZE.abstand);
+    const boden = fenster.hoehe - KUECHENKATZE.randUnten;
+    const links = s.left + KUECHENKATZE.abstand;
+    const rechts = s.right - KUECHENKATZE.abstand;
+    if (boden - oben < KUECHENKATZE.groesse + 12) return;
+    if (rechts - links < KUECHENKATZE.minZone) return;
+    const flaeche = { left: links, right: rechts, top: boden - KUECHENKATZE.groesse - 12, bottom: boden };
+    if (hindernisse.some((h) => schneidet(flaeche, h))) return;
+    boeden.push({ id: `boden-${i}`, links, rechts, boden });
+  });
+  return boeden;
+}
+
+/* Auf welcher Ebene geht es weiter? Meist dieselbe, manchmal ein Sprung. */
+export function waehleEbene(ebenen, aktuell, zufall = Math.random) {
+  const hier = ebenen.find((e) => e.id === aktuell);
+  const andere = ebenen.filter((e) => e.id !== aktuell);
+  if (!hier) return ebenen[0] ?? null;
+  if (!andere.length) return hier;
+  const z = zufall();
+  if (z >= KUECHENKATZE.sprungChance) return hier;
+  return andere[Math.min(andere.length - 1, Math.floor((z / KUECHENKATZE.sprungChance) * andere.length))];
+}
+
+/* Was sie sagt, wenn ein Etikett gedruckt wird – kurz, damit die Blase klein bleibt. */
+const SPRUECHE = ['{n}? Lecker!', 'Mjam, {n}!', '{n} – für mich?', 'Noch ein {n}!'];
+export function spruchZumEtikett(name, zufall = Math.random) {
+  const n = String(name ?? '').trim();
+  if (!n) return 'Mjam!';
+  const kurz = n.length > 14 ? `${n.slice(0, 13)}…` : n;
+  const vorlage = SPRUECHE[Math.min(SPRUECHE.length - 1, Math.floor(zufall() * SPRUECHE.length))];
+  return vorlage.replace('{n}', kurz);
 }
