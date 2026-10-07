@@ -5,6 +5,7 @@ import { PLAETZE } from './einrichtung.js';
 import { KLO } from './klo.js';
 import NamensFeld from '../labels/NamensFeld.jsx';
 import EinrichtenKarten from './EinrichtenKarten.jsx';
+import Vollbild from './Vollbild.jsx';
 import { KleiderschrankKarten, LadenKarten } from './GarderobeKarten.jsx';
 import { FreundschaftKarten, HerzFeier } from './Freundschaft.jsx';
 import Szene from './Szene.jsx';
@@ -386,7 +387,9 @@ export default function Zimmer({ zustand, onZu }) {
                 style={{
                   left: `${p.x / 10.24}%`, top: `${(p.y - 40) / 7.68}%`,
                   // Ziel: die Münzanzeige oben rechts (Bühne ist 100 × 75 cqw)
-                  '--zum-x': `${93 - p.x / 10.24}cqw`, '--zum-y': `${(5 - (p.y - 40) / 7.68) * 0.75}cqw`,
+                  // Münzanzeige steht am Bildschirmrand, links vom Vollbild-Knopf
+                  '--zum-x': `calc(${88 - p.x / 10.24}cqw + var(--rand-x))`,
+                  '--zum-y': `calc(${(5 - (p.y - 40) / 7.68) * 0.75}cqw - var(--rand-y))`,
                 }}>
             <span className="zimmer-muenze" />+{p.lohn}
           </span>
@@ -426,6 +429,7 @@ export default function Zimmer({ zustand, onZu }) {
           <span className="zimmer-knopf zimmer-geld" aria-label={`${zustand.muenzen} Münzen`}>
             <span className="zimmer-muenze" aria-hidden="true" /> {zustand.muenzen}
           </span>
+          <Vollbild />
         </header>
 
         {spiel === 'feder' && <SpielFederangel katze={katze} onFang={federFang} onEnde={federEnde} />}

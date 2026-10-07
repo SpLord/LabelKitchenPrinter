@@ -26,14 +26,21 @@
 }
 @keyframes zimmer-auf { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
 
+.zimmer { overflow: hidden; }
 .zimmer-buehne {
   position: relative;
   width: min(100vw, calc(100dvh * 4 / 3));
   aspect-ratio: 4 / 3;
   container-type: inline-size;
-  overflow: hidden;
+  /* Rand rechts/links (bzw. oben/unten) neben der 4:3-Bühne, je Seite */
+  --rand-x: calc((100vw - 100cqw) / 2);
+  --rand-y: calc((100dvh - 75cqw) / 2);
 }
-.zimmer-szene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Randlos: die Szene deckt den ganzen Bildschirm, der Inhalt bleibt auf der Bühne */
+.zimmer-szene {
+  position: absolute; left: 50%; top: 50%; width: 100vw; height: 100dvh;
+  transform: translate(-50%, -50%); display: block;
+}
 
 /* ── Katze ─────────────────────────────────── */
 .zimmer-katze { transition-property: transform; transition-timing-function: linear; cursor: pointer; }
@@ -100,7 +107,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 
 /* ── Kopfleiste ────────────────────────────── */
 .zimmer-kopf {
-  position: absolute; top: 1.4cqw; left: 1.4cqw; right: 1.4cqw;
+  position: absolute; top: calc(1.4cqw - var(--rand-y)); left: calc(1.4cqw - var(--rand-x)); right: calc(1.4cqw - var(--rand-x));
   display: flex; align-items: center; gap: 1.2cqw;
 }
 .zimmer-ringe { display: inline-flex; gap: 0.6cqw; }
@@ -125,7 +132,9 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 
 /* ── Menüleiste unten ──────────────────────── */
 .zimmer-menue {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 9.4cqw;
+  /* Leiste bis an die Bildschirmränder, Knöpfe bleiben über der Bühne */
+  position: absolute; left: calc(0px - var(--rand-x)); right: calc(0px - var(--rand-x)); bottom: calc(0px - var(--rand-y)); height: 9.4cqw;
+  padding: 0 var(--rand-x);
   display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--flaeche); border-top: 0.45cqw solid var(--kontur);
 }
@@ -140,7 +149,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-menue button.aktiv { background: #fde9c8; }
 
 /* ── Blatt von unten: dasselbe für jeden Bereich ── */
-.zimmer-blatt-huelle { position: absolute; inset: 0; background: rgba(47, 42, 38, 0.28); display: flex; align-items: flex-end; justify-content: center; }
+.zimmer-blatt-huelle { position: absolute; inset: calc(0px - var(--rand-y)) calc(0px - var(--rand-x)); background: rgba(47, 42, 38, 0.28); display: flex; align-items: flex-end; justify-content: center; }
 .zimmer-blatt {
   position: relative; width: calc(100% - 7cqw); margin-bottom: 2cqw; padding: 1.6cqw 2.4cqw 2.4cqw;
   background: var(--flaeche); border: 0.5cqw solid var(--kontur); border-radius: 2.6cqw;
@@ -294,7 +303,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-dunkel { mix-blend-mode: multiply; }
 
 /* Neues Herz */
-.zimmer-feier-huelle { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(47, 42, 38, 0.35); }
+.zimmer-feier-huelle { position: absolute; inset: calc(0px - var(--rand-y)) calc(0px - var(--rand-x)); z-index: 50; display: grid; place-items: center; background: rgba(47, 42, 38, 0.35); }
 .zimmer-feier {
   width: 54cqw; padding: 3cqw 3.4cqw 2.6cqw; text-align: center;
   background: var(--flaeche); border: 0.5cqw solid var(--kontur); border-radius: 2.6cqw; box-shadow: 0 0.6cqw 0 var(--kontur);
@@ -369,3 +378,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 @media (prefers-reduced-motion: reduce) {
   .zimmer-feder, .zimmer-spiel-pop, .zimmer-spiel-plus, .zimmer-maus { animation: none; }
 }
+
+/* Vollbild-Knopf: blendet die Browserleisten aus */
+.zimmer-vollbild { width: 4.8cqw; padding: 0; }
+.zimmer-vollbild svg { width: 55%; height: 55%; }

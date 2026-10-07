@@ -453,3 +453,29 @@ test('Fundstück: aufheben bringt es ins Album und 5 Münzen', async ({ page }) 
   await expect(page.locator('[data-album="murmel"]')).toContainText('Murmel');
   await expect(page.locator('[data-album="korken"]')).toContainText('?');
 });
+
+/* ── 2.1.0: randlos ───────────────────────────────────────────────────── */
+test('Zimmer randlos: die Szene deckt den ganzen Bildschirm, auch breiter als 4:3', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  // Erst messen, wenn das Zimmer fertig eingeblendet ist (startet bei 98,5 %)
+  await page.waitForFunction(() => document.querySelector('.zimmer').getAnimations().every((a) => a.playState === 'finished'));
+  const m = await page.evaluate(() => {
+    const r = document.querySelector('.zimmer-szene').getBoundingClientRect();
+    const menue = document.querySelector('.zimmer-menue').getBoundingClientRect();
+    return { l: r.left, r: r.right, t: r.top, b: r.bottom, ml: menue.left, mr: menue.right, mb: menue.bottom, w: innerWidth, h: innerHeight };
+  });
+  expect(m.l).toBeLessThanOrEqual(0.5);
+  expect(m.r).toBeGreaterThanOrEqual(m.w - 0.5);
+  expect(m.t).toBeLessThanOrEqual(0.5);
+  expect(m.b).toBeGreaterThanOrEqual(m.h - 0.5);
+  // Menüleiste von Rand zu Rand, unten bündig
+  expect(m.ml).toBeLessThanOrEqual(0.5);
+  expect(m.mr).toBeGreaterThanOrEqual(m.w - 0.5);
+  expect(Math.abs(m.mb - m.h)).toBeLessThan(1);
+});
+
+test('Vollbild-Knopf ist da', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  await expect(page.getByRole('button', { name: 'Vollbild' })).toBeVisible();
+});

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { PLAETZE } from './einrichtung.js';
 import { Besucher, FundstueckBild, Gestirn, Wandlampe } from './Fensterwelt.jsx';
@@ -17,17 +18,50 @@ const KATZE = 150;   // Kantenlänge der Katze in Szenenpunkten
   das rechnet die Grafikkarte, nicht React pro Bild. Im September hat genau
   dieser Unterschied die Bildrate gerettet.
 */
+/* So weit laufen Wand und Boden über die Szene hinaus (Szenenpunkte). */
+const W = 1600;
+const TAPETE = Array.from({ length: Math.ceil((1024 + 2 * W) / 140) }, (_, i) => 60 - Math.ceil(W / 140) * 140 + i * 140);
+
+/*
+  Ausschnitt passend zur echten Grösse: die Szene deckt den ganzen Bildschirm,
+  der 1024 × 768-Inhalt liegt aber genau dort, wo die 4:3-Bühne ist (gleiche
+  Mitte, gleicher Massstab). So passen Spiele, Herzchen und Münz-Pops, die in
+  Bühnenprozent rechnen, weiter – und links und rechts gibt es keinen Rand.
+*/
+function useAusschnitt() {
+  const svgRef = useRef(null);
+  const [viewBox, setViewBox] = useState('0 0 1024 768');
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return undefined;
+    const messen = () => {
+      const { width: b, height: h } = el.getBoundingClientRect();
+      if (!b || !h) return;
+      const s = Math.min(b / 1024, h / 768);
+      const w = b / s;
+      const hh = h / s;
+      setViewBox(`${((1024 - w) / 2).toFixed(1)} ${((768 - hh) / 2).toFixed(1)} ${w.toFixed(1)} ${hh.toFixed(1)}`);
+    };
+    messen();
+    const ro = new ResizeObserver(messen);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { svgRef, viewBox };
+}
+
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
   tageszeit = 'tag', besuch = null, fund = null, onFund = () => {}, groesse = 1,
 }) {
   const licht = LICHT[tageszeit] ?? LICHT.tag;
+  const { svgRef, viewBox } = useAusschnitt();
   // Frisch gekauftes Möbel ploppt einmal auf
   const plopp = (id) => (neu === id ? 'zimmer-neu' : undefined);
   const { pos, richtung, dauer, laeuft, blase, art } = katze;
   const pose = poseFuer({ laeuft, art });
   return (
-    <svg className="zimmer-szene" viewBox="0 0 1024 768" preserveAspectRatio="xMidYMid meet"
+    <svg ref={svgRef} className="zimmer-szene" viewBox={viewBox} preserveAspectRatio="xMidYMid meet"
          role="img" aria-label="Katzenzimmer">
       <defs>
         <filter id="zimmer-weich" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6" /></filter>
@@ -36,17 +70,19 @@ export default function Szene({
       </defs>
 
       {/* Wand mit Streifentapete */}
-      <rect width="1024" height="470" fill="#fbecd6" />
-      <g fill="#f4dfc0">{[60, 200, 340, 480, 620, 760, 900].map((x) => <rect key={x} x={x} width="14" height="470" />)}</g>
+      {/* Wand und Boden reichen weit über die 1024 × 768 hinaus: auf breiten
+          oder hohen Bildschirmen läuft das Zimmer bis an den Rand weiter */}
+      <rect x={-W} y={-W} width={1024 + 2 * W} height={470 + W} fill="#fbecd6" />
+      <g fill="#f4dfc0">{TAPETE.map((x) => <rect key={x} x={x} y={-W} width="14" height={470 + W} />)}</g>
 
       {/* Dielenboden */}
-      <rect y="466" width="1024" height="302" fill="#e3b88b" />
+      <rect x={-W} y="466" width={1024 + 2 * W} height={302 + W} fill="#e3b88b" />
       <g stroke="#c4935f" strokeWidth="4">
-        <line x1="0" y1="520" x2="1024" y2="520" /><line x1="0" y1="580" x2="1024" y2="580" /><line x1="0" y1="646" x2="1024" y2="646" />
+        {[520, 580, 646, 712, 778, 844].map((y) => <line key={y} x1={-W} y1={y} x2={1024 + W} y2={y} />)}
         <line x1="180" y1="466" x2="170" y2="520" /><line x1="560" y1="520" x2="550" y2="580" /><line x1="820" y1="580" x2="810" y2="646" />
       </g>
-      <rect y="458" width="1024" height="14" fill="#fff" />
-      <line x1="0" y1="472" x2="1024" y2="472" stroke={KONTUR} strokeWidth="5" />
+      <rect x={-W} y="458" width={1024 + 2 * W} height="14" fill="#fff" />
+      <line x1={-W} y1="472" x2={1024 + W} y2="472" stroke={KONTUR} strokeWidth="5" />
 
       <g stroke={KONTUR} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round">
         {/* Fenster */}
@@ -133,7 +169,7 @@ export default function Szene({
       </g>
       {/* Abend und Nacht: das Zimmer dunkelt ab, die Lampe bleibt hell */}
       {licht.dunkel > 0 && (
-        <rect width="1024" height="768" fill="#1e1b4b" opacity={licht.dunkel} pointerEvents="none" className="zimmer-dunkel" />
+        <rect x={-W} y={-W} width={1024 + 2 * W} height={768 + 2 * W} fill="#1e1b4b" opacity={licht.dunkel} pointerEvents="none" className="zimmer-dunkel" />
       )}
     </svg>
   );
