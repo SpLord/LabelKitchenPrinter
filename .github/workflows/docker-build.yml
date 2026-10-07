@@ -1,15 +1,24 @@
 name: Build & Push Docker Image
 
+# Jeder Commit wird genau einmal gebaut: push auf alle Branches, kein
+# zusätzlicher pull_request-Lauf mit identischem Ergebnis (Vorgabe 2026-10-07).
 on:
   push:
     branches:
-      - main
-  pull_request:
+      - '**'
+    tags:
+      - '**'
+
+# Neuer Push auf denselben Ref bricht den alten Lauf ab – bei Tags nie.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  # Gate: läuft auch auf PRs und blockt den Push-Job bei Fehlern.
+  # Gate: läuft auf jedem Branch und blockt den Push-Job bei Fehlern.
+  # Läuft auf der eigenen Build-Farm Farmhaus statt auf GitHub-Runnern.
   verify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, farmhaus, linux]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -51,7 +60,9 @@ jobs:
   build:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
+    # Pusht nur zu Docker Hub und auf den deploy-Branch, Portainer zieht selbst –
+    # kein Zugriff ins Heimnetz nötig, also der normale Pool, nicht linux-deploy.
+    runs-on: [self-hosted, farmhaus, linux]
     # Nie zwei Bau-Läufe gleichzeitig: sonst kann ein älterer Lauf sein
     # :latest NACH einem neueren pushen, und Portainer zöge das alte Image in
     # die Küche. Wartende Läufe reihen sich ein; GitHub behält davon nur den
