@@ -41,7 +41,8 @@ function CatVariant({ index, active, zubehoer = {} }) {
         </g>
       )}
 
-      <g filter="url(#shadow)">
+      {/* cat-atmen: leichtes Atmen im Sitzen (katze.css) */}
+      <g filter="url(#shadow)" className="cat-atmen">
         {/* Body + Head */}
         <ellipse cx="110" cy="120" rx="70" ry="55" fill={v.body} stroke={v.stroke} strokeWidth="6" />
         <circle cx="80" cy="85" r="40" fill={v.body} stroke={v.stroke} strokeWidth="6" />

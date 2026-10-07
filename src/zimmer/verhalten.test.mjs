@@ -109,3 +109,14 @@ test('wirkung: Klo und Häufchen melden einen Gang', () => {
 test('wirkung: Sonnenbad (viertes Herz) bringt am Fenster dreimal so viel Laune', () => {
   assert.equal(wirkung('fenster', satt).laune * 3, wirkung('fenster', { ...satt, sonnenbad: true }).laune);
 });
+
+test('freie Zeit (2.3.0): sie putzt sich, streckt sich und gähnt – ohne dafür zu laufen', () => {
+  const arten = new Set();
+  for (let i = 0; i < 400; i += 1) arten.add(naechsteTaetigkeit(satt, () => (i % 97) / 97).art);
+  for (const a of ['putzen', 'strecken', 'gaehnen']) assert.ok(arten.has(a), `${a} fehlt`);
+  for (const a of ['putzen', 'strecken', 'gaehnen']) {
+    let t;
+    for (let i = 0; i < 97 && t?.art !== a; i += 1) t = naechsteTaetigkeit(satt, () => i / 97);
+    assert.equal(t.ort, null, `${a} bleibt am Platz`);
+  }
+});

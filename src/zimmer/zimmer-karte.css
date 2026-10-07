@@ -71,7 +71,7 @@
   /* Fest im Fenster: Kopfleiste und freie Böden in Bildschirmkoordinaten */
   position: fixed; left: 0; top: 0; z-index: 60;
   width: 88px; height: 88px;
-  transition-property: transform; transition-timing-function: linear;
+  transition-property: transform; transition-timing-function: cubic-bezier(.3,.08,.5,1);
 }
 .kuechen-katze-ebene.springt {
   transition-timing-function: cubic-bezier(.45,.05,.55,.95);

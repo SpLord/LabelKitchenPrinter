@@ -67,7 +67,7 @@ function Gesicht({ v, cx, cy, r, zu = false, matt = false }) {
       ) : matt ? (
         <g strokeWidth="3.5"><path d="M-21 -2 h9" /><path d="M-1 0 h9" /></g>
       ) : (
-        <g fill={v.stroke} stroke="none"><circle cx="-16" cy="-2" r="5" /><circle cx="4" cy="0" r="5" /></g>
+        <g fill={v.stroke} stroke="none" className="pose-augen"><circle cx="-16" cy="-2" r="5" /><circle cx="4" cy="0" r="5" /></g>
       )}
       <polygon points="-30,8 -24,12 -30,15" fill={v.accent} stroke="none" />
       <g strokeWidth="2.5" fill="none" opacity="0.9"><path d="M-30 18 h-14 M-28 24 h-12" /></g>
@@ -158,14 +158,65 @@ function Krank({ v, clipId }) {
   );
 }
 
+/* Strecken (2.3.0): vorne tief, hinten hoch, Schwanz in die Luft. */
+function Strecken({ v, clipId }) {
+  const k = { cx: 116, cy: 124, rx: 58, ry: 26 };
+  return (
+    <>
+      <defs><clipPath id={clipId}><ellipse cx={k.cx} cy={k.cy} rx={k.rx} ry={k.ry} transform={`rotate(-16 ${k.cx} ${k.cy})`} /></clipPath></defs>
+      <path className="pose-schwanz" d="M164 100 C182 64 176 34 160 30" fill="none" stroke={v.stroke} strokeWidth="9" strokeLinecap="round" />
+      {/* Hinterbeine senkrecht, Vorderbeine lang nach vorn gestreckt */}
+      <rect x="140" y="112" width="15" height="62" rx="7.5" fill={v.body} stroke={v.stroke} strokeWidth="5" />
+      <path d="M84 146 L8 166 L10 177 L90 160 Z" fill={v.body} stroke={v.stroke} strokeWidth="5" strokeLinejoin="round" />
+      <g className="pose-dehnen">
+        <ellipse cx={k.cx} cy={k.cy} rx={k.rx} ry={k.ry} transform={`rotate(-16 ${k.cx} ${k.cy})`} fill={v.body} stroke={v.stroke} strokeWidth="6" />
+        <Muster v={v} clipId={clipId} koerper={k} />
+      </g>
+      <rect x="156" y="110" width="15" height="64" rx="7.5" fill={v.body} stroke={v.stroke} strokeWidth="5" />
+      <path d="M92 152 L18 170 L20 180 L98 166 Z" fill={v.body} stroke={v.stroke} strokeWidth="5" strokeLinejoin="round" />
+      <path d="M50 106 L42 80 L68 98 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" strokeLinejoin="round" />
+      <path d="M76 100 L92 76 L96 108 Z" fill={v.body} stroke={v.stroke} strokeWidth="6" strokeLinejoin="round" />
+      <circle cx="68" cy="126" r="30" fill={v.body} stroke={v.stroke} strokeWidth="6" />
+      <Gesicht v={v} cx={68} cy={128} r={30} zu />
+    </>
+  );
+}
+
+/*
+  Gähnen und Putzen (2.3.0): die sitzende Zeichnung (CatVariant) mit einer
+  Ebene darüber – Augen zu, Maul auf bzw. Pfote zum Maul. Koordinaten der
+  Sitzkatze: Kopf 80/85 r40, Augen 65/85 und 95/85, Maul um 80/105.
+*/
+function SitzEbene({ v, art }) {
+  const lid = (x) => <g key={x}><ellipse cx={x} cy="85" rx="8" ry="7" fill={v.body} /><path d={`M${x - 7} 85 q7 5 14 0`} fill="none" stroke={v.stroke} strokeWidth="3.5" strokeLinecap="round" /></g>;
+  return (
+    <g pointerEvents="none">
+      {[65, 95].map(lid)}
+      {art === 'gaehnen' && (
+        <g className="pose-gaehnen">
+          <ellipse cx="80" cy="107" rx="9" ry="11" fill="#7f1d1d" stroke={v.stroke} strokeWidth="3" />
+          <ellipse cx="80" cy="112" rx="5" ry="4" fill="#f9a8b4" />
+        </g>
+      )}
+      {art === 'putzen' && (
+        <g className="pose-putzen">
+          <path d="M80 108 q3 6 0 9 q-3 -3 0 -9" fill="#f9a8b4" stroke={v.stroke} strokeWidth="2" />
+          <ellipse cx="72" cy="114" rx="13" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="5" transform="rotate(-30 72 114)" />
+        </g>
+      )}
+    </g>
+  );
+}
+
 /* Wo der Kopf in welcher Pose sitzt – für das Zubehör (Mitte, Radius, Neigung). */
 const KOEPFE = {
   laufen: [54, 84, 33, 0],
   fressen: [50, 136, 30, -8],
   schlafen: [62, 146, 27, -6],
   krank: [56, 152, 30, -10],
+  strecken: [68, 126, 30, -8],
 };
-const POSEN = { laufen: Laufen, fressen: Fressen, schlafen: Schlafen, krank: Krank };
+const POSEN = { laufen: Laufen, fressen: Fressen, schlafen: Schlafen, krank: Krank, strecken: Strecken };
 
 /* Welche Pose zu welcher Tätigkeit gehört. */
 export const poseFuer = ({ laeuft, art }) => {
@@ -173,11 +224,21 @@ export const poseFuer = ({ laeuft, art }) => {
   if (art === 'liegen') return 'krank';
   if (art === 'schlafen') return 'schlafen';
   if (art === 'fressen' || art === 'trinken') return 'fressen';
+  if (art === 'putzen' || art === 'gaehnen' || art === 'strecken') return art;
   return 'sitzen';
 };
 
 export default function KatzePose({ pose, fell, zubehoer, aktiv }) {
   const clipId = `pose-${useId().replace(/:/g, '')}`;
+  if (pose === 'putzen' || pose === 'gaehnen') {
+    const v = VARIANTS[fell % VARIANTS.length];
+    return (
+      <svg viewBox="0 0 200 200" width="100%" height="100%" className={`katze-pose pose-${pose}`} overflow="visible">
+        <CatVariant index={fell} active={false} zubehoer={zubehoer} />
+        <SitzEbene v={v} art={pose} />
+      </svg>
+    );
+  }
   if (pose === 'sitzen' || !POSEN[pose]) {
     return <CatVariant index={fell} active={aktiv} zubehoer={zubehoer} />;
   }

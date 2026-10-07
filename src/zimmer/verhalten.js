@@ -81,6 +81,10 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     { art: 'fenster', gewicht: 3, ort: ORTE.fenster, dauer: 12_000 },
     { art: 'bummeln', gewicht: 4, dauer: 3_000 },
     { art: 'sitzen', gewicht: 3, dauer: 9_000 },
+    // Kleine Dinge am Platz (2.3.0): machen sie lebendig, ohne dass sie läuft
+    { art: 'putzen', gewicht: 2, dauer: 5_000 },
+    { art: 'strecken', gewicht: 1, dauer: 2_600 },
+    { art: 'gaehnen', gewicht: 1, dauer: 2_200 },
     moebel.has('kratzbaum') && { art: 'kratzen', gewicht: 2, ort: ORTE.kratzbaum, dauer: 6_000 },
   ].filter(Boolean);
   const wahl = gewichtet(frei, zufall);

@@ -52,7 +52,13 @@ export function naechsterSchritt({ nacht, krank }, zone, x, zufall = Math.random
   if (max <= min) {
     return { art: 'sitzen', x: (zone.links + zone.rechts) / 2, dauer: zwischen(KUECHENKATZE.pauseSitzen, z) };
   }
-  if (z < 0.35) return { art: 'sitzen', x, dauer: zwischen(KUECHENKATZE.pauseSitzen, z / 0.35) };
+  if (z < 0.35) {
+    // Am Platz: meist sitzen, manchmal putzen oder gähnen (2.3.0)
+    const t = z / 0.35;
+    if (t < 0.15) return { art: 'gaehnen', x, dauer: 2_200 };
+    if (t < 0.4) return { art: 'putzen', x, dauer: 5_000 };
+    return { art: 'sitzen', x, dauer: zwischen(KUECHENKATZE.pauseSitzen, t) };
+  }
 
   // Ziel: ein anderer Punkt der Zone, nicht direkt neben ihr
   const ziel = Math.round(min + (max - min) * ((z - 0.35) / 0.65));

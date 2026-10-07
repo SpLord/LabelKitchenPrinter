@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import KatzePose from './KatzePose.jsx';
+import KatzePose, { poseFuer } from './KatzePose.jsx';
 import { Gedankenblase } from './Moebel.jsx';
 import { zustandsText } from './KuechenKarte.jsx';
 import { FREUDE_STREICHELN } from '../cat/tamagotchi.js';
@@ -135,9 +135,7 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
   const futterGeht = zustand.napf < 100 && zustand.muenzen >= FUTTER.preis;
 
   const blase = blaseFuer(zustand);
-  const pose = katze.art === 'laufen' ? 'laufen'
-    : katze.art === 'schlafen' ? 'schlafen'
-      : katze.art === 'liegen' ? 'krank' : 'sitzen';
+  const pose = poseFuer({ laeuft: katze.art === 'laufen', art: katze.art });
   // Blase unter der Katze, wenn oben kein Platz ist (Kopfleiste)
   const unten = ebene.boden < 200;
   const groesse = zustand.wachstum.phase.groesse;
@@ -155,7 +153,9 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
       >
         <span className="kuechen-katze-koerper"
               style={{ transform: `scale(${-katze.richtung * groesse}, ${groesse})` }}>
-          <KatzePose pose={pose} fell={zustand.fell} zubehoer={zustand.angelegt} aktiv={katze.art === 'laufen'} />
+          <span key={pose} className="pose-ein">
+            <KatzePose pose={pose} fell={zustand.fell} zubehoer={zustand.angelegt} aktiv={katze.art === 'laufen'} />
+          </span>
         </span>
         {pose === 'schlafen' && <span className="kuechen-katze-zzz" aria-hidden="true">z<b>Z</b></span>}
         {blase && pose !== 'schlafen' && !menue && !spruch && (

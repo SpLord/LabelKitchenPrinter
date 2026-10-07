@@ -154,7 +154,8 @@ export default function Szene({
         <g className="zimmer-katze-koerper" style={{ transform: `scale(${-richtung * groesse}, ${groesse})` }}>
           <g className="zimmer-katze-hops">
             <svg width={KATZE} height={KATZE} viewBox="0 0 200 200" overflow="visible">
-              <KatzePose pose={pose} fell={fell} aktiv={laeuft} zubehoer={zubehoer} />
+              {/* key={pose}: jeder Posenwechsel federt kurz (pose-ein), statt hart umzuspringen */}
+              <g key={pose} className="pose-ein"><KatzePose pose={pose} fell={fell} aktiv={laeuft} zubehoer={zubehoer} /></g>
             </svg>
           </g>
         </g>

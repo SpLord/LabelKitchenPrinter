@@ -48,7 +48,7 @@ test('naechsterSchritt: tagsüber läuft sie an einen Punkt in der Zone', () => 
 });
 
 test('naechsterSchritt: manchmal bleibt sie sitzen', () => {
-  assert.equal(naechsterSchritt(munter, zone, 600, () => 0.1).art, 'sitzen');
+  assert.equal(naechsterSchritt(munter, zone, 600, () => 0.3).art, 'sitzen');
 });
 
 test('naechsterSchritt: Zone schmaler als die Katze → sie sitzt in der Mitte', () => {
@@ -120,4 +120,13 @@ test('spruchZumEtikett: nennt das Etikett, kurz, und kürzt lange Namen', () => 
   assert.ok(lang.length <= 28, lang);
   assert.ok(lang.includes('…'));
   assert.equal(spruchZumEtikett('', () => 0), 'Mjam!');
+});
+
+test('naechsterSchritt (2.3.0): beim Sitzen putzt sie sich manchmal oder gähnt', () => {
+  const zone2 = { links: 500, rechts: 700, boden: 116 };
+  const arten = new Set();
+  for (let i = 0; i < 100; i += 1) arten.add(naechsterSchritt({ nacht: false, krank: false }, zone2, 600, () => i / 100 * 0.35).art);
+  assert.ok(arten.has('sitzen'));
+  assert.ok(arten.has('putzen'));
+  assert.ok(arten.has('gaehnen'));
 });
