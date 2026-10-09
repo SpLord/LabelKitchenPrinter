@@ -48,6 +48,10 @@
 .zimmer-katze-hops { transform-box: fill-box; transform-origin: 50% 100%; }
 .zimmer-katze.laeuft .zimmer-katze-hops { animation: zimmer-hops 0.42s ease-in-out infinite; }
 
+/* Näpfe (2.5.0): das Wasser glitzert leicht */
+.zimmer-glitzer { animation: zimmer-glitzer 2.4s ease-in-out infinite; }
+@keyframes zimmer-glitzer { 0%, 100% { opacity: 0.4; transform: translateX(-3px); } 50% { opacity: 1; transform: translateX(4px); } }
+
 /* Mehr Zimmer (2.4.0) ─────────────────────── */
 /* Sprung aufs Regal: Bogen über der Strecke (800 ms wie SPRUNG_DAUER) */
 .zimmer-katze.springt { transition-timing-function: cubic-bezier(.45,.05,.55,.95); }
@@ -359,7 +363,7 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
   .zimmer-fund, .zimmer-funkeln, .zimmer-fluegel, .zimmer-lampenschein, .zimmer-katze.laeuft .zimmer-katze-hops, .zimmer-blase,
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   g.pose-ein, span.pose-ein > svg, .pose-augen, .pose-gaehnen, .pose-putzen, .pose-dehnen,
-  .zimmer-katze.springt .zimmer-katze-hops, .zimmer-gras, .zimmer-regen, .zimmer-schnee, .zimmer-wolke,
+  .zimmer-katze.springt .zimmer-katze-hops, .zimmer-gras, .zimmer-regen, .zimmer-schnee, .zimmer-wolke, .zimmer-glitzer,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }
 }

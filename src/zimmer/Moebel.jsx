@@ -15,17 +15,55 @@ export const Schatten = ({ x, y, rx, ry = rx / 6 }) => (
   <ellipse cx={x} cy={y} rx={rx} ry={ry} fill="#9c6b3e" opacity="0.32" filter="url(#zimmer-weich)" />
 );
 
-/* Futternapf. fuellung 0–100 bestimmt, wie hoch das Futter liegt. */
-export function Napf({ x, y, fuellung = 0 }) {
-  const hoehe = fuellung > 0 ? 4 + Math.min(100, fuellung) * 0.14 : 0;
+/*
+  Füllanzeige vorne am Napf (2.5.0): vier Stufen, je 25 %. Vorher sah man
+  kaum, was noch drin ist.
+*/
+const Stufen = ({ fuellung, an, aus }) => {
+  const voll = fuellung <= 0 ? 0 : Math.ceil(Math.min(100, fuellung) / 25);
   return (
-    <g transform={`translate(${x} ${y})`} {...strich} data-moebel="napf">
-      <Schatten x={0} y={4} rx={46} />
-      {hoehe > 0 && (
-        <path d={`M-34 -30 Q0 ${-30 - hoehe * 2} 34 -30 Z`} fill="#a16207" strokeWidth={3.5} />
+    <g data-stufen={voll}>
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={i} x={-27 + i * 14} y="-18" width="12" height="9" rx="4"
+              fill={i < voll ? an : aus} strokeWidth={2} />
+      ))}
+    </g>
+  );
+};
+
+/* Kroketten im Napf – je voller, desto mehr und desto höher gehäuft. */
+const KROKETTEN = [[-22, 0], [-8, -2], [8, 0], [22, -1], [-15, -6], [0, -7], [15, -6], [-6, -12], [8, -12], [0, -17]];
+
+/*
+  Futternapf, schräg von oben: man sieht hinein. fuellung 0–100 bestimmt,
+  wie viel Futter darin liegt; leer zeigt den Boden mit zwei Krümeln.
+*/
+export function Napf({ x, y, fuellung = 0, onTipp }) {
+  const f = Math.max(0, Math.min(100, fuellung));
+  const anzahl = Math.ceil(f / 10);
+  const huegel = f * 0.22;
+  return (
+    <g transform={`translate(${x} ${y}) scale(1.15)`} {...strich} data-moebel="napf" data-fuellung={Math.round(f)}
+       className={onTipp ? 'zimmer-tippbar' : undefined} onClick={onTipp} role={onTipp ? 'button' : undefined}
+       aria-label={onTipp ? `Futternapf, ${Math.round(f)} % voll – füttern` : undefined}>
+      <Schatten x={0} y={4} rx={50} />
+      <path d="M-48 -34 h96 l-10 34 h-76 Z" fill="#ef4444" />
+      <ellipse cx="0" cy="-34" rx="48" ry="13" fill="#991b1b" strokeWidth={4} />
+      {f > 0 ? (
+        <g>
+          <path d={`M-40 -33 Q0 ${-33 - huegel * 2} 40 -33 Q0 -24 -40 -33 Z`} fill="#b45309" strokeWidth={3} />
+          <g fill="#d97706" stroke="#7c2d12" strokeWidth={1.5}>
+            {KROKETTEN.slice(0, anzahl).map(([kx, ky]) => (
+              <ellipse key={`${kx}${ky}`} cx={kx} cy={-33 + ky * (huegel / 16)} rx="5" ry="3.5" />
+            ))}
+          </g>
+        </g>
+      ) : (
+        <g fill="#7c2d12" stroke="none"><circle cx="-10" cy="-33" r="2" /><circle cx="12" cy="-31" r="2" /></g>
       )}
-      <path d="M-42 -30 h84 l-8 30 h-68 Z" fill="#ef4444" />
-      <ellipse cx="0" cy="-30" rx="42" ry="8" fill={hoehe > 0 ? '#a16207' : '#7f1d1d'} strokeWidth={4} />
+      <path d="M-30 -24 h60" stroke="#fca5a5" strokeWidth={3} />
+      <Stufen fuellung={f} an="#fde68a" aus="#7f1d1d" />
+      {onTipp && <rect x="-56" y="-62" width="112" height="68" fill="transparent" stroke="none" />}
     </g>
   );
 }
@@ -40,13 +78,30 @@ export function Futterautomat({ x, y }) {
   );
 }
 
-export function Wassernapf({ x, y }) {
+/*
+  Wasserschale, schräg von oben (2.5.0): der Wasserspiegel sinkt mit jedem
+  Trinkgang, leer sieht man den trockenen Boden. Antippen füllt sie auf.
+*/
+export function Wassernapf({ x, y, fuellung = 100, onTipp }) {
+  const f = Math.max(0, Math.min(100, fuellung));
+  const tiefe = (1 - f / 100) * 9;       // Wasserspiegel sinkt in die Schale
   return (
-    <g transform={`translate(${x} ${y})`} {...strich} data-moebel="wassernapf">
-      <Schatten x={0} y={4} rx={44} />
-      <path d="M-40 -26 h80 l-7 26 h-66 Z" fill="#93c5fd" />
-      <ellipse cx="0" cy="-26" rx="40" ry="8" fill="#3b82f6" strokeWidth={4} />
-      <path d="M-18 -28 q8 -4 16 0" fill="none" stroke="#dbeafe" strokeWidth={3} />
+    <g transform={`translate(${x} ${y}) scale(1.15)`} {...strich} data-moebel="wassernapf" data-fuellung={Math.round(f)}
+       className={onTipp ? 'zimmer-tippbar' : undefined} onClick={onTipp} role={onTipp ? 'button' : undefined}
+       aria-label={onTipp ? `Wasserschale, ${Math.round(f)} % voll – auffüllen` : undefined}>
+      <Schatten x={0} y={4} rx={48} />
+      <path d="M-46 -32 h92 l-9 32 h-74 Z" fill="#93c5fd" />
+      <ellipse cx="0" cy="-32" rx="46" ry="12" fill={f > 0 ? '#bfdbfe' : '#e2e8f0'} strokeWidth={4} />
+      {f > 0 ? (
+        <g>
+          <ellipse cx="0" cy={-32 + tiefe} rx={40 - tiefe * 1.2} ry={9 - tiefe * 0.35} fill="#3b82f6" strokeWidth={2.5} />
+          <path className="zimmer-glitzer" d={`M-16 ${-34 + tiefe} q8 -3 16 0`} fill="none" stroke="#dbeafe" strokeWidth={3} />
+        </g>
+      ) : (
+        <path d="M-6 -36 c-5 7 -5 10 0 12 c5 -2 5 -5 0 -12 Z" fill="#cbd5e1" strokeWidth={2} />
+      )}
+      <Stufen fuellung={f} an="#3b82f6" aus="#e0f2fe" />
+      {onTipp && <rect x="-54" y="-58" width="108" height="64" fill="transparent" stroke="none" />}
     </g>
   );
 }

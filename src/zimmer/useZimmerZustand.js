@@ -14,6 +14,7 @@ import { freigeschaltet, freundschaftHeute, grenzeLesen, neuFreigeschaltet } fro
 import { einsammeln, fundLesen, fundPruefen } from './fundstuecke.js';
 
 const KEY_NAPF = 'zimmer_napf';
+const KEY_WASSER = 'zimmer_wasser';
 const KEY_NOTRATION = 'zimmer_notration';
 const KEY_KLO = 'zimmer_klo';
 const KEY_NAME = 'zimmer_katzenname';
@@ -101,6 +102,16 @@ export default function useZimmerZustand() {
     schreibenText(KEY_HERZEN_GESEHEN, String(wachstum.herzen));
   }, [wachstum.herzen]);
   const [napf, setNapf] = useState(() => lesenZahl(KEY_NAPF, 30));
+  // Wasserschale (2.5.0): leert sich beim Trinken, Auffüllen ist kostenlos
+  const [wasser, setWasser] = useState(() => lesenZahl(KEY_WASSER, 100));
+  useEffect(() => {
+    try { localStorage.setItem(KEY_WASSER, String(Math.round(wasser))); } catch { /* gesperrt */ }
+  }, [wasser]);
+  const wasserAuffuellen = useCallback(() => {
+    if (wasser >= 100) return false;
+    setWasser(100);
+    return true;
+  }, [wasser]);
 
   // Eigener Name – "Mails" ist der Koch
   const [name, setNameRoh] = useState(() => {
@@ -240,6 +251,7 @@ export default function useZimmerZustand() {
     krank: beduerfnisse.krank,
     nacht: schlaeft(),
     napf,
+    wasser,
     moebel,
     mussMal: faellig(klo, Date.now()),
     ball,
@@ -258,6 +270,7 @@ export default function useZimmerZustand() {
     if (w.durst) traenken(w.durst);
     if (w.laune) erfreuen(w.laune);
     if (w.napf) setNapf((v) => Math.max(0, Math.min(100, v + w.napf)));
+    if (w.wasser) setWasser((v) => Math.max(0, Math.min(100, v + w.wasser)));
   }, [fuettern, traenken, erfreuen]);
   const anwendenRef = useRef(anwenden);
   anwendenRef.current = anwenden;
@@ -363,6 +376,8 @@ export default function useZimmerZustand() {
     frei,
     napf,
     napfFuellen,
+    wasser,
+    wasserAuffuellen,
     notrationMoeglich,
     notrationHeute,
     notrationGeben,

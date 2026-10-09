@@ -122,10 +122,10 @@ test('Zimmer öffnen, Napf füllen, zurück in die Küche', async ({ page }) => 
   await expect(page.getByRole('textbox', { name: /Name der Katze/ })).toHaveValue('Mieze');
 
   await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
-  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 10 % voll');
+  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 10 %');
   // Trockenfutter: 3 Münzen, +20 in den Napf
   await page.locator('.zimmer-karte', { hasText: 'Trockenfutter' }).locator('.zimmer-preis').click();
-  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 30 % voll');
+  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 30 %');
   await expect(page.locator('.zimmer-geld')).toContainText('497');
 
   await page.locator('.zimmer-blatt-zu').click();
@@ -167,7 +167,7 @@ test('ohne Münzen gibt es einmal am Tag eine Notration', async ({ page }) => {
   await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
   const karte = page.locator('.zimmer-karte', { hasText: 'Notration' });
   await karte.locator('.zimmer-preis').click();
-  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 20 % voll');
+  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 20 %');
   await expect(karte.locator('.zimmer-preis')).toBeDisabled();
   await expect(karte).toContainText('Morgen wieder');
 });
@@ -561,4 +561,36 @@ test('Wetter: das Fenster zeigt das Wetter des Tages', async ({ page }) => {
   await page.clock.install({ time: tag });
   await zimmerAuf(page, mitAllem);
   await expect(page.locator(`[data-wetter="${art}"]`)).toBeAttached();
+});
+
+/* ── 2.5.0: Näpfe mit sichtbarem Füllstand, Wasserschale zum Auffüllen ─ */
+test('Näpfe zeigen den Füllstand in vier Stufen', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0), zimmer_napf: 40, zimmer_wasser: 25 });
+  await expect(page.locator('[data-moebel="napf"]')).toHaveAttribute('data-fuellung', '40');
+  await expect(page.locator('[data-moebel="napf"] [data-stufen]')).toHaveAttribute('data-stufen', '2');
+  await expect(page.locator('[data-moebel="wassernapf"] [data-stufen]')).toHaveAttribute('data-stufen', '1');
+});
+
+test('Wasser leer: die Karte sagt es, ein Tipp auf die Schale füllt sie kostenlos', async ({ page }) => {
+  await oeffnen(page, '/', { zimmer_wasser: 0, zimmer_geschenk: schichtTag(0) });
+  await expect(page.locator('.kuechen-karte')).toContainText('Wasser leer');
+  await page.locator('.kuechen-karte').click();
+  await page.getByRole('button', { name: /Wasserschale, 0 % voll/ }).dispatchEvent('click');
+  await expect(page.locator('[data-moebel="wassernapf"]')).toHaveAttribute('data-fuellung', '100');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Frisches Wasser');
+  await expect(page.locator('.zimmer-geld')).toContainText('500');
+});
+
+test('Futternapf antippen öffnet Füttern', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0), zimmer_napf: 10 });
+  await page.getByRole('button', { name: /Futternapf/ }).dispatchEvent('click');
+  await expect(page.locator('.zimmer-blatt')).toContainText('Napf 10 %');
+});
+
+test('Küchenkatze: bei halbleerer Schale bietet sie auch Wasser an', async ({ page }) => {
+  await oeffnen(page, '/', { zimmer_wasser: 50 });
+  await page.locator('.kuechen-katze').dispatchEvent('click');
+  await page.getByRole('group', { name: /was tun/ }).getByRole('button', { name: 'Wasser' }).dispatchEvent('click');
+  await expect(page.locator('.kuechen-katze-spruch')).toContainText('Frisches Wasser');
+  expect(await page.evaluate(() => localStorage.getItem('zimmer_wasser'))).toBe('100');
 });

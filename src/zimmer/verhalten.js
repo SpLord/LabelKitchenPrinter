@@ -16,6 +16,7 @@
 export const SCHWELLE = 40;
 export const PORTION = 35;          // so viel frisst sie höchstens auf einmal
 export const SCHLUCK = 30;          // so viel Durst stillt ein Gang zum Wasser
+export const WASSER_SCHLUCK = 25;   // so viel leert ein Gang die Wasserschale (2.5.0)
 export const KRATZ_LAUNE = 3;
 export const FENSTER_LAUNE = 1;
 
@@ -70,7 +71,13 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
   if (nacht) {
     return { art: 'schlafen', ort: moebel.has('kuschelhoehle') ? ORTE.hoehle : ORTE.liegen, dauer: 60_000, blase: null };
   }
-  if (durst < SCHWELLE) return { art: 'trinken', ort: ORTE.wasser, dauer: 6_000, blase: 'durst' };
+  if (durst < SCHWELLE) {
+    // Leere Schale: sie setzt sich davor und wartet – der Hinweis zum Auffüllen
+    const wasserDa = moebel.has('trinkbrunnen') || (lage.wasser ?? 100) > 0;
+    return wasserDa
+      ? { art: 'trinken', ort: ORTE.wasser, dauer: 6_000, blase: 'durst' }
+      : { art: 'wasserLeer', ort: ORTE.wasser, dauer: 12_000, blase: 'durst' };
+  }
   if (hunger < SCHWELLE) {
     // Leerer Napf: sie setzt sich davor und wartet – das ist der Hinweis
     return napf > 0
@@ -112,7 +119,7 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
 export function wirkung(art, lage) {
   const { hunger = 100, napf = 0 } = lage;
   switch (art) {
-    case 'trinken': return { durst: SCHLUCK };
+    case 'trinken': return lage.moebel?.has('trinkbrunnen') ? { durst: SCHLUCK } : { durst: SCHLUCK, wasser: -WASSER_SCHLUCK };
     case 'fressen': {
       const gefressen = Math.max(0, Math.min(napf, PORTION, 100 - hunger));
       return gefressen > 0 ? { hunger: gefressen, napf: -gefressen } : {};

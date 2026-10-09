@@ -133,6 +133,12 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
     setMenue(false);
   };
   const futterGeht = zustand.napf < 100 && zustand.muenzen >= FUTTER.preis;
+  // Wasser (2.5.0): nur anbieten, wenn die Schale nicht voll ist und kein Brunnen steht
+  const wasserNoetig = !zustand.moebel.has('trinkbrunnen') && zustand.wasser < 100;
+  const wasserGeben = () => {
+    if (zustand.wasserAuffuellen()) setSpruch({ id: Date.now(), text: 'Frisches Wasser!' });
+    setMenue(false);
+  };
 
   const blase = blaseFuer(zustand);
   const pose = poseFuer({ laeuft: katze.art === 'laufen', art: katze.art });
@@ -173,6 +179,7 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
           <button type="button" onClick={fuettern} disabled={!futterGeht}>
             Füttern <span className="zimmer-muenze" aria-hidden="true" /> {FUTTER.preis}
           </button>
+          {wasserNoetig && <button type="button" onClick={wasserGeben}>Wasser</button>}
           <button type="button" className="los" onClick={() => { setMenue(false); onOeffnen(); }}>Zimmer ›</button>
         </div>
       )}

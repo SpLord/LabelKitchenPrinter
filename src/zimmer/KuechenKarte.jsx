@@ -2,8 +2,10 @@ import './zimmer-karte.css';
 
 
 /* Was ihr gerade fehlt, in Worten – Reihenfolge = Dringlichkeit. */
-export const zustandsText = ({ krank, bedarf, zustand, geschenkHeute: geschenk = false }) => {
+export const zustandsText = ({ krank, bedarf, zustand, geschenkHeute: geschenk = false, wasser = 100, moebel }) => {
   if (krank || bedarf.includes('krank')) return 'ist krank';
+  // Leere Schale zuerst nennen: das ist das, was zu tun ist
+  if (wasser <= 0 && !moebel?.has('trinkbrunnen')) return 'Wasser leer';
   if (bedarf.includes('durst')) return 'hat Durst';
   if (bedarf.includes('hunger')) return 'hat Hunger';
   if (bedarf.includes('langeweile')) return 'langweilt sich';
@@ -20,7 +22,8 @@ export const zustandsText = ({ krank, bedarf, zustand, geschenkHeute: geschenk =
 */
 export default function KuechenKarte({ zustand, onOeffnen }) {
   const text = zustandsText(zustand);
-  const braucht = zustand.krank || zustand.bedarf.length > 0 || zustand.geschenkHeute;
+  const braucht = zustand.krank || zustand.bedarf.length > 0 || zustand.geschenkHeute
+    || (zustand.wasser <= 0 && !zustand.moebel.has('trinkbrunnen'));
   return (
     <button className="kuechen-karte" onClick={onOeffnen} aria-label={`${zustand.name} ${text} – Katzenzimmer öffnen`}>
       {/* Kein Katzenbild mehr in der Karte: die Katze selbst läuft daneben

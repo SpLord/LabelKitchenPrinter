@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ORTE, PORTION, SCHWELLE, naechsteTaetigkeit, wegDauer, wirkung } from './verhalten.js';
+import { ORTE, PORTION, SCHLUCK, SCHWELLE, WASSER_SCHLUCK, naechsteTaetigkeit, wegDauer, wirkung } from './verhalten.js';
 
 const satt = { hunger: 80, durst: 80, napf: 50, moebel: new Set() };
 const immer = (wert) => () => wert;
@@ -145,4 +145,22 @@ test('2.4.0: Wirkung – Regal und Knabbern heben die Laune, der Ball rollt weg'
   assert.ok(wirkung('knabbern', satt).laune > 0);
   assert.equal(wirkung('ball', satt).ball, true);
   assert.ok(wirkung('ball', satt).laune > 0);
+});
+
+test('2.5.0: leere Wasserschale – sie wartet durstig davor, statt ins Leere zu trinken', () => {
+  const t = naechsteTaetigkeit({ ...satt, durst: 10, wasser: 0 });
+  assert.equal(t.art, 'wasserLeer');
+  assert.equal(t.blase, 'durst');
+  assert.deepEqual(t.ort, ORTE.wasser);
+});
+
+test('2.5.0: mit Trinkbrunnen gibt es immer Wasser', () => {
+  const t = naechsteTaetigkeit({ ...satt, durst: 10, wasser: 0, moebel: new Set(['trinkbrunnen']) });
+  assert.equal(t.art, 'trinken');
+});
+
+test('2.5.0: Trinken leert die Schale um einen Schluck, der Brunnen nicht', () => {
+  assert.deepEqual(wirkung('trinken', { ...satt, wasser: 80 }), { durst: SCHLUCK, wasser: -WASSER_SCHLUCK });
+  assert.deepEqual(wirkung('trinken', { ...satt, wasser: 80, moebel: new Set(['trinkbrunnen']) }), { durst: SCHLUCK });
+  assert.deepEqual(wirkung('wasserLeer', satt), {});
 });

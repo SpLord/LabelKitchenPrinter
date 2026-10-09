@@ -139,7 +139,9 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
         <header className="zimmer-blatt-kopf">
           <Symbol name={bereich} groesse={40} />
           <h2>{titel}</h2>
-          {bereich === 'fuettern' && <span className="zimmer-blatt-info">Napf {Math.round(zustand.napf)} % voll</span>}
+          {bereich === 'fuettern' && (
+            <span className="zimmer-blatt-info">Napf {Math.round(zustand.napf)} % · Wasser {zustand.moebel.has('trinkbrunnen') ? 'Brunnen' : `${Math.round(zustand.wasser)} %`}</span>
+          )}
           <button className="zimmer-knopf zimmer-blatt-zu" onClick={onZu} aria-label="Schließen">
             <svg viewBox="-10 -10 20 20" width="45%" height="45%" aria-hidden="true"><path d="M-6 -6 L6 6 M6 -6 L-6 6" stroke="#2f2a26" strokeWidth="3.2" strokeLinecap="round" /></svg>
           </button>
@@ -190,15 +192,22 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
                 <button className="zimmer-preis" disabled={zustand.notrationHeute} onClick={zustand.notrationGeben}>kostenlos</button>
                 {zustand.notrationHeute && <small>Morgen wieder</small>}
               </article>
-            ) : (
-              <article className="zimmer-karte zimmer-karte-info">
-                <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
-                  <path d="M40 8 C26 28 22 36 22 42 a18 18 0 0 0 36 0 c0 -6 -4 -14 -18 -34 Z" fill="#60a5fa" {...K} />
-                </svg>
-                <h3>Wasser</h3>
-                <p>Immer frisch und kostenlos – sie trinkt, wenn sie Durst hat.</p>
-              </article>
-            )}
+            ) : null}
+            {/* Wasser (2.5.0): kostenlos, aber die Schale will aufgefüllt werden */}
+            <article className={`zimmer-karte ${zustand.wasser <= 0 && !zustand.moebel.has('trinkbrunnen') ? 'zimmer-karte-wichtig' : ''}`}>
+              <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+                <path d="M40 8 C26 28 22 36 22 42 a18 18 0 0 0 36 0 c0 -6 -4 -14 -18 -34 Z" fill="#60a5fa" {...K} />
+              </svg>
+              <h3>Wasser</h3>
+              {zustand.moebel.has('trinkbrunnen') ? (
+                <p>Der Trinkbrunnen ist immer voll.</p>
+              ) : (
+                <>
+                  <p>Schale {Math.round(zustand.wasser)} % voll – Auffüllen ist kostenlos.</p>
+                  <button className="zimmer-preis" disabled={zustand.wasser >= 100} onClick={zustand.wasserAuffuellen}>auffüllen</button>
+                </>
+              )}
+            </article>
           </div>
         ) : bereich === 'spielen' ? (
           <SpieleKarten onSpiel={onSpiel} muenzen={zustand.muenzen} />
@@ -363,6 +372,11 @@ export default function Zimmer({ zustand, onZu }) {
     setErgebnis(r.neu ? `${zustand.name} hat dir etwas mitgebracht: ${name} – neu im Album!` : `${name} – kennst du schon`);
   };
 
+  // Tipp auf die Wasserschale: auffüllen, mit kurzer Meldung
+  const wasserAuffuellen = () => {
+    if (zustand.wasserAuffuellen()) setErgebnis('Frisches Wasser – danke!');
+  };
+
   const streicheln = () => {
     if (zustand.kann('rollen')) setRollt(true);
     zustand.pflege('streicheln');
@@ -381,6 +395,7 @@ export default function Zimmer({ zustand, onZu }) {
                geschenk={zustand.geschenkHeute} onGeschenk={geschenkOeffnen} rollt={rollt}
                tageszeit={zeit} besuch={besuch} fund={zustand.fundOffen} onFund={fundAufheben}
                groesse={zustand.wachstum.phase.groesse}
+               wasser={zustand.wasser} onNapf={() => setBereich('fuettern')} onWasser={wasserAuffuellen}
                wetterArt={wetter(new Date(zustand.jetzt))} ball={zustand.ball} springt={katze.springt} />
 
         {lohnPops.map((p) => (

@@ -53,7 +53,7 @@ function useAusschnitt() {
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
   tageszeit = 'tag', besuch = null, fund = null, onFund = () => {}, groesse = 1,
-  wetterArt = 'sonne', ball = null, springt = false,
+  wetterArt = 'sonne', ball = null, springt = false, wasser = 100, onNapf, onWasser,
 }) {
   const licht = LICHT[tageszeit] ?? LICHT.tag;
   const { svgRef, viewBox } = useAusschnitt();
@@ -119,8 +119,8 @@ export default function Szene({
       {moebel.has('kuschelhoehle') && <g className={plopp('kuschelhoehle')}><Kuschelhoehle {...PLAETZE.hoehle} /></g>}
       {moebel.has('kratzbaum') && <g className={plopp('kratzbaum')}><Kratzbaum {...PLAETZE.kratzbaum} /></g>}
       {moebel.has('futterautomat') && <g className={plopp('futterautomat')}><Futterautomat {...PLAETZE.napf} /></g>}
-      <Napf {...PLAETZE.napf} fuellung={napf} />
-      {moebel.has('trinkbrunnen') ? <g className={plopp('trinkbrunnen')}><Trinkbrunnen {...PLAETZE.wasser} /></g> : <Wassernapf {...PLAETZE.wasser} />}
+      <Napf {...PLAETZE.napf} fuellung={napf} onTipp={onNapf} />
+      {moebel.has('trinkbrunnen') ? <g className={plopp('trinkbrunnen')}><Trinkbrunnen {...PLAETZE.wasser} /></g> : <Wassernapf {...PLAETZE.wasser} fuellung={wasser} onTipp={onWasser} />}
       {moebel.has('katzenklo') && (
         <g className={plopp('katzenklo')}>
           <Katzenklo {...PLAETZE.klo} fuellung={klo} voll={kloVoll} onLeeren={() => onPutzen('klo')} />
