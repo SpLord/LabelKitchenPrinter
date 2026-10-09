@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import KatzePose, { poseFuer } from './KatzePose.jsx';
-import { PLAETZE } from './einrichtung.js';
+import { PLAETZE, TEPPICH } from './einrichtung.js';
 import { Besucher, FundstueckBild, Gestirn, Wandlampe, Wetter } from './Fensterwelt.jsx';
 import { LICHT } from './tageszeit.js';
 import {
-  Ball, FreierPlatz, Futterautomat, Gedankenblase, Geschenk, Haeufchen, Katzengras, Wandregal, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
+  Aquarium, Ball, FreierPlatz, KartonHinten, KartonVorne, Teppich, Futterautomat, Gedankenblase, Geschenk, Haeufchen, Katzengras, Wandregal, Katzenklo, Kratzbaum, Kuschelhoehle, Napf, Trinkbrunnen, Wassernapf,
 } from './Moebel.jsx';
 
 const KONTUR = '#2f2a26';
@@ -106,6 +106,9 @@ export default function Szene({
       </g>
       <Wandlampe an={licht.lampe} />
 
+      {/* Teppich (2.9.0) liegt flach unter allem */}
+      {moebel.has('teppich') && <g className={plopp('teppich')}><Teppich {...TEPPICH} /></g>}
+
       {/* Sonnenfleck (2.7.0): fällt durchs Fenster auf den Boden, wenn die Sonne scheint */}
       {sonnig && (
         <g className="zimmer-sonnenfleck" pointerEvents="none" data-sonnenfleck="">
@@ -122,6 +125,10 @@ export default function Szene({
       ))}
 
       {/* Möbel – hinten zuerst, damit vorne Liegendes darüber gezeichnet wird */}
+      {moebel.has('aquarium') && <g className={plopp('aquarium')}><Aquarium {...PLAETZE.aquarium} /></g>}
+      {moebel.has('karton') && (
+        <g className={plopp('karton')}><KartonHinten {...PLAETZE.karton} /><KartonVorne {...PLAETZE.karton} /></g>
+      )}
       {moebel.has('wandregal') && <g className={plopp('wandregal')}><Wandregal {...PLAETZE.regal} /></g>}
       {moebel.has('katzengras') && <g className={plopp('katzengras')}><Katzengras {...PLAETZE.vorne} /></g>}
       {moebel.has('kuschelhoehle') && <g className={plopp('kuschelhoehle')}><Kuschelhoehle {...PLAETZE.hoehle} /></g>}
@@ -191,6 +198,12 @@ export default function Szene({
         )}
         <g transform={`translate(${KATZE * 0.62} -58)`}><Gedankenblase was={blase} /></g>
       </g>
+      {/* Sitzt sie im Karton, kommt die Vorderwand vor sie: nur Kopf und Ohren schauen raus.
+          Läuft sie davor herum, bleibt die Kiste hinter ihr. */}
+      {moebel.has('karton') && art === 'karton' && !laeuft && (
+        <g pointerEvents="none" data-im-karton=""><KartonVorne {...PLAETZE.karton} /></g>
+      )}
+
       {/* Abend und Nacht: das Zimmer dunkelt ab, die Lampe bleibt hell */}
       {licht.dunkel > 0 && (
         <rect x={-W} y={-W} width={1024 + 2 * W} height={768 + 2 * W} fill="#1e1b4b" opacity={licht.dunkel} pointerEvents="none" className="zimmer-dunkel" />

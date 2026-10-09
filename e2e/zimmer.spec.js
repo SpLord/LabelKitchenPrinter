@@ -693,3 +693,26 @@ test('Memory: alle Paare finden bringt Münzen', async ({ page }) => {
   const stand = Number((await page.locator('.zimmer-geld').innerText()).replace(/\D/g, ''));
   expect(stand).toBeGreaterThan(500);
 });
+
+/* ── 2.9.0: Karton, Teppich, Aquarium ─────────────────────────────────── */
+test('Einrichten: Karton, Teppich und Aquarium lassen sich kaufen und stehen im Zimmer', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0), cat_coinCount: 1000 });
+  for (const id of ['karton', 'teppich', 'aquarium']) {
+    await page.locator('.zimmer-menue').getByRole('button', { name: /Einrichten/ }).click();
+    await page.locator(`.zimmer-karte[data-artikel="${id}"]`).locator('.zimmer-preis').click();
+    await expect(page.locator(`[data-moebel="${id}"]`).first()).toBeAttached();
+  }
+  await expect(page.locator('.zimmer-geld')).toContainText(String(1000 - 60 - 180 - 500));
+});
+
+test('Karton: sitzt sie drin, liegt die Vorderwand vor ihr', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-09T12:00:00') });
+  await zimmerAuf(page, { zimmer_geschenk: '2026-10-09|1', cat_besitz: JSON.stringify(['karton']) });
+  let drin = false;
+  for (let i = 0; i < 200 && !drin; i += 1) {
+    await page.clock.runFor(3_000);
+    drin = await page.locator('[data-im-karton]').count() > 0;
+  }
+  expect(drin).toBe(true);
+  await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-karton/);
+});

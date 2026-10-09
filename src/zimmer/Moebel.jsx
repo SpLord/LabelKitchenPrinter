@@ -274,6 +274,59 @@ export function Katzengras({ x, y }) {
   );
 }
 
+/*
+  Pappkarton (2.9.0) in zwei Teilen: Rückwand hinter der Katze, Vorderwand
+  davor – so sitzt sie wirklich drin, nur Kopf und Ohren schauen raus.
+*/
+export function KartonHinten({ x, y }) {
+  return (
+    <g transform={`translate(${x} ${y})`} {...strich} data-moebel="karton">
+      <Schatten x={0} y={4} rx={58} />
+      <path d="M-54 -66 l14 -22 h80 l14 22 Z" fill="#c08a4e" />
+      <rect x="-54" y="-66" width="108" height="66" fill="#a8743c" />
+    </g>
+  );
+}
+export function KartonVorne({ x, y }) {
+  return (
+    <g transform={`translate(${x} ${y})`} {...strich}>
+      <path d="M-54 0 v-46 h108 v46 Z" fill="#d6a15d" />
+      <path d="M-54 -46 l-16 -16 h18 Z M54 -46 l16 -16 h-18 Z" fill="#e7c08a" />
+      <path d="M-20 -24 h40" strokeWidth={3} />
+    </g>
+  );
+}
+
+/* Teppich (2.9.0): flach, rund, mit Rand und Muster. */
+export function Teppich({ x, y }) {
+  return (
+    <g transform={`translate(${x} ${y})`} {...strich} strokeWidth={4} data-moebel="teppich">
+      <ellipse cx="0" cy="0" rx="130" ry="30" fill="#f9a8d4" />
+      <ellipse cx="0" cy="0" rx="104" ry="22" fill="#fbcfe8" strokeWidth={3} />
+      <g fill="#ec4899" stroke="none">
+        {[-70, -35, 0, 35, 70].map((dx) => <circle key={dx} cx={dx} cy="0" r="5" />)}
+      </g>
+    </g>
+  );
+}
+
+/* Aquarium (2.9.0) auf einem Schränkchen, mit schwimmenden Fischen. */
+export function Aquarium({ x, y }) {
+  return (
+    <g transform={`translate(${x} ${y})`} {...strich} data-moebel="aquarium">
+      <Schatten x={0} y={4} rx={60} />
+      <rect x="-56" y="-62" width="112" height="62" rx="6" fill="#a16207" />
+      <path d="M-40 -32 h80" strokeWidth={3} />
+      <rect x="-60" y="-150" width="120" height="88" rx="8" fill="#bae6fd" />
+      <path d="M-56 -138 h112" stroke="#7dd3fc" strokeWidth={3} />
+      <g stroke="none" fill="#a7f3d0"><path d="M-40 -66 q-6 -30 4 -50 q4 24 -4 50 Z" /><path d="M40 -66 q8 -24 -2 -40 q-6 18 2 40 Z" /></g>
+      <g className="zimmer-fisch eins"><path d="M-16 -108 q12 -10 24 0 q-12 10 -24 0 Z M-16 -108 l-8 -6 v12 Z" fill="#fb923c" strokeWidth={2.5} /></g>
+      <g className="zimmer-fisch zwei"><path d="M10 -86 q10 -8 20 0 q-10 8 -20 0 Z M10 -86 l-7 -5 v10 Z" fill="#facc15" strokeWidth={2.5} /></g>
+      <g className="zimmer-blasen" fill="none" stroke="#e0f2fe" strokeWidth={2}><circle cx="30" cy="-120" r="3" /><circle cx="34" cy="-134" r="2" /></g>
+    </g>
+  );
+}
+
 export function FreierPlatz({ x, y, art }) {
   const farbe = '#a0896c';
   return (

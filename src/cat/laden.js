@@ -47,6 +47,18 @@ export const ZUBEHOER = [
 */
 export const AUSSTATTUNG = [
   {
+    id: 'karton', name: 'Pappkarton', preis: 60, emoji: '📦',
+    wirkung: 'Sie setzt sich hinein – nur Kopf und Ohren schauen raus.',
+  },
+  {
+    id: 'teppich', name: 'Teppich', preis: 180, emoji: '🟫',
+    wirkung: 'Weich zum Räkeln – sie wälzt sich gern darauf.',
+  },
+  {
+    id: 'aquarium', name: 'Aquarium', preis: 500, emoji: '🐟',
+    wirkung: 'Fische schwimmen, sie sitzt davor und schaut gebannt zu.',
+  },
+  {
     id: 'ball', name: 'Spielball', preis: 80, emoji: '⚽',
     wirkung: 'Sie stupst ihn von selbst an und jagt ihm nach.',
   },

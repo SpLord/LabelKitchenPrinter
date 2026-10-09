@@ -18,7 +18,11 @@ export const PLAETZE = {
   klo:       { x: 106, y: 668, art: 'boden' },
   vorne:     { x: 920, y: 662, art: 'boden' },
   regal:     { x: 495, y: 257, art: 'wand' },
+  // 2.9.0: hintere Reihe am Wandfuss, der Teppich liegt flach in der Mitte
+  karton:    { x: 190, y: 552, art: 'boden' },
+  aquarium:  { x: 700, y: 548, art: 'boden' },
 };
+export const TEPPICH = { x: 660, y: 640 };
 
 /*
   Aus dem Besitz (Kennungen aus src/cat/laden.js) die Einrichtung ableiten.
@@ -37,6 +41,9 @@ export function einrichtung(besitz) {
   if (hat.has('wandregal')) moebel.add('wandregal');
   if (hat.has('katzengras')) moebel.add('katzengras');
   if (hat.has('ball')) moebel.add('ball');
+  if (hat.has('karton')) moebel.add('karton');
+  if (hat.has('aquarium')) moebel.add('aquarium');
+  if (hat.has('teppich')) moebel.add('teppich');
 
   const belegt = new Set(['napf', 'wasser']);
   if (moebel.has('kratzbaum')) belegt.add('kratzbaum');
@@ -44,6 +51,8 @@ export function einrichtung(besitz) {
   if (moebel.has('katzenklo')) belegt.add('klo');
   if (moebel.has('wandregal')) belegt.add('regal');
   if (moebel.has('katzengras')) belegt.add('vorne');
+  if (moebel.has('karton')) belegt.add('karton');
+  if (moebel.has('aquarium')) belegt.add('aquarium');
   const frei = Object.keys(PLAETZE).filter((p) => !belegt.has(p));
 
   return { moebel, frei };

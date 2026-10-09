@@ -199,3 +199,19 @@ test('2.7.0: Wirkungen der neuen Tätigkeiten heben die Laune', () => {
     assert.ok(wirkung(a, satt).laune > 0, a);
   }
 });
+
+test('2.9.0: Karton, Aquarium, Teppich – nur mit dem Möbel, jeweils dort', () => {
+  const ohne = new Set();
+  for (let i = 0; i < 600; i += 1) ohne.add(naechsteTaetigkeit(satt, () => i / 600).art);
+  for (const a of ['karton', 'fische', 'raekeln']) assert.ok(!ohne.has(a), a);
+  const mit = { ...satt, moebel: new Set(['karton', 'aquarium', 'teppich']) };
+  const gesehen = {};
+  for (let i = 0; i < 600; i += 1) {
+    const t = naechsteTaetigkeit(mit, () => i / 600);
+    gesehen[t.art] = t;
+  }
+  assert.deepEqual(gesehen.karton.ort, ORTE.karton);
+  assert.deepEqual(gesehen.fische.ort, ORTE.aquarium);
+  assert.deepEqual(gesehen.raekeln.ort, ORTE.teppich);
+  for (const a of ['karton', 'fische', 'raekeln']) assert.ok(wirkung(a, satt).laune > 0, a);
+});

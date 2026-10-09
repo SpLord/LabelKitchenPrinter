@@ -35,6 +35,10 @@ export const ORTE = {
   // 2.7.0
   fensterbank: { x: 176, y: 292, richtung: -1 },
   sonnenfleck: { x: 330, y: 640, richtung: -1 },
+  // 2.9.0
+  karton:    { x: 190, y: 546, richtung: -1 },
+  aquarium:  { x: 700, y: 610, richtung: 1 },
+  teppich:   { x: 660, y: 644, richtung: -1 },
 };
 export const REGAL_LAUNE = 2;
 export const KNABBER_LAUNE = 2;
@@ -108,6 +112,10 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     { art: 'fliege', gewicht: 1, dauer: 5_000 },
     { art: 'fensterbank', gewicht: 2, ort: ORTE.fensterbank, dauer: 12_000 },
     lage.sonne && { art: 'sonnen', gewicht: 3, ort: ORTE.sonnenfleck, dauer: 20_000 },
+    // 2.9.0: in den Karton, Fische gucken, auf dem Teppich räkeln
+    moebel.has('karton') && { art: 'karton', gewicht: 3, ort: ORTE.karton, dauer: 12_000 },
+    moebel.has('aquarium') && { art: 'fische', gewicht: 3, ort: ORTE.aquarium, dauer: 10_000 },
+    moebel.has('teppich') && { art: 'raekeln', gewicht: 2, ort: ORTE.teppich, dauer: 5_000 },
     moebel.has('kratzbaum') && { art: 'kratzen', gewicht: 2, ort: ORTE.kratzbaum, dauer: 6_000 },
     // 2.4.0: hinauf aufs Regal, am Katzengras knabbern, den Ball anstupsen
     moebel.has('wandregal') && { art: 'regal', gewicht: 2, ort: ORTE.regal, dauer: 10_000 },
@@ -146,6 +154,8 @@ export function wirkung(art, lage) {
     case 'schwanzjagd': case 'rennen': case 'fliege': return { laune: 2 };
     case 'treteln': case 'fensterbank': return { laune: 1 };
     case 'sonnen': return { laune: 3 };
+    case 'karton': case 'fische': return { laune: 2 };
+    case 'raekeln': return { laune: 2 };
     default: return {};
   }
 }

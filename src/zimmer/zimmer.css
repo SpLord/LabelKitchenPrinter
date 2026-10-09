@@ -500,3 +500,11 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 @media (prefers-reduced-motion: reduce) {
   .zimmer-laser-schein, .zimmer-versteck-schwanz, .zimmer-versteck-katze, .zimmer-wackeln { animation: none; }
 }
+
+/* Einrichtung (2.9.0): Fische schwimmen hin und her, Bläschen steigen */
+.zimmer-fisch { animation: zimmer-fisch 6s ease-in-out infinite alternate; }
+.zimmer-fisch.zwei { animation-duration: 4.4s; animation-direction: alternate-reverse; }
+@keyframes zimmer-fisch { from { transform: translateX(-24px); } to { transform: translateX(28px); } }
+.zimmer-blasen { animation: zimmer-blasen 2.6s linear infinite; }
+@keyframes zimmer-blasen { from { transform: translateY(14px); opacity: 0; } 30% { opacity: 1; } to { transform: translateY(-16px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .zimmer-fisch, .zimmer-blasen { animation: none; } }

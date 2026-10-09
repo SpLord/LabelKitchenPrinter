@@ -41,3 +41,13 @@ test('2.4.0: Wandregal an der Wand, Katzengras vorne, der Ball braucht keinen Pl
   assert.ok(!e.frei.includes('regal'));
   assert.ok(!e.frei.includes('vorne'));
 });
+
+test('2.9.0: Karton und Aquarium bekommen eigene Plätze, der Teppich liegt am Boden', () => {
+  const ohne = einrichtung([]);
+  assert.ok(ohne.frei.includes('karton'));
+  assert.ok(ohne.frei.includes('aquarium'));
+  const mit = einrichtung(['karton', 'aquarium', 'teppich']);
+  for (const m of ['karton', 'aquarium', 'teppich']) assert.ok(mit.moebel.has(m), m);
+  assert.ok(!mit.frei.includes('karton'));
+  assert.ok(!mit.frei.includes('aquarium'));
+});

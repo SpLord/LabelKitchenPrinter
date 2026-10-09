@@ -240,6 +240,7 @@ export const poseFuer = ({ laeuft, art }) => {
   if (art === 'schwanzjagd' || art === 'rennen') return 'laufen';
   if (art === 'fliege') return 'tatze';
   if (art === 'sonnen') return 'schlafen';
+  if (art === 'raekeln') return 'strecken';
   return 'sitzen';
 };
 
