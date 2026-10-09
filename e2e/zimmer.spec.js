@@ -635,3 +635,61 @@ test('Sonnenfleck: an sonnigen Tagen liegt er auf dem Boden, nachts nicht', asyn
   await page.clock.runFor(61_000);
   await expect(page.locator('[data-sonnenfleck]')).toHaveCount(0);
 });
+
+/* ── 2.8.0: Laserpointer, Versteckspiel, Memory ───────────────────────── */
+test('Spielen bietet jetzt sieben Spiele', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  for (const n of ['Federangel', 'Leckerli fangen', 'Mäuseloch', 'Hütchenspiel', 'Laserpointer', 'Versteckspiel', 'Memory']) {
+    await expect(page.locator('.zimmer-karte', { hasText: n })).toHaveCount(1);
+  }
+});
+
+test('Laserpointer: Punkt folgt dem Finger, Fertig beendet mit Meldung', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Laserpointer' }).locator('.zimmer-preis').click();
+  const flaeche = await page.locator('.zimmer-spiel').boundingBox();
+  await page.mouse.move(flaeche.x + flaeche.width * 0.3, flaeche.y + flaeche.height * 0.85);
+  await expect(page.locator('[data-laser]')).toHaveAttribute('transform', /translate\(/);
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toBeVisible();
+});
+
+test('Versteckspiel: der Schwanz verrät sie, gleich gefunden bringt Münzen', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-09T12:00:00') });
+  await spielenOeffnen(page, { zimmer_geschenk: '2026-10-09|1' });
+  await page.locator('.zimmer-karte', { hasText: 'Versteckspiel' }).locator('.zimmer-preis').click();
+  await page.clock.runFor(3_500);
+  const richtig = page.locator('g:has(> .zimmer-versteck-schwanz) > [data-versteck]');
+  await expect(richtig).toHaveCount(1);
+  await richtig.dispatchEvent('pointerdown');
+  await expect(page.locator('.zimmer-spiel-hud')).toContainText('1 gefunden');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-geld')).toContainText('503');
+  // Danach eine Stunde Pause
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
+  await expect(page.locator('.zimmer-karte', { hasText: 'Versteckspiel' }).locator('.zimmer-preis')).toBeDisabled();
+});
+
+test('Memory: alle Paare finden bringt Münzen', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Memory' }).locator('.zimmer-preis').click();
+  // Erst alle Bilder kennenlernen (Paare 0+1, 2+3 …), dann gezielt zuordnen
+  const bilder = [];
+  for (let i = 0; i < 12; i += 2) {
+    await page.locator(`[data-karte="${i}"]`).click();
+    bilder[i] = await page.locator(`[data-karte="${i}"]`).getAttribute('aria-label');
+    await page.locator(`[data-karte="${i + 1}"]`).click();
+    bilder[i + 1] = await page.locator(`[data-karte="${i + 1}"]`).getAttribute('aria-label');
+    await page.waitForTimeout(950);
+  }
+  for (let i = 0; i < 12; i += 1) {
+    if (await page.locator(`[data-karte="${i}"].gefunden`).count()) continue;
+    const j = bilder.findIndex((b, k) => k !== i && b === bilder[i]);
+    await page.locator(`[data-karte="${i}"]`).click();
+    await page.locator(`[data-karte="${j}"]`).click();
+    await page.waitForTimeout(150);
+  }
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Alle Paare');
+  const stand = Number((await page.locator('.zimmer-geld').innerText()).replace(/\D/g, ''));
+  expect(stand).toBeGreaterThan(500);
+});

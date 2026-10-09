@@ -15,6 +15,10 @@ import SpielMaeuseloch from './SpielMaeuseloch.jsx';
 import ShellGame, { STAKE } from '../ShellGame.jsx';
 import ErrorBoundary from '../ErrorBoundary.jsx';
 import { launeFuer } from './maeuseloch.js';
+import SpielLaser from './SpielLaser.jsx';
+import SpielVersteck from './SpielVersteck.jsx';
+import SpielMemory from './SpielMemory.jsx';
+import { LASER, MEMORY, VERSTECK, abkuehlung, memoryLohn, versteckLohn } from './spiele2.js';
 import { BESUCH, besucher, tageszeit, wetter } from './tageszeit.js';
 import { FUNDSTUECKE } from './fundstuecke.js';
 import SpielLeckerli from './SpielLeckerli.jsx';
@@ -22,6 +26,11 @@ import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
 
 const KEY_LECKERLI = 'zimmer_leckerli_zuletzt';
 const leckerliZuletzt = () => { try { return localStorage.getItem(KEY_LECKERLI); } catch { return null; } };
+// Neue Münzspiele (2.8.0): je einmal pro Stunde
+const KEY_VERSTECK = 'zimmer_versteck_zuletzt';
+const KEY_MEMORY = 'zimmer_memory_zuletzt';
+const zuletzt = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+const merken = (key) => { try { localStorage.setItem(key, String(Date.now())); } catch { /* gesperrt */ } };
 import useKatzeImZimmer from './useKatzeImZimmer.js';
 import './zimmer.css';
 
@@ -84,6 +93,20 @@ function Herzen({ anzahl }) {
 }
 
 /* Spielen: kurze Spiele für die Pause, jedes etwa eine halbe Minute. */
+/* Spielkarte mit Wartezeit (Münzspiele, einmal pro Stunde). */
+function SpielMitPause({ id, titel, text, bild, onSpiel, schluessel }) {
+  const warten = abkuehlung(zuletzt(schluessel));
+  return (
+    <article className="zimmer-karte">
+      <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">{bild}</svg>
+      <h3>{titel}</h3>
+      <p>{text}</p>
+      <button className="zimmer-preis" disabled={warten > 0} onClick={() => onSpiel(id)}>spielen</button>
+      {warten > 0 && <small>wieder in {Math.ceil(warten / 60_000)} min</small>}
+    </article>
+  );
+}
+
 function SpieleKarten({ onSpiel, muenzen }) {
   const warten = wartezeit(leckerliZuletzt());
   const minuten = Math.ceil(warten / 60_000);
@@ -128,6 +151,21 @@ function SpieleKarten({ onSpiel, muenzen }) {
         <button className="zimmer-preis" disabled={muenzen < STAKE} onClick={() => onSpiel('huetchen')}>spielen</button>
         {muenzen < STAKE && <small>Zu wenig Münzen</small>}
       </article>
+      {/* 2.8.0 */}
+      <article className="zimmer-karte">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K}><rect x="8" y="40" width="34" height="14" rx="5" fill="#9ca3af" transform="rotate(-20 25 47)" /><path d="M40 38 L66 22" stroke="#ef4444" strokeWidth="3" /><circle cx="68" cy="21" r="6" fill="#ef4444" /></g>
+        </svg>
+        <h3>Laserpointer</h3>
+        <p>Den roten Punkt führen – sie springt drauf. Bringt Laune.</p>
+        <button className="zimmer-preis" onClick={() => onSpiel('laser')}>spielen</button>
+      </article>
+      <SpielMitPause id="versteck" titel="Versteckspiel" onSpiel={onSpiel} schluessel={KEY_VERSTECK}
+                     text={`Wo ist sie? ${VERSTECK.lohnJe} Münzen je Fund, einmal pro Stunde.`}
+                     bild={<g {...K}><path d="M10 64 v-36 h60 v36 Z" fill="#d6a15d" /><path d="M10 28 l-6 -10 h60 l6 10" fill="#e7c08a" /><path d="M70 50 q14 -4 12 -20" fill="none" strokeWidth="6" /></g>} />
+      <SpielMitPause id="memory" titel="Memory" onSpiel={onSpiel} schluessel={KEY_MEMORY}
+                     text={`${MEMORY.paare} Paare Fundstücke. Bis ${MEMORY.lohn[0][1]} Münzen, einmal pro Stunde.`}
+                     bild={<g {...K} strokeWidth="3"><rect x="8" y="14" width="28" height="40" rx="5" fill="#fde68a" /><rect x="44" y="14" width="28" height="40" rx="5" fill="#fff" /><circle cx="58" cy="34" r="8" fill="#a5f3fc" /></g>} />
     </div>
   );
 }
@@ -243,6 +281,8 @@ export default function Zimmer({ zustand, onZu }) {
     if (art === 'leckerli') {
       try { localStorage.setItem(KEY_LECKERLI, String(Date.now())); } catch { /* gesperrt */ }
     }
+    if (art === 'versteck') merken(KEY_VERSTECK);
+    if (art === 'memory') merken(KEY_MEMORY);
     setSpiel(art);
   };
 
@@ -275,6 +315,35 @@ export default function Zimmer({ zustand, onZu }) {
     setErgebnis(treffer > 0 ? `${treffer} ${treffer === 1 ? 'Maus' : 'Mäuse'} – ${name} ist ganz aufgedreht` : 'Die Mäuse waren zu flink');
   }, [freigeben, pflege, erfreuen, naeher, name, zaehle]);
   const mausTreffer = useCallback(() => setHerzchen((n) => n + 1), []);
+
+  // 2.8.0: Laserpointer (Laune), Versteckspiel und Memory (Münzen)
+  const laserEnde = useCallback((spruenge) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    if (spruenge > 0) {
+      erfreuen(Math.min(LASER.launeMax, spruenge * LASER.laune));
+      naeher('spielen', 1);
+    }
+    setErgebnis(spruenge > 0 ? `${spruenge} ${spruenge === 1 ? 'Sprung' : 'Sprünge'} – ${name} ist ganz aus dem Häuschen` : 'Der Punkt war zu schnell');
+  }, [freigeben, pflege, erfreuen, naeher, name]);
+  const versteckEnde = useCallback((funde) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    const lohn = versteckLohn(funde);
+    if (lohn > 0) setMuenzen((c) => c + lohn);
+    setErgebnis(lohn > 0 ? `${funde}-mal gleich gefunden: +${lohn} Münzen` : `${name} hat sich gut versteckt`);
+  }, [freigeben, pflege, setMuenzen, name]);
+  const memoryEnde = useCallback((zuege) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    if (zuege === null) { setErgebnis('Memory abgebrochen'); return; }
+    const lohn = memoryLohn(zuege);
+    setMuenzen((c) => c + lohn);
+    setErgebnis(`Alle Paare in ${zuege} Zügen: +${lohn} Münzen`);
+  }, [freigeben, pflege, setMuenzen]);
 
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
@@ -392,7 +461,7 @@ export default function Zimmer({ zustand, onZu }) {
   };
 
   return (
-    <div className="zimmer" role="dialog" aria-label="Katzenzimmer">
+    <div className={`zimmer ${spiel === 'versteck' ? 'katze-versteckt' : ''}`} role="dialog" aria-label="Katzenzimmer">
       <div className="zimmer-buehne">
         <Szene moebel={zustand.moebel} frei={zustand.frei} napf={zustand.napf} katze={katze}
                klo={zustand.klo} kloVoll={zustand.klo >= KLO.kapazitaet} haeufchen={zustand.haeufchen}
@@ -464,6 +533,9 @@ export default function Zimmer({ zustand, onZu }) {
         {spiel === 'feder' && <SpielFederangel katze={katze} onFang={federFang} onEnde={federEnde} />}
         {spiel === 'leckerli' && <SpielLeckerli onEnde={leckerliEnde} />}
         {spiel === 'maus' && <SpielMaeuseloch katze={katze} onTreffer={mausTreffer} onEnde={mausEnde} />}
+        {spiel === 'laser' && <SpielLaser katze={katze} onSprung={mausTreffer} onEnde={laserEnde} />}
+        {spiel === 'versteck' && <SpielVersteck fell={zustand.fell} onEnde={versteckEnde} />}
+        {spiel === 'memory' && <SpielMemory onEnde={memoryEnde} />}
         {spiel === 'huetchen' && (
           <ErrorBoundary label="Das Hütchenspiel">
             <ShellGame

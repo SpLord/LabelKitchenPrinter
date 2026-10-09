@@ -476,3 +476,27 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 .zimmer-aufgabe-text small { font-size: 1.3cqw; color: #78350f; font-weight: 700; }
 .zimmer-aufgabe-balken { display: block; height: 1.2cqw; border-radius: 999px; background: #f5efe6; border: 0.25cqw solid var(--kontur); overflow: hidden; }
 .zimmer-aufgabe-balken span { display: block; height: 100%; background: #fbbf24; transition: width 400ms ease; }
+
+/* Neue Spiele (2.8.0) */
+.zimmer-laser-schein { animation: zimmer-laser 0.5s ease-in-out infinite alternate; }
+@keyframes zimmer-laser { from { transform: scale(0.8); } to { transform: scale(1.2); } }
+.zimmer.katze-versteckt .zimmer-katze { opacity: 0; pointer-events: none; }
+.zimmer-spiel-versteck .zimmer-spiel-svg { pointer-events: auto; }
+.zimmer-versteck-schwanz { transform-box: fill-box; transform-origin: 0 100%; animation: pose-wedeln 0.9s ease-in-out infinite; }
+.zimmer-versteck-katze { animation: zimmer-auftauchen 400ms cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes zimmer-auftauchen { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }
+.zimmer-wackeln { transform-box: fill-box; transform-origin: 50% 100%; animation: zimmer-wackeln 400ms ease-in-out; }
+@keyframes zimmer-wackeln { 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+.zimmer-spiel-memory { display: grid; place-items: center; background: rgba(47, 42, 38, 0.25); cursor: default; }
+.zimmer-memory { display: grid; grid-template-columns: repeat(4, 10cqw); gap: 1.4cqw; margin-top: -6cqw; }
+.zimmer-memory-karte {
+  width: 10cqw; height: 12cqw; padding: 1cqw; border: 0.4cqw solid var(--kontur); border-radius: 1.4cqw;
+  background: #fbbf24; box-shadow: 0 0.4cqw 0 var(--kontur); cursor: pointer; transition: transform 160ms ease, background 160ms ease;
+}
+.zimmer-memory-karte svg { width: 100%; height: 100%; }
+.zimmer-memory-karte.offen { background: #fff; transform: rotateY(0) scale(1.03); }
+.zimmer-memory-karte.gefunden { background: #dcfce7; box-shadow: 0 0 0 0.4cqw #22c55e; }
+.zimmer-memory-karte:active { transform: translateY(0.3cqw); }
+@media (prefers-reduced-motion: reduce) {
+  .zimmer-laser-schein, .zimmer-versteck-schwanz, .zimmer-versteck-katze, .zimmer-wackeln { animation: none; }
+}
