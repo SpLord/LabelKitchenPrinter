@@ -623,3 +623,15 @@ test('Aufgaben: drei für heute, erfüllte lassen sich einmal abholen', async ({
   await expect(page.locator('.zimmer-geld')).toContainText(String(500 + a.lohn));
   await expect(erste).toContainText('erledigt');
 });
+
+/* ── 2.7.0: mehr Verhalten ────────────────────────────────────────────── */
+test('Sonnenfleck: an sonnigen Tagen liegt er auf dem Boden, nachts nicht', async ({ page }) => {
+  let tag = new Date('2026-10-01T12:00:00');
+  for (let i = 0; i < 40 && wetter(tag) !== 'sonne'; i += 1) tag = new Date(tag.getTime() + 86_400_000);
+  await page.clock.install({ time: tag });
+  await zimmerAuf(page, { zimmer_geschenk: '2026-10-01|1' });
+  await expect(page.locator('[data-sonnenfleck]')).toBeAttached();
+  await page.clock.setFixedTime(new Date(tag.getTime() + 11 * 3_600_000));   // 23 Uhr
+  await page.clock.runFor(61_000);
+  await expect(page.locator('[data-sonnenfleck]')).toHaveCount(0);
+});

@@ -49,7 +49,8 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
       const nach = t.ort ?? von;
       // Hinauf aufs Regal oder herunter: ein Sprung im Bogen statt schräg zu gleiten
       const springt = Boolean(t.ort) && Math.abs(nach.y - von.y) > SPRUNG_AB;
-      const weg = !t.ort ? 0 : springt ? SPRUNG_DAUER : wegDauer(von, nach);
+      // Rennanfall (2.7.0): fast dreimal so schnell
+      const weg = !t.ort ? 0 : springt ? SPRUNG_DAUER : t.schnell ? Math.max(350, Math.round(wegDauer(von, nach) / 2.8)) : wegDauer(von, nach);
       const richtungUnterwegs = nach.x < von.x - 2 ? -1 : nach.x > von.x + 2 ? 1 : (von.richtung ?? -1);
       posRef.current = { x: nach.x, y: nach.y, richtung: nach.richtung ?? richtungUnterwegs };
 

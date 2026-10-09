@@ -191,12 +191,24 @@ function SitzEbene({ v, art }) {
   const lid = (x) => <g key={x}><ellipse cx={x} cy="85" rx="8" ry="7" fill={v.body} /><path d={`M${x - 7} 85 q7 5 14 0`} fill="none" stroke={v.stroke} strokeWidth="3.5" strokeLinecap="round" /></g>;
   return (
     <g pointerEvents="none">
-      {[65, 95].map(lid)}
+      {art !== 'tatze' && [65, 95].map(lid)}
       {art === 'gaehnen' && (
         <g className="pose-gaehnen">
           <ellipse cx="80" cy="107" rx="9" ry="11" fill="#7f1d1d" stroke={v.stroke} strokeWidth="3" />
           <ellipse cx="80" cy="112" rx="5" ry="4" fill="#f9a8b4" />
         </g>
+      )}
+      {/* Treteln (2.7.0): Vorderpfoten drücken abwechselnd, Augen selig zu */}
+      {art === 'treteln' && (
+        <g>
+          <ellipse className="pose-tritt eins" cx="60" cy="155" rx="17" ry="11" fill={v.body} stroke={v.stroke} strokeWidth="6" />
+          <ellipse className="pose-tritt zwei" cx="95" cy="165" rx="17" ry="11" fill={v.body} stroke={v.stroke} strokeWidth="6" />
+          <path d="M74 106 q6 5 12 0" fill="none" stroke={v.stroke} strokeWidth="3.5" strokeLinecap="round" />
+        </g>
+      )}
+      {/* Tatze (2.7.0): eine Pfote schlägt nach der Fliege */}
+      {art === 'tatze' && (
+        <ellipse className="pose-tatze" cx="44" cy="118" rx="14" ry="10" fill={v.body} stroke={v.stroke} strokeWidth="5" transform="rotate(-50 44 118)" />
       )}
       {art === 'putzen' && (
         <g className="pose-putzen">
@@ -224,13 +236,16 @@ export const poseFuer = ({ laeuft, art }) => {
   if (art === 'liegen') return 'krank';
   if (art === 'schlafen') return 'schlafen';
   if (art === 'fressen' || art === 'trinken') return 'fressen';
-  if (art === 'putzen' || art === 'gaehnen' || art === 'strecken') return art;
+  if (art === 'putzen' || art === 'gaehnen' || art === 'strecken' || art === 'treteln') return art;
+  if (art === 'schwanzjagd' || art === 'rennen') return 'laufen';
+  if (art === 'fliege') return 'tatze';
+  if (art === 'sonnen') return 'schlafen';
   return 'sitzen';
 };
 
 export default function KatzePose({ pose, fell, zubehoer, aktiv }) {
   const clipId = `pose-${useId().replace(/:/g, '')}`;
-  if (pose === 'putzen' || pose === 'gaehnen') {
+  if (pose === 'putzen' || pose === 'gaehnen' || pose === 'treteln' || pose === 'tatze') {
     const v = VARIANTS[fell % VARIANTS.length];
     return (
       <svg viewBox="0 0 200 200" width="100%" height="100%" className={`katze-pose pose-${pose}`} overflow="visible">

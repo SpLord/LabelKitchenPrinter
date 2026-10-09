@@ -402,7 +402,8 @@ export default function Zimmer({ zustand, onZu }) {
                tageszeit={zeit} besuch={besuch} fund={zustand.fundOffen} onFund={fundAufheben}
                groesse={zustand.wachstum.phase.groesse}
                wasser={zustand.wasser} onNapf={() => setBereich('fuettern')} onWasser={wasserAuffuellen}
-               wetterArt={wetter(new Date(zustand.jetzt))} ball={zustand.ball} springt={katze.springt} />
+               wetterArt={wetter(new Date(zustand.jetzt))} ball={zustand.ball} springt={katze.springt}
+               sonnig={['morgen', 'tag'].includes(zeit) && wetter(new Date(zustand.jetzt)) === 'sonne'} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"

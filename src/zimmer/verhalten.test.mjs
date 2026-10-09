@@ -164,3 +164,38 @@ test('2.5.0: Trinken leert die Schale um einen Schluck, der Brunnen nicht', () =
   assert.deepEqual(wirkung('trinken', { ...satt, wasser: 80, moebel: new Set(['trinkbrunnen']) }), { durst: SCHLUCK });
   assert.deepEqual(wirkung('wasserLeer', satt), {});
 });
+
+test('2.7.0: neue Tätigkeiten – Schwanzjagd, Rennanfall, Treteln, Fliege, Fensterbank', () => {
+  const arten = new Set();
+  for (let i = 0; i < 500; i += 1) arten.add(naechsteTaetigkeit(satt, () => (i % 499) / 499).art);
+  for (const a of ['schwanzjagd', 'rennen', 'treteln', 'fliege', 'fensterbank']) assert.ok(arten.has(a), `${a} fehlt`);
+});
+
+test('2.7.0: Rennanfall ist schnell und führt quer durchs Zimmer', () => {
+  let t;
+  for (let i = 0; i < 500 && t?.art !== 'rennen'; i += 1) t = naechsteTaetigkeit(satt, () => i / 500);
+  assert.equal(t.schnell, true);
+  assert.ok(t.ort);
+});
+
+test('2.7.0: Fensterbank – oben auf dem Sims, zum Fenster gewandt', () => {
+  let t;
+  for (let i = 0; i < 500 && t?.art !== 'fensterbank'; i += 1) t = naechsteTaetigkeit(satt, () => i / 500);
+  assert.deepEqual(t.ort, ORTE.fensterbank);
+  assert.ok(ORTE.fensterbank.y < 320);
+});
+
+test('2.7.0: Sonnenfleck nur, wenn die Sonne scheint', () => {
+  const ohne = new Set();
+  for (let i = 0; i < 500; i += 1) ohne.add(naechsteTaetigkeit(satt, () => i / 500).art);
+  assert.ok(!ohne.has('sonnen'));
+  const mit = new Set();
+  for (let i = 0; i < 500; i += 1) mit.add(naechsteTaetigkeit({ ...satt, sonne: true }, () => i / 500).art);
+  assert.ok(mit.has('sonnen'));
+});
+
+test('2.7.0: Wirkungen der neuen Tätigkeiten heben die Laune', () => {
+  for (const a of ['schwanzjagd', 'rennen', 'treteln', 'fliege', 'fensterbank', 'sonnen']) {
+    assert.ok(wirkung(a, satt).laune > 0, a);
+  }
+});

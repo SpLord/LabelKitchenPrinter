@@ -32,6 +32,9 @@ export const ORTE = {
   // 2.4.0
   regal:     { x: 495, y: 250, richtung: -1 },
   gras:      { x: 872, y: 668, richtung: 1 },
+  // 2.7.0
+  fensterbank: { x: 176, y: 292, richtung: -1 },
+  sonnenfleck: { x: 330, y: 640, richtung: -1 },
 };
 export const REGAL_LAUNE = 2;
 export const KNABBER_LAUNE = 2;
@@ -98,6 +101,13 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     { art: 'putzen', gewicht: 2, dauer: 5_000 },
     { art: 'strecken', gewicht: 1, dauer: 2_600 },
     { art: 'gaehnen', gewicht: 1, dauer: 2_200 },
+    // 2.7.0: mehr verschiedene Sachen, jede mit eigener Animation
+    { art: 'schwanzjagd', gewicht: 1, dauer: 2_800 },
+    { art: 'rennen', gewicht: 1, dauer: 600, schnell: true },
+    { art: 'treteln', gewicht: 2, dauer: 6_000 },
+    { art: 'fliege', gewicht: 1, dauer: 5_000 },
+    { art: 'fensterbank', gewicht: 2, ort: ORTE.fensterbank, dauer: 12_000 },
+    lage.sonne && { art: 'sonnen', gewicht: 3, ort: ORTE.sonnenfleck, dauer: 20_000 },
     moebel.has('kratzbaum') && { art: 'kratzen', gewicht: 2, ort: ORTE.kratzbaum, dauer: 6_000 },
     // 2.4.0: hinauf aufs Regal, am Katzengras knabbern, den Ball anstupsen
     moebel.has('wandregal') && { art: 'regal', gewicht: 2, ort: ORTE.regal, dauer: 10_000 },
@@ -108,8 +118,9 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     },
   ].filter(Boolean);
   const wahl = gewichtet(frei, zufall);
-  const ort = wahl.ort ?? (wahl.art === 'bummeln' ? bummelOrt(zufall) : null);
-  return { art: wahl.art, ort, dauer: wahl.dauer, blase: null };
+  // Bummeln und Rennanfall führen an einen Zufallsort; rennen quer durchs Zimmer
+  const ort = wahl.ort ?? (wahl.art === 'bummeln' || wahl.art === 'rennen' ? bummelOrt(zufall) : null);
+  return { art: wahl.art, ort, dauer: wahl.dauer, blase: null, ...(wahl.schnell ? { schnell: true } : {}) };
 }
 
 /*
@@ -132,6 +143,9 @@ export function wirkung(art, lage) {
     case 'regal': return { laune: REGAL_LAUNE };
     case 'knabbern': return { laune: KNABBER_LAUNE };
     case 'ball': return { laune: BALL_LAUNE, ball: true };
+    case 'schwanzjagd': case 'rennen': case 'fliege': return { laune: 2 };
+    case 'treteln': case 'fensterbank': return { laune: 1 };
+    case 'sonnen': return { laune: 3 };
     default: return {};
   }
 }

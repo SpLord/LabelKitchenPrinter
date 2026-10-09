@@ -53,7 +53,7 @@ function useAusschnitt() {
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
   tageszeit = 'tag', besuch = null, fund = null, onFund = () => {}, groesse = 1,
-  wetterArt = 'sonne', ball = null, springt = false, wasser = 100, onNapf, onWasser,
+  wetterArt = 'sonne', ball = null, springt = false, wasser = 100, onNapf, onWasser, sonnig = false,
 }) {
   const licht = LICHT[tageszeit] ?? LICHT.tag;
   const { svgRef, viewBox } = useAusschnitt();
@@ -105,6 +105,14 @@ export default function Szene({
         <rect x="420" y="250" width="150" height="14" rx="5" fill="#a16207" />
       </g>
       <Wandlampe an={licht.lampe} />
+
+      {/* Sonnenfleck (2.7.0): fällt durchs Fenster auf den Boden, wenn die Sonne scheint */}
+      {sonnig && (
+        <g className="zimmer-sonnenfleck" pointerEvents="none" data-sonnenfleck="">
+          <ellipse cx="330" cy="648" rx="96" ry="24" fill="#fde68a" opacity="0.5" />
+          <ellipse cx="330" cy="648" rx="60" ry="14" fill="#fef3c7" opacity="0.55" />
+        </g>
+      )}
 
       {/* Freie Stellplätze */}
       {frei.map((p) => (
@@ -169,6 +177,16 @@ export default function Szene({
             <text x={KATZE * 0.3} y="70" fontSize="22">z</text>
             <text x={KATZE * 0.3} y="70" fontSize="28">Z</text>
             <text x={KATZE * 0.3} y="70" fontSize="34">Z</text>
+          </g>
+        )}
+        {/* Fliege (2.7.0): kreist um ihren Kopf, sie schlägt mit der Tatze danach */}
+        {art === 'fliege' && !laeuft && (
+          <g transform={`translate(${KATZE * 0.5} ${KATZE * 0.3})`} pointerEvents="none">
+            <g className="zimmer-fliege" data-fliege="">
+              <ellipse cx="0" cy="0" rx="5" ry="4" fill="#1f2937" />
+              <ellipse className="zimmer-fliege-fluegel" cx="-3" cy="-5" rx="5" ry="3" fill="#e0f2fe" stroke="#2f2a26" strokeWidth="1.5" />
+              <ellipse className="zimmer-fliege-fluegel" cx="3" cy="-5" rx="5" ry="3" fill="#e0f2fe" stroke="#2f2a26" strokeWidth="1.5" />
+            </g>
           </g>
         )}
         <g transform={`translate(${KATZE * 0.62} -58)`}><Gedankenblase was={blase} /></g>

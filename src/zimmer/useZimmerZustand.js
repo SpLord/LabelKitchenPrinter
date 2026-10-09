@@ -12,6 +12,7 @@ import { STANDARD_NAME, putzeName } from './katzenname.js';
 import { abholen, geschenkDa, pflegeLesen, pflegen, selbstheilung } from './geschenk.js';
 import { freigeschaltet, freundschaftHeute, grenzeLesen, neuFreigeschaltet } from './herzen.js';
 import { einsammeln, fundLesen, fundPruefen } from './fundstuecke.js';
+import { tageszeit, wetter } from './tageszeit.js';
 import { abholen as aufgabeAbholenRegel, aufgabenLesen, druckLohn, zaehlen } from './aufgaben.js';
 
 const KEY_NAPF = 'zimmer_napf';
@@ -313,6 +314,8 @@ export default function useZimmerZustand() {
     wasser,
     moebel,
     mussMal: faellig(klo, Date.now()),
+    // Sonnenfleck (2.7.0): nur morgens und tagsüber, und nur, wenn die Sonne scheint
+    sonne: ['morgen', 'tag'].includes(tageszeit(new Date(jetzt))) && wetter(new Date(jetzt)) === 'sonne',
     ball,
     sonnenbad: kann('sonnenbad'),
     kloPlatz: hatKlo && klo.klo < KLO.kapazitaet,

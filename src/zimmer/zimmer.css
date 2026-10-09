@@ -48,6 +48,34 @@
 .zimmer-katze-hops { transform-box: fill-box; transform-origin: 50% 100%; }
 .zimmer-katze.laeuft .zimmer-katze-hops { animation: zimmer-hops 0.42s ease-in-out infinite; }
 
+/* Mehr Verhalten (2.7.0) ─────────────────── */
+/* Schwanzjagd: dreht sich hüpfend im Kreis (Spiegeln = Drehung in 2D) */
+.zimmer-katze.tut-schwanzjagd .zimmer-katze-hops { animation: schwanzjagd 0.7s ease-in-out infinite; }
+@keyframes schwanzjagd {
+  0% { transform: scaleX(1) translateY(0); } 25% { transform: scaleX(0.1) translateY(-14px); }
+  50% { transform: scaleX(-1) translateY(0); } 75% { transform: scaleX(-0.1) translateY(-14px); } 100% { transform: scaleX(1) translateY(0); }
+}
+/* Rennanfall: Beine doppelt so schnell, flacher Sprint */
+.zimmer-katze.tut-rennen .pose-bein { animation-duration: 0.2s !important; }
+.zimmer-katze.tut-rennen.laeuft .zimmer-katze-hops { animation: zimmer-sprint 0.2s ease-in-out infinite; }
+@keyframes zimmer-sprint { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+/* Treteln: Vorderpfoten abwechselnd */
+.pose-tritt { transform-box: fill-box; transform-origin: 50% 100%; animation: pose-tritt 0.5s ease-in-out infinite alternate; }
+.pose-tritt.zwei { animation-delay: -0.25s; }
+@keyframes pose-tritt { from { transform: translateY(0) scaleY(1); } to { transform: translateY(-7px) scaleY(1.12); } }
+/* Tatze nach der Fliege */
+.pose-tatze { transform-box: fill-box; transform-origin: 80% 100%; animation: pose-tatze 0.9s ease-in-out infinite; }
+@keyframes pose-tatze { 0%, 60%, 100% { transform: rotate(0); } 75% { transform: rotate(-55deg) translate(-4px, -10px); } }
+.zimmer-fliege { animation: zimmer-fliege 1.8s linear infinite; }
+@keyframes zimmer-fliege {
+  0% { transform: translate(-30px, -20px); } 25% { transform: translate(10px, -50px); }
+  50% { transform: translate(40px, -18px); } 75% { transform: translate(0, 4px); } 100% { transform: translate(-30px, -20px); }
+}
+.zimmer-fliege-fluegel { transform-box: fill-box; transform-origin: 50% 100%; animation: zimmer-flattern-fluegel 0.06s linear infinite alternate; }
+/* Sonnenfleck flimmert leicht */
+.zimmer-sonnenfleck { animation: zimmer-sonne 5s ease-in-out infinite; }
+@keyframes zimmer-sonne { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+
 /* Näpfe (2.5.0): das Wasser glitzert leicht */
 .zimmer-glitzer { animation: zimmer-glitzer 2.4s ease-in-out infinite; }
 @keyframes zimmer-glitzer { 0%, 100% { opacity: 0.4; transform: translateX(-3px); } 50% { opacity: 1; transform: translateX(4px); } }
@@ -364,6 +392,8 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
   .pose-bein, .pose-schwanz, .pose-kopf-frisst, .pose-atmen, .zimmer-zzz text,
   g.pose-ein, span.pose-ein > svg, .pose-augen, .pose-gaehnen, .pose-putzen, .pose-dehnen,
   .zimmer-katze.springt .zimmer-katze-hops, .zimmer-gras, .zimmer-regen, .zimmer-schnee, .zimmer-wolke, .zimmer-glitzer,
+  .zimmer-katze.tut-schwanzjagd .zimmer-katze-hops, .zimmer-katze.tut-rennen.laeuft .zimmer-katze-hops, .pose-tritt, .pose-tatze,
+  .zimmer-fliege, .zimmer-fliege-fluegel, .zimmer-sonnenfleck,
   .zimmer-strahl, .zimmer-pendel, .zimmer-herzchen { animation: none; }
   .zimmer-katze { transition-duration: 0ms !important; }
 }
