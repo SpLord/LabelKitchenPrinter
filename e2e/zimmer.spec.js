@@ -594,3 +594,32 @@ test('Küchenkatze: bei halbleerer Schale bietet sie auch Wasser an', async ({ p
   await expect(page.locator('.kuechen-katze-spruch')).toContainText('Frisches Wasser');
   expect(await page.evaluate(() => localStorage.getItem('zimmer_wasser'))).toBe('100');
 });
+
+/* ── 2.6.0: Etiketten-Münzen und Tagesaufgaben ────────────────────────── */
+import { AUFGABEN, aufgabenFuer } from '../src/zimmer/aufgaben.js';
+
+test('Etiketten-Münzen: ein gedrucktes Etikett bringt eine Münze', async ({ page }) => {
+  await oeffnen(page, '/', { zimmer_geschenk: schichtTag(0) });
+  await page.getByRole('button', { name: /^Steak/ }).first().click();
+  await warteAufDrucke(page, 1);
+  await expect(page.locator('.kuechen-karte')).toContainText('501');
+  await expect(page.locator('.kuechen-katze-muenze')).toBeAttached();
+});
+
+test('Aufgaben: drei für heute, erfüllte lassen sich einmal abholen', async ({ page }) => {
+  const tag = schichtTag(0);
+  const ids = aufgabenFuer(tag);
+  const a = AUFGABEN[ids[0]];
+  await zimmerAuf(page, {
+    zimmer_geschenk: tag,
+    zimmer_aufgaben: JSON.stringify({ tag, zaehler: { [a.zaehlt]: a.ziel }, abgeholt: [] }),
+  });
+  const knopf = page.getByRole('button', { name: /Aufgaben für heute/ });
+  await expect(knopf).toContainText('1');
+  await knopf.click();
+  await expect(page.locator('[data-aufgabe]')).toHaveCount(3);
+  const erste = page.locator(`[data-aufgabe="${ids[0]}"]`);
+  await erste.getByRole('button', { name: /abholen/ }).click();
+  await expect(page.locator('.zimmer-geld')).toContainText(String(500 + a.lohn));
+  await expect(erste).toContainText('erledigt');
+});

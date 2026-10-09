@@ -156,7 +156,7 @@ export default function App() {
         }
         // Die Küchenkatze freut sich über jedes gedruckte Etikett
         if (ergebnis.gedruckt > 0) {
-          window.dispatchEvent(new CustomEvent('etikett-gedruckt', { detail: { name: text } }));
+          window.dispatchEvent(new CustomEvent('etikett-gedruckt', { detail: { name: text, anzahl: ergebnis.gedruckt } }));
         }
         if (ergebnis.offen > 0) {
           // Wichtig ist die Zahl: der Rest muss nachgedruckt werden, nicht alles.

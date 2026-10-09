@@ -102,6 +102,14 @@
 }
 @keyframes kuechen-herz { 0% { opacity: 0; transform: translateY(6px) scale(0.5); } 25% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: translateY(-44px); } }
 
+/* Etiketten-Münze (2.6.0): steigt neben ihr auf */
+.kuechen-katze-muenze {
+  position: absolute; left: 70px; top: 10px; pointer-events: none; display: inline-flex; align-items: center; gap: 4px;
+  font: 800 1rem/1 Roboto, system-ui, sans-serif; color: #2f2a26; text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff;
+  animation: kuechen-herz 1100ms ease-out forwards;
+}
+.kuechen-katze-muenze .zimmer-muenze { width: 1.1em; height: 1.1em; border-width: 2px; }
+
 /* Sprechblase (Etikett gedruckt) und kleines Menü nach dem Antippen */
 .kuechen-katze-spruch, .kuechen-katze-menue {
   position: absolute; left: 50%; bottom: calc(100% + 6px); translate: -50% 0;
@@ -141,5 +149,5 @@
 @media (prefers-reduced-motion: reduce) {
   .kuechen-katze-ebene { transition-duration: 0ms !important; }
   .kuechen-katze-zzz, .kuechen-katze.pose-laufen .kuechen-katze-koerper svg,
-  .kuechen-katze-ebene.springt .kuechen-katze, .kuechen-katze-herz, .kuechen-katze-spruch, .kuechen-katze-menue { animation: none; }
+  .kuechen-katze-ebene.springt .kuechen-katze, .kuechen-katze-herz, .kuechen-katze-muenze, .kuechen-katze-spruch, .kuechen-katze-menue { animation: none; }
 }

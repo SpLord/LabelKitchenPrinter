@@ -12,6 +12,7 @@ import { STANDARD_NAME, putzeName } from './katzenname.js';
 import { abholen, geschenkDa, pflegeLesen, pflegen, selbstheilung } from './geschenk.js';
 import { freigeschaltet, freundschaftHeute, grenzeLesen, neuFreigeschaltet } from './herzen.js';
 import { einsammeln, fundLesen, fundPruefen } from './fundstuecke.js';
+import { abholen as aufgabeAbholenRegel, aufgabenLesen, druckLohn, zaehlen } from './aufgaben.js';
 
 const KEY_NAPF = 'zimmer_napf';
 const KEY_WASSER = 'zimmer_wasser';
@@ -25,6 +26,8 @@ const KEY_FREUNDSCHAFT_HEUTE = 'zimmer_freundschaft_heute';
 const KEY_HERZEN_GESEHEN = 'zimmer_herzen_gesehen';
 const KEY_FUND = 'zimmer_fund';
 const KEY_BALL = 'zimmer_ball';
+const KEY_AUFGABEN = 'zimmer_aufgaben';
+const KEY_DRUCKMUENZEN = 'zimmer_druckmuenzen';
 
 /* Wohin der Ball nach einem Stupser rollt: irgendwo auf den freien Boden. */
 const ballZiel = () => ({ x: Math.round(220 + Math.random() * 700), y: Math.round(615 + Math.random() * 40) });
@@ -102,6 +105,18 @@ export default function useZimmerZustand() {
     schreibenText(KEY_HERZEN_GESEHEN, String(wachstum.herzen));
   }, [wachstum.herzen]);
   const [napf, setNapf] = useState(() => lesenZahl(KEY_NAPF, 30));
+  // Tagesaufgaben (2.6.0): zählen mit, was man ohnehin tut
+  const [aufgaben, setAufgaben] = useState(() => aufgabenLesen(lesenText(KEY_AUFGABEN)));
+  const aufgabenRef = useRef(aufgaben);
+  aufgabenRef.current = aufgaben;
+  const zaehle = useCallback((was, n = 1) => {
+    if (!(n > 0)) return;
+    const neu = zaehlen(aufgabenRef.current, was, n, new Date());
+    aufgabenRef.current = neu;
+    setAufgaben(neu);
+    schreibenText(KEY_AUFGABEN, JSON.stringify(neu));
+  }, []);
+
   // Wasserschale (2.5.0): leert sich beim Trinken, Auffüllen ist kostenlos
   const [wasser, setWasser] = useState(() => lesenZahl(KEY_WASSER, 100));
   useEffect(() => {
@@ -110,8 +125,9 @@ export default function useZimmerZustand() {
   const wasserAuffuellen = useCallback(() => {
     if (wasser >= 100) return false;
     setWasser(100);
+    zaehle('wasser');
     return true;
-  }, [wasser]);
+  }, [wasser, zaehle]);
 
   // Eigener Name – "Mails" ist der Koch
   const [name, setNameRoh] = useState(() => {
@@ -140,12 +156,13 @@ export default function useZimmerZustand() {
   // Pflegepunkte: wer sich heute kümmert, bekommt morgen ein grösseres Geschenk
   const [pflegeStand, setPflegeStand] = useState(() => pflegeLesen(lesenText(KEY_PFLEGE)));
   const pflege = useCallback((art) => {
+    zaehle(art);   // füttern, putzen, streicheln, spielen zählen auch für die Aufgaben
     setPflegeStand((p) => {
       const neu = pflegen(p, art, new Date());
       schreibenText(KEY_PFLEGE, JSON.stringify(neu));
       return neu;
     });
-  }, []);
+  }, [zaehle]);
 
   useEffect(() => {
     try { localStorage.setItem(KEY_NAPF, String(Math.round(napf))); } catch { /* gesperrt */ }
@@ -176,8 +193,50 @@ export default function useZimmerZustand() {
     setAbgeholt(r.abgeholt);
     schreibenText(KEY_GESCHENK, r.abgeholt);
     setzeMuenzen((c) => c + r.muenzen);
+    zaehle('geschenk');
     return r.muenzen;
-  }, [abgeholt, pflegeStand, wachstum.herzen, laden.wirkung, setzeMuenzen, zweitesGeschenk]);
+  }, [abgeholt, pflegeStand, wachstum.herzen, laden.wirkung, setzeMuenzen, zweitesGeschenk, zaehle]);
+
+  /* Aufgabe abholen: Lohn gutschreiben, nur einmal je Tag. */
+  const aufgabeAbholen = useCallback((id) => {
+    const r = aufgabeAbholenRegel(aufgabenRef.current, id);
+    if (r.lohn <= 0) return 0;
+    aufgabenRef.current = r.stand;
+    setAufgaben(r.stand);
+    schreibenText(KEY_AUFGABEN, JSON.stringify(r.stand));
+    setzeMuenzen((c) => c + r.lohn);
+    return r.lohn;
+  }, [setzeMuenzen]);
+
+  /*
+    Etiketten-Münzen (2.6.0): jedes gedruckte Etikett bringt eine Münze, bis
+    zur Tagesgrenze. Die Küchenkatze zeigt sie an (Ereignis 'druck-muenze').
+  */
+  const druckRef = useRef(undefined);
+  if (druckRef.current === undefined) {
+    try { druckRef.current = JSON.parse(lesenText(KEY_DRUCKMUENZEN)); } catch { druckRef.current = null; }
+  }
+  const [druckHeute, setDruckHeute] = useState(() => druckRef.current);
+  useEffect(() => {
+    const gedruckt = (e) => {
+      const n = Math.max(1, Math.min(50, Number(e.detail?.anzahl) || 1));
+      let lohn = 0;
+      for (let i = 0; i < n; i += 1) {
+        const r = druckLohn(druckRef.current, new Date());
+        druckRef.current = r.stand;
+        lohn += r.lohn;
+      }
+      setDruckHeute(druckRef.current);
+      schreibenText(KEY_DRUCKMUENZEN, JSON.stringify(druckRef.current));
+      zaehle('drucken', n);
+      if (lohn > 0) {
+        setzeMuenzen((c) => c + lohn);
+        window.dispatchEvent(new CustomEvent('druck-muenze', { detail: { lohn } }));
+      }
+    };
+    window.addEventListener('etikett-gedruckt', gedruckt);
+    return () => window.removeEventListener('etikett-gedruckt', gedruckt);
+  }, [zaehle, setzeMuenzen]);
 
   // Fundstücke (fünftes Herz): einmal je Schichttag gewürfelt, im Minutentakt geprüft
   const [fund, setFund] = useState(() => fundLesen(lesenText(KEY_FUND)));
@@ -342,6 +401,10 @@ export default function useZimmerZustand() {
   return {
     name,
     umbenennen,
+    aufgaben,
+    zaehle,
+    aufgabeAbholen,
+    druckHeute,
     ball,
     nacht: schlaeft(new Date(jetzt)),
     jetzt,

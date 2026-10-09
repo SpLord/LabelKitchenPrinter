@@ -32,6 +32,7 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
   const [menue, setMenue] = useState(false);
   const [spruch, setSpruch] = useState(null);
   const [herzen, setHerzen] = useState(0);
+  const [muenze, setMuenze] = useState(null);   // Etiketten-Münze (2.6.0)
   const katzeRef = useRef(katze);
   katzeRef.current = katze;
   const ebenenRef = useRef(ebenen);
@@ -107,6 +108,16 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
     return () => window.removeEventListener('etikett-gedruckt', gedruckt);
   }, []);
   useEffect(() => {
+    const lohn = (e) => setMuenze({ id: Date.now(), lohn: e.detail?.lohn ?? 1 });
+    window.addEventListener('druck-muenze', lohn);
+    return () => window.removeEventListener('druck-muenze', lohn);
+  }, []);
+  useEffect(() => {
+    if (!muenze) return undefined;
+    const t = setTimeout(() => setMuenze(null), 1200);
+    return () => clearTimeout(t);
+  }, [muenze]);
+  useEffect(() => {
     if (!spruch) return undefined;
     const t = setTimeout(() => setSpruch(null), 2600);
     return () => clearTimeout(t);
@@ -171,6 +182,11 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
         )}
       </button>
       {herzen > 0 && <span key={herzen} className="kuechen-katze-herz" aria-hidden="true" />}
+      {muenze && (
+        <span key={muenze.id} className="kuechen-katze-muenze" aria-hidden="true">
+          <span className="zimmer-muenze" />+{muenze.lohn}
+        </span>
+      )}
       {spruch && !menue && (
         <span key={spruch.id} className={`kuechen-katze-spruch ${unten ? 'unten' : ''}`} role="status">{spruch.text}</span>
       )}

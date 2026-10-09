@@ -424,3 +424,25 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 /* Vollbild-Knopf: blendet die Browserleisten aus */
 .zimmer-vollbild { width: 4.8cqw; padding: 0; }
 .zimmer-vollbild svg { width: 55%; height: 55%; }
+
+/* Aufgaben (2.6.0) */
+.zimmer-aufgaben-knopf { position: relative; width: 4.8cqw; padding: 0; }
+.zimmer-aufgaben-knopf svg { width: 70%; height: 70%; }
+.zimmer-abzeichen {
+  position: absolute; top: -0.8cqw; right: -0.8cqw; min-width: 2.2cqw; height: 2.2cqw; padding: 0 0.4cqw;
+  border-radius: 999px; background: #ef4444; color: #fff; border: 0.3cqw solid var(--kontur);
+  font-size: 1.3cqw; font-weight: 800; display: grid; place-items: center;
+  animation: karte-puls 2.4s ease-in-out infinite;
+}
+.zimmer-aufgaben ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.2cqw; }
+.zimmer-aufgaben li {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2cqw;
+  padding: 1.4cqw 1.8cqw; background: #fff; border: 0.35cqw solid var(--kontur); border-radius: 1.6cqw;
+}
+.zimmer-aufgaben li.bereit { background: #fef9c3; }
+.zimmer-aufgaben li.fertig { background: #f0fdf4; color: #4b5563; }
+.zimmer-aufgabe-text { display: grid; gap: 0.6cqw; }
+.zimmer-aufgabe-text strong { font-size: 1.9cqw; }
+.zimmer-aufgabe-text small { font-size: 1.3cqw; color: #78350f; font-weight: 700; }
+.zimmer-aufgabe-balken { display: block; height: 1.2cqw; border-radius: 999px; background: #f5efe6; border: 0.25cqw solid var(--kontur); overflow: hidden; }
+.zimmer-aufgabe-balken span { display: block; height: 100%; background: #fbbf24; transition: width 400ms ease; }

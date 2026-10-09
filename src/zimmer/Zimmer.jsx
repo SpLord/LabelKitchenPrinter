@@ -8,6 +8,7 @@ import EinrichtenKarten from './EinrichtenKarten.jsx';
 import Vollbild from './Vollbild.jsx';
 import { KleiderschrankKarten, LadenKarten } from './GarderobeKarten.jsx';
 import { FreundschaftKarten, HerzFeier } from './Freundschaft.jsx';
+import AufgabenKarten, { offeneBelohnungen } from './AufgabenKarten.jsx';
 import Szene from './Szene.jsx';
 import SpielFederangel from './SpielFederangel.jsx';
 import SpielMaeuseloch from './SpielMaeuseloch.jsx';
@@ -31,6 +32,7 @@ const SYMBOLE = {
   spielen: <g {...K}><circle r="18" fill="#60a5fa" /><path d="M-17 -5 q17 10 34 0 M-14 10 q14 -8 28 0" fill="none" stroke="#fff" /><circle r="18" fill="none" /></g>,
   laden: <g {...K}><path d="M-10 -10 v-6 a10 10 0 0 1 20 0 v6" fill="none" /><path d="M-18 -10 h36 l-3 30 h-30 Z" fill="#fbbf24" /></g>,
   kleiderschrank: <g {...K} fill="none"><path d="M0 -6 v-4 a6 6 0 1 1 6 -6" /><path d="M0 -6 L-22 10 h44 Z" fill="#c7b8f5" /></g>,
+  aufgaben: <g {...K}><rect x="-16" y="-20" width="32" height="40" rx="5" fill="#fde68a" /><rect x="-8" y="-24" width="16" height="8" rx="3" fill="#a16207" /><path d="M-9 -6 l4 4 l8 -8 M-9 8 h18" fill="none" strokeWidth="3.5" /></g>,
   herzen: <g {...K}><path d="M0 -6 C-6 -16 -22 -12 -18 2 C-15 11 0 20 0 20 C0 20 15 11 18 2 C22 -12 6 -16 0 -6 Z" fill="#ef4444" /></g>,
   einrichten: <g {...K}><rect x="-20" y="-16" width="40" height="22" rx="8" fill="#86c5a4" /><rect x="-24" y="0" width="48" height="16" rx="6" fill="#a7d8bf" /><path d="M-18 16 v5 M18 16 v5" /></g>,
 };
@@ -130,8 +132,8 @@ function SpieleKarten({ onSpiel, muenzen }) {
   );
 }
 
-function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
-  const titel = BEREICHE.find((b) => b.id === bereich)?.titel ?? (bereich === 'herzen' ? 'Freundschaft' : '');
+function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen, onLohn }) {
+  const titel = BEREICHE.find((b) => b.id === bereich)?.titel ?? ({ herzen: 'Freundschaft', aufgaben: 'Aufgaben für heute' }[bereich] ?? '');
   return (
     <div className="zimmer-blatt-huelle" onClick={onZu}>
       <section className="zimmer-blatt" role="dialog" aria-label={titel} onClick={(e) => e.stopPropagation()}>
@@ -213,6 +215,8 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen }) {
           <SpieleKarten onSpiel={onSpiel} muenzen={zustand.muenzen} />
         ) : bereich === 'einrichten' ? (
           <EinrichtenKarten zustand={zustand} onGekauft={onGekauft} />
+        ) : bereich === 'aufgaben' ? (
+          <AufgabenKarten zustand={zustand} onLohn={onLohn} />
         ) : bereich === 'herzen' ? (
           <FreundschaftKarten herzen={zustand.wachstum.herzen} gefunden={zustand.gefunden} />
         ) : bereich === 'laden' ? (
@@ -242,7 +246,7 @@ export default function Zimmer({ zustand, onZu }) {
     setSpiel(art);
   };
 
-  const { erfreuen, naeher, setMuenzen, name, pflege } = zustand;
+  const { erfreuen, naeher, setMuenzen, name, pflege, zaehle } = zustand;
   const { freigeben } = katze;
   const federEnde = useCallback((faenge) => {
     setSpiel(null);
@@ -254,20 +258,22 @@ export default function Zimmer({ zustand, onZu }) {
     setSpiel(null);
     freigeben();
     pflege('spielen');
+    zaehle('leckerli', faenge);
     const muenzen = muenzenFuerRunde(faenge);
     if (muenzen > 0) setMuenzen((c) => c + muenzen);
     setErgebnis(muenzen > 0 ? `+${muenzen} Münzen` : 'Diesmal nichts gefangen');
-  }, [freigeben, setMuenzen, pflege]);
+  }, [freigeben, setMuenzen, pflege, zaehle]);
   const mausEnde = useCallback((treffer) => {
     setSpiel(null);
     freigeben();
     pflege('spielen');
+    zaehle('maeuse', treffer);
     if (treffer > 0) {
       erfreuen(launeFuer(treffer));
       naeher('spielen', 1);
     }
     setErgebnis(treffer > 0 ? `${treffer} ${treffer === 1 ? 'Maus' : 'Mäuse'} – ${name} ist ganz aufgedreht` : 'Die Mäuse waren zu flink');
-  }, [freigeben, pflege, erfreuen, naeher, name]);
+  }, [freigeben, pflege, erfreuen, naeher, name, zaehle]);
   const mausTreffer = useCallback(() => setHerzchen((n) => n + 1), []);
 
   const federFang = useCallback(() => {
@@ -445,6 +451,12 @@ export default function Zimmer({ zustand, onZu }) {
           <span className="zimmer-knopf zimmer-geld" aria-label={`${zustand.muenzen} Münzen`}>
             <span className="zimmer-muenze" aria-hidden="true" /> {zustand.muenzen}
           </span>
+          {/* Aufgaben für heute; die Zahl zeigt fertige, noch nicht abgeholte */}
+          <button className="zimmer-knopf zimmer-aufgaben-knopf" onClick={() => setBereich('aufgaben')}
+                  aria-label={`Aufgaben für heute${offeneBelohnungen(zustand.aufgaben) ? ` – ${offeneBelohnungen(zustand.aufgaben)} zum Abholen` : ''}`}>
+            <Symbol name="aufgaben" groesse={30} />
+            {offeneBelohnungen(zustand.aufgaben) > 0 && <span className="zimmer-abzeichen">{offeneBelohnungen(zustand.aufgaben)}</span>}
+          </button>
           <Vollbild />
         </header>
 
@@ -478,7 +490,7 @@ export default function Zimmer({ zustand, onZu }) {
         {!spiel && !bereich && zustand.neueFreischaltungen.length > 0 && (
           <HerzFeier neu={zustand.neueFreischaltungen} name={zustand.name} onWeiter={zustand.freischaltungenGesehen} />
         )}
-        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft}
+        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft} onLohn={(l) => setErgebnis(`+${l} Münzen – gut gemacht!`)}
                                   onAngezogen={(a) => setErgebnis(`${a.name} gekauft – ${zustand.name} trägt es`)} />}
       </div>
     </div>
