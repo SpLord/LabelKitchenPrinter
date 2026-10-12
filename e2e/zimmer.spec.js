@@ -637,9 +637,10 @@ test('Sonnenfleck: an sonnigen Tagen liegt er auf dem Boden, nachts nicht', asyn
 });
 
 /* ── 2.8.0: Laserpointer, Versteckspiel, Memory ───────────────────────── */
-test('Spielen bietet jetzt sieben Spiele', async ({ page }) => {
+test('Spielen bietet jetzt zehn Spiele', async ({ page }) => {
   await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
-  for (const n of ['Federangel', 'Leckerli fangen', 'Mäuseloch', 'Hütchenspiel', 'Laserpointer', 'Versteckspiel', 'Memory']) {
+  for (const n of ['Federangel', 'Leckerli fangen', 'Mäuseloch', 'Hütchenspiel', 'Laserpointer', 'Versteckspiel', 'Memory',
+    'Seifenblasen', 'Nachmachen', 'Apportieren']) {
     await expect(page.locator('.zimmer-karte', { hasText: n })).toHaveCount(1);
   }
 });
@@ -715,4 +716,100 @@ test('Karton: sitzt sie drin, liegt die Vorderwand vor ihr', async ({ page }) =>
   }
   expect(drin).toBe(true);
   await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-karton/);
+});
+
+/* ── 2.10.0: drei Spiele, Interaktionen, Animationen ────────────────────── */
+/* Szenenpunkt (1024 × 768) → Bildschirmpunkt, auch im randlosen Ausschnitt */
+const aufBildschirm = (page, x, y) => page.evaluate(([sx, sy]) => {
+  const p = new DOMPoint(sx, sy).matrixTransform(document.querySelector('.zimmer-szene').getScreenCTM());
+  return { x: p.x, y: p.y };
+}, [x, y]);
+
+test('Seifenblasen: antippen lässt sie platzen, Fertig meldet es', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Seifenblasen' }).locator('.zimmer-preis').click();
+  const blase = page.locator('[data-blase]').first();
+  await expect(blase).toBeAttached();
+  await blase.dispatchEvent('pointerdown');
+  await expect(page.locator('.zimmer-spiel-hud')).toContainText('1 geplatzt');
+  await expect(page.locator('[data-geplatzt]')).toBeAttached();
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('geplatzt');
+});
+
+test('Nachmachen: sie zeigt ein Kissen, richtig nachgemacht bringt Münzen', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Nachmachen' }).locator('.zimmer-preis').click();
+  // Welches Kissen leuchtet, während sie vorzeigt?
+  const an = page.locator('[data-kissen]:has(.leuchtet)');
+  await expect(an).toHaveCount(1);
+  const k = await an.getAttribute('data-kissen');
+  await expect(page.locator('[data-nachmachen-phase="nachmachen"]')).toBeVisible();
+  await page.locator(`[data-kissen="${k}"]`).dispatchEvent('pointerdown');
+  await expect(page.locator('.zimmer-spiel-hud')).toContainText('Runde 2');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('+2 Münzen');
+  await expect(page.locator('.zimmer-geld')).toContainText('502');
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
+  await expect(page.locator('.zimmer-karte', { hasText: 'Nachmachen' }).locator('.zimmer-preis')).toBeDisabled();
+});
+
+test('Nachmachen: falsches Kissen beendet das Spiel ohne Münzen', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Nachmachen' }).locator('.zimmer-preis').click();
+  const an = page.locator('[data-kissen]:has(.leuchtet)');
+  await expect(an).toHaveCount(1);
+  const k = Number(await an.getAttribute('data-kissen'));
+  await expect(page.locator('[data-nachmachen-phase="nachmachen"]')).toBeVisible();
+  await page.locator(`[data-kissen="${(k + 1) % 4}"]`).dispatchEvent('pointerdown');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('war zu schnell');
+  await expect(page.locator('.zimmer-geld')).toContainText('500');
+});
+
+test('Apportieren: geworfenes Knäuel holt sie und bringt es zurück', async ({ page }) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('.zimmer-karte', { hasText: 'Apportieren' }).locator('.zimmer-preis').click();
+  const p = await aufBildschirm(page, 300, 620);
+  await page.mouse.click(p.x, p.y);
+  await expect(page.locator('[data-wolle="holt"]')).toBeAttached();
+  await expect(page.locator('.zimmer-spiel-hud')).toContainText('1-mal gebracht', { timeout: 15_000 });
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('gebracht');
+});
+
+test('Locken: Tipp auf den Boden – sie kommt hin und legt den Kopf schief', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  const p = await aufBildschirm(page, 260, 600);
+  await page.mouse.click(p.x, p.y);
+  await expect(page.locator('[data-tipp]')).toBeAttached();
+  await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-kopfschief/);
+  const da = await page.evaluate(() => document.querySelector('.zimmer-katze').style.transform);
+  // Ziel 260/600 → translate(260 − 75, 600 − 150 + 12); der Mausklick rundet auf Bildschirmpixel
+  const [x, y] = da.match(/-?[\d.]+/g).map(Number);
+  expect(Math.abs(x - 185)).toBeLessThanOrEqual(2);
+  expect(Math.abs(y - 462)).toBeLessThanOrEqual(2);
+});
+
+test('Fenster antippen: jemand kommt vorbei, sie springt hin und schnattert', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  await page.locator('[data-fenster]').click();
+  await expect(page.locator('[data-besuch]')).toBeAttached();
+  await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-schnattern/);
+  await expect(page.locator('[data-sagt="schnattern"]')).toBeAttached({ timeout: 8_000 });
+});
+
+test('Kuscheln: lange drücken lässt sie schnurren und treteln', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0) });
+  const katze = page.locator('.zimmer-katze');
+  await katze.dispatchEvent('pointerdown');
+  await expect(page.locator('[data-schnurrt]')).toBeAttached();
+  await katze.dispatchEvent('pointerup');
+  await expect(katze).toHaveClass(/tut-treteln/);
+});
+
+test('Aquarium antippen: die Fische flitzen, sie kommt gucken', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0), cat_besitz: JSON.stringify(['aquarium']) });
+  await page.locator('[aria-label="Ans Aquarium tippen"]').click();
+  await expect(page.locator('.fische-erschreckt')).toBeAttached();
+  await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-fische/);
 });

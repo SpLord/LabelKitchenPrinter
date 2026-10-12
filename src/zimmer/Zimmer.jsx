@@ -22,6 +22,11 @@ import { LASER, MEMORY, VERSTECK, abkuehlung, memoryLohn, versteckLohn } from '.
 import { BESUCH, besucher, tageszeit, wetter } from './tageszeit.js';
 import { FUNDSTUECKE } from './fundstuecke.js';
 import SpielLeckerli from './SpielLeckerli.jsx';
+import SpielBlasen from './SpielBlasen.jsx';
+import SpielNachmachen from './SpielNachmachen.jsx';
+import SpielWolle from './SpielWolle.jsx';
+import { NACHMACHEN, amBoden, blasenLaune, nachmachenLohn, wolleLaune } from './spiele3.js';
+import { ORTE } from './verhalten.js';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
 
 const KEY_LECKERLI = 'zimmer_leckerli_zuletzt';
@@ -29,6 +34,7 @@ const leckerliZuletzt = () => { try { return localStorage.getItem(KEY_LECKERLI);
 // Neue Münzspiele (2.8.0): je einmal pro Stunde
 const KEY_VERSTECK = 'zimmer_versteck_zuletzt';
 const KEY_MEMORY = 'zimmer_memory_zuletzt';
+const KEY_NACHMACHEN = 'zimmer_nachmachen_zuletzt';   // 2.10.0
 const zuletzt = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const merken = (key) => { try { localStorage.setItem(key, String(Date.now())); } catch { /* gesperrt */ } };
 import useKatzeImZimmer from './useKatzeImZimmer.js';
@@ -166,6 +172,26 @@ function SpieleKarten({ onSpiel, muenzen }) {
       <SpielMitPause id="memory" titel="Memory" onSpiel={onSpiel} schluessel={KEY_MEMORY}
                      text={`${MEMORY.paare} Paare Fundstücke. Bis ${MEMORY.lohn[0][1]} Münzen, einmal pro Stunde.`}
                      bild={<g {...K} strokeWidth="3"><rect x="8" y="14" width="28" height="40" rx="5" fill="#fde68a" /><rect x="44" y="14" width="28" height="40" rx="5" fill="#fff" /><circle cx="58" cy="34" r="8" fill="#a5f3fc" /></g>} />
+      {/* 2.10.0 */}
+      <article className="zimmer-karte">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K} strokeWidth="3" fill="#e0f2fe" stroke="#0284c7"><circle cx="28" cy="40" r="16" /><circle cx="54" cy="22" r="11" /><circle cx="58" cy="52" r="7" /></g>
+        </svg>
+        <h3>Seifenblasen</h3>
+        <p>Blasen antippen, sie platzen – und sie springt hin. Bringt Laune.</p>
+        <button className="zimmer-preis" onClick={() => onSpiel('blasen')}>spielen</button>
+      </article>
+      <SpielMitPause id="nachmachen" titel="Nachmachen" onSpiel={onSpiel} schluessel={KEY_NACHMACHEN}
+                     text={`Sie tippt Kissen an, du machst es nach. ${NACHMACHEN.lohnJe} Münzen je Runde, einmal pro Stunde.`}
+                     bild={<g {...K} strokeWidth="3">{[['#ef4444', 14, 26], ['#3b82f6', 44, 26], ['#22c55e', 14, 52], ['#f59e0b', 44, 52]].map(([f, x, y]) => <ellipse key={f} cx={x + 11} cy={y} rx="13" ry="8" fill={f} />)}</g>} />
+      <article className="zimmer-karte">
+        <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+          <g {...K} strokeWidth="3"><circle cx="34" cy="38" r="20" fill="#f472b6" /><path d="M18 30 q16 10 32 0 M16 42 q18 10 36 0" fill="none" stroke="#9d174d" strokeWidth="2.5" /><path d="M52 50 q12 8 22 -2" fill="none" /></g>
+        </svg>
+        <h3>Apportieren</h3>
+        <p>Wollknäuel werfen – sie holt es und bringt es zurück. Bringt Laune.</p>
+        <button className="zimmer-preis" onClick={() => onSpiel('wolle')}>spielen</button>
+      </article>
     </div>
   );
 }
@@ -274,15 +300,22 @@ export default function Zimmer({ zustand, onZu }) {
   const [bereich, setBereich] = useState(null);
   const [herzchen, setHerzchen] = useState(0);
   const [spiel, setSpiel] = useState(null);       // 'feder' | 'leckerli' | null
+  const spielRef = useRef(spiel);
+  spielRef.current = spiel;
+  // Tippt man gleich nach dem Öffnen etwas an, gewinnt der Tipp gegen die Begrüssung
+  const begruessungRef = useRef([]);
+  const begruessungAbbrechen = () => { begruessungRef.current.forEach(clearTimeout); begruessungRef.current = []; };
   const [ergebnis, setErgebnis] = useState(null);
 
   const spielStarten = (art) => {
+    begruessungAbbrechen();
     setBereich(null);
     if (art === 'leckerli') {
       try { localStorage.setItem(KEY_LECKERLI, String(Date.now())); } catch { /* gesperrt */ }
     }
     if (art === 'versteck') merken(KEY_VERSTECK);
     if (art === 'memory') merken(KEY_MEMORY);
+    if (art === 'nachmachen') merken(KEY_NACHMACHEN);
     setSpiel(art);
   };
 
@@ -344,6 +377,36 @@ export default function Zimmer({ zustand, onZu }) {
     setMuenzen((c) => c + lohn);
     setErgebnis(`Alle Paare in ${zuege} Zügen: +${lohn} Münzen`);
   }, [freigeben, pflege, setMuenzen]);
+
+  // 2.10.0: Seifenblasen und Apportieren (Laune), Nachmachen (Münzen)
+  const blasenEnde = useCallback((n) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    if (n > 0) {
+      erfreuen(blasenLaune(n));
+      naeher('spielen', 1);
+    }
+    setErgebnis(n > 0 ? `${n} ${n === 1 ? 'Blase' : 'Blasen'} geplatzt – ${name} ist ganz zappelig` : 'Die Blasen sind davongeflogen');
+  }, [freigeben, pflege, erfreuen, naeher, name]);
+  const nachmachenEnde = useCallback((runden) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    const lohn = nachmachenLohn(runden);
+    if (lohn > 0) setMuenzen((c) => c + lohn);
+    setErgebnis(lohn > 0 ? `${runden} ${runden === 1 ? 'Runde' : 'Runden'} nachgemacht: +${lohn} Münzen` : `${name} war zu schnell`);
+  }, [freigeben, pflege, setMuenzen, name]);
+  const wolleEnde = useCallback((n) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    if (n > 0) {
+      erfreuen(wolleLaune(n));
+      naeher('spielen', 1);
+    }
+    setErgebnis(n > 0 ? `${n}-mal gebracht – ${name} ist stolz` : `${name} hat das Knäuel liegen lassen`);
+  }, [freigeben, pflege, erfreuen, naeher, name]);
 
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
@@ -409,7 +472,9 @@ export default function Zimmer({ zustand, onZu }) {
   useEffect(() => {
     if (!begruesst) return undefined;
     const hin = setTimeout(() => { folgeKatze({ x: 512, y: 650 }); setHerzchen((n) => n + 1); }, 400);
-    const weiter = setTimeout(() => freigebenKatze(), 2600);
+    // Läuft schon ein Spiel, führt das Spiel sie – dann nicht dazwischenfunken
+    const weiter = setTimeout(() => { if (!spielRef.current) freigebenKatze(); }, 2600);
+    begruessungRef.current = [hin, weiter];
     return () => { clearTimeout(hin); clearTimeout(weiter); };
     // nur beim Öffnen des Zimmers
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -452,6 +517,56 @@ export default function Zimmer({ zustand, onZu }) {
     if (zustand.wasserAuffuellen()) setErgebnis('Frisches Wasser – danke!');
   };
 
+  // 2.10.0: Kuscheln (lange drücken), Locken (Boden), Fenster und Aquarium antippen
+  const [schnurrt, setSchnurrt] = useState(false);
+  const [tipp, setTipp] = useState(null);
+  const [fischeErschreckt, setFischeErschreckt] = useState(false);
+  useEffect(() => {
+    if (!schnurrt) return undefined;
+    const t = setTimeout(() => setSchnurrt(false), 2600);
+    return () => clearTimeout(t);
+  }, [schnurrt]);
+  useEffect(() => {
+    if (!tipp) return undefined;
+    const t = setTimeout(() => setTipp(null), 700);
+    return () => clearTimeout(t);
+  }, [tipp]);
+  useEffect(() => {
+    if (!fischeErschreckt) return undefined;
+    const t = setTimeout(() => setFischeErschreckt(false), 1400);
+    return () => clearTimeout(t);
+  }, [fischeErschreckt]);
+  const { tue } = katze;
+  const kuscheln = () => {
+    begruessungAbbrechen();
+    setSchnurrt(true);
+    tue(null, 'treteln', 2600);
+    zustand.pflege('streicheln');
+    zustand.erfreuen(FREUDE_STREICHELN);
+    zustand.naeher('streicheln', FREUNDSCHAFT_STREICHELN);
+    setHerzchen((n) => n + 1);
+  };
+  const locken = (p) => {
+    begruessungAbbrechen();
+    const ziel = amBoden(p);
+    setTipp({ id: Date.now(), x: ziel.x, y: ziel.y });
+    tue({ ...ziel, richtung: ziel.x < katze.pos.x ? -1 : 1 }, 'kopfschief', 2600);
+  };
+  const ansFenster = () => {
+    begruessungAbbrechen();
+    tue(ORTE.fensterbank, 'schnattern', 5_000);
+    if (!besuch) {
+      const id = Date.now();
+      setBesuch({ id, art: besucher(zeit) });
+      setTimeout(() => setBesuch((b) => (b?.id === id ? null : b)), BESUCH.dauer);
+    }
+  };
+  const ansAquarium = () => {
+    begruessungAbbrechen();
+    setFischeErschreckt(true);
+    tue(ORTE.aquarium, 'fische', 8_000);
+  };
+
   const streicheln = () => {
     if (zustand.kann('rollen')) setRollt(true);
     zustand.pflege('streicheln');
@@ -472,7 +587,9 @@ export default function Zimmer({ zustand, onZu }) {
                groesse={zustand.wachstum.phase.groesse}
                wasser={zustand.wasser} onNapf={() => setBereich('fuettern')} onWasser={wasserAuffuellen}
                wetterArt={wetter(new Date(zustand.jetzt))} ball={zustand.ball} springt={katze.springt}
-               sonnig={['morgen', 'tag'].includes(zeit) && wetter(new Date(zustand.jetzt)) === 'sonne'} />
+               sonnig={['morgen', 'tag'].includes(zeit) && wetter(new Date(zustand.jetzt)) === 'sonne'}
+               onBoden={locken} onFenster={ansFenster} onAquarium={ansAquarium} onKatzeLang={kuscheln}
+               schnurrt={schnurrt} fischeErschreckt={fischeErschreckt} tipp={tipp} />
 
         {lohnPops.map((p) => (
           <span key={p.id} className="zimmer-lohn" aria-hidden="true"
@@ -536,6 +653,9 @@ export default function Zimmer({ zustand, onZu }) {
         {spiel === 'laser' && <SpielLaser katze={katze} onSprung={mausTreffer} onEnde={laserEnde} />}
         {spiel === 'versteck' && <SpielVersteck fell={zustand.fell} onEnde={versteckEnde} />}
         {spiel === 'memory' && <SpielMemory onEnde={memoryEnde} />}
+        {spiel === 'blasen' && <SpielBlasen katze={katze} onPlatzt={mausTreffer} onEnde={blasenEnde} />}
+        {spiel === 'nachmachen' && <SpielNachmachen katze={katze} onEnde={nachmachenEnde} />}
+        {spiel === 'wolle' && <SpielWolle katze={katze} onGebracht={mausTreffer} onEnde={wolleEnde} />}
         {spiel === 'huetchen' && (
           <ErrorBoundary label="Das Hütchenspiel">
             <ShellGame

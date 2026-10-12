@@ -42,9 +42,10 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
 
   useEffect(() => {
     ausRef.current = false;
-    const durchgang = () => {
+    // vorgabe: eine bestimmte Tätigkeit statt der eigenen Wahl (Tipp im Zimmer)
+    const durchgang = (vorgabe = null) => {
       if (gefuehrtRef.current) return;
-      const t = naechsteTaetigkeit(lageRef.current);
+      const t = vorgabe ?? naechsteTaetigkeit(lageRef.current);
       const von = posRef.current;
       const nach = t.ort ?? von;
       // Hinauf aufs Regal oder herunter: ein Sprung im Bogen statt schräg zu gleiten
@@ -62,12 +63,12 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
         warte(t.dauer, () => {
           anwendenRef.current?.(t.art, nach);
           setKatze((k) => ({ ...k, blase: null }));
-          warte(400, durchgang);
+          warte(400, () => durchgang());
         });
       });
     };
     durchgangRef.current = durchgang;
-    warte(900, durchgang);
+    warte(900, () => durchgang());
     return () => { ausRef.current = true; clearTimeout(uhrRef.current); };
   }, [lageRef, anwendenRef, warte]);
 
@@ -89,8 +90,19 @@ export default function useKatzeImZimmer(lageRef, anwendenRef) {
     warte(800, () => durchgangRef.current?.());
   }, [warte]);
 
+  /*
+    Gelockt (2.10.0): Tipp auf Boden, Fenster oder Aquarium – sie unterbricht,
+    was sie tut, geht hin und tut dort art. Danach wieder wie gewohnt.
+    Ein Tipp gewinnt auch gegen die Begrüssung (dort ist sie kurz gefuehrt);
+    in Spielen liegt die Spielfläche über dem Zimmer, Tipps kommen gar nicht an.
+  */
+  const tue = useCallback((ort, art, dauer) => {
+    gefuehrtRef.current = false;
+    durchgangRef.current?.({ art, ort, dauer, blase: null });
+  }, []);
+
   /* Wo sie gerade wirklich ist (Ziel des laufenden Übergangs) – für die Spiele. */
   const wo = useCallback(() => posRef.current, []);
 
-  return { ...katze, folge, freigeben, wo };
+  return { ...katze, folge, freigeben, wo, tue };
 }

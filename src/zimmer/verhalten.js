@@ -111,6 +111,12 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
     { art: 'treteln', gewicht: 2, dauer: 6_000 },
     { art: 'fliege', gewicht: 1, dauer: 5_000 },
     { art: 'fensterbank', gewicht: 2, ort: ORTE.fensterbank, dauer: 12_000 },
+    // 2.10.0: noch mehr kleine Dinge, jedes mit eigener Animation
+    { art: 'miauen', gewicht: 1, dauer: 2_400 },
+    { art: 'kopfschief', gewicht: 1, dauer: 2_600 },
+    { art: 'lauern', gewicht: 1, dauer: 2_600 },
+    { art: 'waelzen', gewicht: 1, dauer: 2_400 },
+    { art: 'luftsprung', gewicht: 1, dauer: 1_400 },
     lage.sonne && { art: 'sonnen', gewicht: 3, ort: ORTE.sonnenfleck, dauer: 20_000 },
     // 2.9.0: in den Karton, Fische gucken, auf dem Teppich räkeln
     moebel.has('karton') && { art: 'karton', gewicht: 3, ort: ORTE.karton, dauer: 12_000 },
@@ -156,6 +162,8 @@ export function wirkung(art, lage) {
     case 'sonnen': return { laune: 3 };
     case 'karton': case 'fische': return { laune: 2 };
     case 'raekeln': return { laune: 2 };
+    case 'lauern': case 'waelzen': case 'luftsprung': return { laune: 2 };
+    case 'schnattern': return { laune: 1 };
     default: return {};
   }
 }

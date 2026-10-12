@@ -215,3 +215,20 @@ test('2.9.0: Karton, Aquarium, Teppich – nur mit dem Möbel, jeweils dort', ()
   assert.deepEqual(gesehen.raekeln.ort, ORTE.teppich);
   for (const a of ['karton', 'fische', 'raekeln']) assert.ok(wirkung(a, satt).laune > 0, a);
 });
+
+test('2.10.0: Miauen, Kopf schief, Lauern, Wälzen und Luftsprung kommen in der freien Zeit vor', () => {
+  const lage = { hunger: 90, durst: 90, napf: 50, moebel: new Set() };
+  const gesehen = new Set();
+  for (let i = 0; i < 400; i += 1) {
+    let n = i;
+    gesehen.add(naechsteTaetigkeit(lage, () => { n = (n * 9301 + 49297) % 233280; return n / 233280; }).art);
+  }
+  for (const art of ['miauen', 'kopfschief', 'lauern', 'waelzen', 'luftsprung']) assert.ok(gesehen.has(art), art);
+});
+
+test('2.10.0: Lauern, Wälzen, Luftsprung heben die Laune; Schnattern am Fenster ein wenig', () => {
+  for (const art of ['lauern', 'waelzen', 'luftsprung']) assert.equal(wirkung(art, {}).laune, 2, art);
+  assert.equal(wirkung('schnattern', {}).laune, 1);
+  assert.deepEqual(wirkung('miauen', {}), {});
+  assert.deepEqual(wirkung('kopfschief', {}), {});
+});

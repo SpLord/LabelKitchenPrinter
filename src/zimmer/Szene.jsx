@@ -50,10 +50,40 @@ function useAusschnitt() {
   return { svgRef, viewBox };
 }
 
+/* Bildschirmpunkt → Szenenpunkt (1024 × 768), auch im randlosen Ausschnitt. */
+const szenePunkt = (svg, e) => {
+  const m = svg?.getScreenCTM();
+  if (!m) return null;
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+  return { x: Math.round(p.x), y: Math.round(p.y) };
+};
+
+/* So lange gedrückt halten heisst Kuscheln statt Streicheln (2.10.0). */
+const LANG_DRUECKEN = 550;
+function useLangDruecken(onLang, onKurz) {
+  const uhr = useRef(null);
+  const lang = useRef(false);
+  const stopp = () => clearTimeout(uhr.current);
+  useEffect(() => stopp, []);
+  return {
+    onPointerDown: () => {
+      lang.current = false;
+      stopp();
+      uhr.current = setTimeout(() => { lang.current = true; onLang?.(); }, LANG_DRUECKEN);
+    },
+    onPointerUp: stopp,
+    onPointerLeave: stopp,
+    onPointerCancel: stopp,
+    // Nach dem Kuscheln kommt noch ein Klick – der zählt nicht als Streicheln
+    onClick: () => { if (lang.current) { lang.current = false; return; } onKurz?.(); },
+  };
+}
+
 export default function Szene({
   moebel, frei, napf, klo = 0, kloVoll = false, haeufchen = [], katze, fell, zubehoer, onKatze, onPutzen = () => {}, neu = null, onFrei = () => {}, geschenk = false, onGeschenk = () => {}, rollt = false,
   tageszeit = 'tag', besuch = null, fund = null, onFund = () => {}, groesse = 1,
   wetterArt = 'sonne', ball = null, springt = false, wasser = 100, onNapf, onWasser, sonnig = false,
+  onBoden, onFenster, onAquarium, onKatzeLang, schnurrt = false, fischeErschreckt = false, tipp = null,
 }) {
   const licht = LICHT[tageszeit] ?? LICHT.tag;
   const { svgRef, viewBox } = useAusschnitt();
@@ -61,6 +91,8 @@ export default function Szene({
   const plopp = (id) => (neu === id ? 'zimmer-neu' : undefined);
   const { pos, richtung, dauer, laeuft, blase, art } = katze;
   const pose = poseFuer({ laeuft, art });
+  const katzeDruck = useLangDruecken(onKatzeLang, onKatze);
+  const bodenTipp = (e) => { const p = szenePunkt(svgRef.current, e); if (p) onBoden?.(p); };
   return (
     <svg ref={svgRef} className="zimmer-szene" viewBox={viewBox} preserveAspectRatio="xMidYMid meet"
          role="img" aria-label="Katzenzimmer">
@@ -77,8 +109,8 @@ export default function Szene({
       <g fill="#f4dfc0">{TAPETE.map((x) => <rect key={x} x={x} y={-W} width="14" height={470 + W} />)}</g>
 
       {/* Dielenboden */}
-      <rect x={-W} y="466" width={1024 + 2 * W} height={302 + W} fill="#e3b88b" />
-      <g stroke="#c4935f" strokeWidth="4">
+      <rect x={-W} y="466" width={1024 + 2 * W} height={302 + W} fill="#e3b88b" onClick={bodenTipp} data-boden="" />
+      <g stroke="#c4935f" strokeWidth="4" pointerEvents="none">
         {[520, 580, 646, 712, 778, 844].map((y) => <line key={y} x1={-W} y1={y} x2={1024 + W} y2={y} />)}
         <line x1="180" y1="466" x2="170" y2="520" /><line x1="560" y1="520" x2="550" y2="580" /><line x1="820" y1="580" x2="810" y2="646" />
       </g>
@@ -96,6 +128,9 @@ export default function Szene({
           {besuch && <g key={besuch.id}><Besucher art={besuch.art} /></g>}
         </g>
         <path d="M170 110 V290 M70 200 H270" strokeWidth="6" />
+        {/* Ans Fenster klopfen (2.10.0): jemand kommt vorbei, sie springt auf die Fensterbank */}
+        <rect x="70" y="110" width="200" height="180" fill="transparent" stroke="none" className="zimmer-tippbar"
+              onClick={onFenster} role="button" aria-label="Ans Fenster klopfen" data-fenster="" />
         <rect x="58" y="288" width="226" height="18" rx="5" fill="#fff" />
         {/* Bild an der Wand */}
         <rect x="636" y="130" width="140" height="104" rx="6" fill="#fff" />
@@ -125,7 +160,10 @@ export default function Szene({
       ))}
 
       {/* Möbel – hinten zuerst, damit vorne Liegendes darüber gezeichnet wird */}
-      {moebel.has('aquarium') && <g className={plopp('aquarium')}><Aquarium {...PLAETZE.aquarium} /></g>}
+      {moebel.has('aquarium') && (
+        <g className={`${plopp('aquarium') ?? ''} zimmer-tippbar ${fischeErschreckt ? 'fische-erschreckt' : ''}`}
+           onClick={onAquarium} role="button" aria-label="Ans Aquarium tippen"><Aquarium {...PLAETZE.aquarium} /></g>
+      )}
       {moebel.has('karton') && (
         <g className={plopp('karton')}><KartonHinten {...PLAETZE.karton} /><KartonVorne {...PLAETZE.karton} /></g>
       )}
@@ -162,9 +200,9 @@ export default function Szene({
 
       {/* Die Katze: äussere Ebene läuft, innere schaut in Laufrichtung */}
       <g
-        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} ${rollt ? 'rollt' : ''} ${springt ? 'springt' : ''} tut-${art} pose-${pose}`}
+        className={`zimmer-katze ${laeuft ? 'laeuft' : ''} ${rollt ? 'rollt' : ''} ${springt ? 'springt' : ''} ${schnurrt ? 'schnurrt' : ''} tut-${art} pose-${pose}`}
         style={{ transform: `translate(${pos.x - KATZE / 2}px, ${pos.y - KATZE + 12}px)`, transitionDuration: `${dauer}ms` }}
-        onClick={onKatze}
+        {...katzeDruck}
         role="button"
         aria-label="Katze streicheln"
       >
@@ -196,12 +234,31 @@ export default function Szene({
             </g>
           </g>
         )}
+        {/* Sprechen (2.10.0): Miau, Schnattern am Fenster, Schnurren beim Kuscheln */}
+        {!laeuft && (art === 'miauen' || art === 'schnattern') && (
+          <text x={KATZE * 0.5} y="10" className="zimmer-sagt" textAnchor="middle" data-sagt={art}>
+            {art === 'miauen' ? 'Miau!' : 'ek ek ek'}
+          </text>
+        )}
+        {schnurrt && (
+          <g className="zimmer-prrr" fill="#b45309" fontWeight="800" fontFamily="Roboto, system-ui, sans-serif" data-schnurrt="">
+            <text x={KATZE * 0.7} y="40" fontSize="24">prrr</text>
+            <text x={KATZE * 0.7} y="40" fontSize="20">prrr</text>
+          </g>
+        )}
         <g transform={`translate(${KATZE * 0.62} -58)`}><Gedankenblase was={blase} /></g>
       </g>
       {/* Sitzt sie im Karton, kommt die Vorderwand vor sie: nur Kopf und Ohren schauen raus.
           Läuft sie davor herum, bleibt die Kiste hinter ihr. */}
       {moebel.has('karton') && art === 'karton' && !laeuft && (
         <g pointerEvents="none" data-im-karton=""><KartonVorne {...PLAETZE.karton} /></g>
+      )}
+
+      {/* Wo auf den Boden getippt wurde: ein kleiner Kreis, sie kommt hin */}
+      {tipp && (
+        <g key={tipp.id} transform={`translate(${tipp.x} ${tipp.y})`} pointerEvents="none" data-tipp="">
+          <ellipse className="zimmer-tipp" rx="26" ry="9" fill="none" stroke="#fff" strokeWidth="4" />
+        </g>
       )}
 
       {/* Abend und Nacht: das Zimmer dunkelt ab, die Lampe bleibt hell */}

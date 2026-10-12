@@ -191,7 +191,20 @@ function SitzEbene({ v, art }) {
   const lid = (x) => <g key={x}><ellipse cx={x} cy="85" rx="8" ry="7" fill={v.body} /><path d={`M${x - 7} 85 q7 5 14 0`} fill="none" stroke={v.stroke} strokeWidth="3.5" strokeLinecap="round" /></g>;
   return (
     <g pointerEvents="none">
-      {art !== 'tatze' && [65, 95].map(lid)}
+      {art !== 'tatze' && art !== 'schnattern' && [65, 95].map(lid)}
+      {/* Miauen (2.10.0): Maul geht zweimal auf und zu */}
+      {art === 'miauen' && (
+        <g className="pose-miau">
+          <ellipse cx="80" cy="106" rx="7" ry="8" fill="#7f1d1d" stroke={v.stroke} strokeWidth="3" />
+          <ellipse cx="80" cy="110" rx="4" ry="3" fill="#f9a8b4" />
+        </g>
+      )}
+      {/* Schnattern (2.10.0): starrt hinaus, der Kiefer klappert ganz schnell */}
+      {art === 'schnattern' && (
+        <g className="pose-kiefer">
+          <ellipse cx="80" cy="106" rx="5" ry="4" fill="#7f1d1d" stroke={v.stroke} strokeWidth="2.5" />
+        </g>
+      )}
       {art === 'gaehnen' && (
         <g className="pose-gaehnen">
           <ellipse cx="80" cy="107" rx="9" ry="11" fill="#7f1d1d" stroke={v.stroke} strokeWidth="3" />
@@ -227,8 +240,10 @@ const KOEPFE = {
   schlafen: [62, 146, 27, -6],
   krank: [56, 152, 30, -10],
   strecken: [68, 126, 30, -8],
+  lauern: [54, 84, 33, 0],
 };
-const POSEN = { laufen: Laufen, fressen: Fressen, schlafen: Schlafen, krank: Krank, strecken: Strecken };
+// Lauern (2.10.0): Seitenansicht wie beim Laufen, aber die Beine stehen still (zimmer.css)
+const POSEN = { laufen: Laufen, fressen: Fressen, schlafen: Schlafen, krank: Krank, strecken: Strecken, lauern: Laufen };
 
 /* Welche Pose zu welcher Tätigkeit gehört. */
 export const poseFuer = ({ laeuft, art }) => {
@@ -241,12 +256,13 @@ export const poseFuer = ({ laeuft, art }) => {
   if (art === 'fliege') return 'tatze';
   if (art === 'sonnen') return 'schlafen';
   if (art === 'raekeln') return 'strecken';
+  if (art === 'miauen' || art === 'schnattern' || art === 'lauern') return art;
   return 'sitzen';
 };
 
 export default function KatzePose({ pose, fell, zubehoer, aktiv }) {
   const clipId = `pose-${useId().replace(/:/g, '')}`;
-  if (pose === 'putzen' || pose === 'gaehnen' || pose === 'treteln' || pose === 'tatze') {
+  if (['putzen', 'gaehnen', 'treteln', 'tatze', 'miauen', 'schnattern'].includes(pose)) {
     const v = VARIANTS[fell % VARIANTS.length];
     return (
       <svg viewBox="0 0 200 200" width="100%" height="100%" className={`katze-pose pose-${pose}`} overflow="visible">
