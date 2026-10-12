@@ -1,3 +1,5 @@
+import { MUENZ_PAUSE, restPause } from './pause.js';
+
 /*
   Regeln der Minispiele im Katzenzimmer – reine Funktionen, ohne Browser
   prüfbar. Darstellung und Takt: SpielFederangel.jsx, SpielLeckerli.jsx.
@@ -16,7 +18,7 @@ export const LECKERLI = {
   links: 90,
   rechts: 934,
   maxMuenzen: 10,         // mehr bringt eine Runde nie
-  pause: 60 * 60_000,     // eine Runde pro Stunde
+  pause: MUENZ_PAUSE,     // für alle Münzspiele gleich (pause.js)
 };
 
 /*
@@ -49,11 +51,7 @@ export const muenzenFuerRunde = (faenge, regeln = LECKERLI) =>
   Math.max(0, Math.min(regeln.maxMuenzen, Math.floor(faenge)));
 
 /* Darf jetzt eine Runde starten? Liefert die Wartezeit in ms (0 = ja). */
-export const wartezeit = (zuletzt, jetzt = Date.now(), regeln = LECKERLI) => {
-  const z = Number(zuletzt);
-  if (!Number.isFinite(z) || z <= 0) return 0;
-  return Math.max(0, z + regeln.pause - jetzt);
-};
+export const wartezeit = (zuletzt, jetzt = Date.now(), regeln = LECKERLI) => restPause(zuletzt, jetzt, regeln.pause);
 
 // ── Federangel ───────────────────────────────────────────────────────────────
 

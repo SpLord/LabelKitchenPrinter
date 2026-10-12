@@ -209,15 +209,22 @@ test('Federangel: läuft, die Menüleiste ist weg, Fertig beendet', async ({ pag
   await expect(page.locator('.zimmer-menue')).toBeVisible();
 });
 
-test('Leckerli fangen: danach eine Stunde Pause', async ({ page }) => {
-  await spielenOeffnen(page);
+test('Leckerli fangen: danach fünf Minuten Pause, dann wieder frei', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-12T12:00:00') });
+  await spielenOeffnen(page, { zimmer_geschenk: '2026-10-12|1' });
   await page.locator('.zimmer-karte', { hasText: 'Leckerli fangen' }).locator('.zimmer-preis').click();
   await expect(page.locator('.zimmer-spiel')).toBeVisible();
   await page.getByRole('button', { name: 'Fertig' }).click();
   await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
   const karte = page.locator('.zimmer-karte', { hasText: 'Leckerli fangen' });
   await expect(karte.locator('.zimmer-preis')).toBeDisabled();
-  await expect(karte).toContainText('wieder in 60 min');
+  await expect(karte).toContainText('wieder in 5 min');
+  // Nach fünf Minuten ist es wieder frei (die Karte rechnet beim Öffnen neu)
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.zimmer-blatt')).toHaveCount(0);
+  await page.clock.runFor(5 * 60_000 + 1000);
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
+  await expect(page.locator('.zimmer-karte', { hasText: 'Leckerli fangen' }).locator('.zimmer-preis')).toBeEnabled();
 });
 
 test('Leckerli fangen: gefangene Leckerlis werden zu Münzen', async ({ page }) => {
@@ -637,10 +644,10 @@ test('Sonnenfleck: an sonnigen Tagen liegt er auf dem Boden, nachts nicht', asyn
 });
 
 /* ── 2.8.0: Laserpointer, Versteckspiel, Memory ───────────────────────── */
-test('Spielen bietet jetzt zehn Spiele', async ({ page }) => {
+test('Spielen bietet jetzt dreizehn Spiele', async ({ page }) => {
   await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
   for (const n of ['Federangel', 'Leckerli fangen', 'Mäuseloch', 'Hütchenspiel', 'Laserpointer', 'Versteckspiel', 'Memory',
-    'Seifenblasen', 'Nachmachen', 'Apportieren']) {
+    'Seifenblasen', 'Nachmachen', 'Apportieren', 'Gurkenhüpfer', 'Leckerli-Drei', 'Angeln']) {
     await expect(page.locator('.zimmer-karte', { hasText: n })).toHaveCount(1);
   }
 });
@@ -666,7 +673,7 @@ test('Versteckspiel: der Schwanz verrät sie, gleich gefunden bringt Münzen', a
   await expect(page.locator('.zimmer-spiel-hud')).toContainText('1 gefunden');
   await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(page.locator('.zimmer-geld')).toContainText('503');
-  // Danach eine Stunde Pause
+  // Danach fünf Minuten Pause
   await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
   await expect(page.locator('.zimmer-karte', { hasText: 'Versteckspiel' }).locator('.zimmer-preis')).toBeDisabled();
 });
@@ -812,4 +819,110 @@ test('Aquarium antippen: die Fische flitzen, sie kommt gucken', async ({ page })
   await page.locator('[aria-label="Ans Aquarium tippen"]').click();
   await expect(page.locator('.fische-erschreckt')).toBeAttached();
   await expect(page.locator('.zimmer-katze')).toHaveClass(/tut-fische/);
+});
+
+/* ── 2.12.0: Gurkenhüpfer, Leckerli-Drei, Angeln; Pause fünf Minuten ──── */
+const spielStarten = async (page, name) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  const karte = page.locator('.zimmer-karte', { hasText: name });
+  await karte.scrollIntoViewIfNeeded();
+  await karte.locator('.zimmer-preis').click();
+};
+
+test('Gurkenhüpfer: Tipp startet, Tippen springt, an der Gurke ist Schluss', async ({ page }) => {
+  await spielStarten(page, 'Gurkenhüpfer');
+  const spiel = page.locator('.zimmer-spiel-huepfer');
+  await expect(spiel).toHaveAttribute('data-huepfer', 'bereit');
+  // Die Zimmerkatze ist weg, im Flur rennt ihre eigene
+  await expect(page.locator('.zimmer')).toHaveClass(/katze-versteckt/);
+  // Ein Sprung dauert keine Sekunde – also jedes Bild mitschauen, wie hoch sie kommt
+  const hoechste = page.evaluate(() => new Promise((fertig) => {
+    let max = 0; const bis = performance.now() + 1500;
+    const blick = () => {
+      const k = document.querySelector('[data-huepfer-katze]');
+      max = Math.max(max, Number(k?.dataset.huepferKatze ?? 0));
+      if (performance.now() < bis) requestAnimationFrame(blick); else fertig(max);
+    };
+    requestAnimationFrame(blick);
+  }));
+  await spiel.dispatchEvent('pointerdown');
+  await expect(spiel).toHaveAttribute('data-huepfer', 'laeuft');
+  expect(await hoechste).toBeGreaterThan(60);
+  // Danach nicht mehr tippen – die nächste Gurke beendet den Lauf
+  await expect(spiel).toHaveAttribute('data-huepfer', 'vorbei', { timeout: 15_000 });
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('m gerannt');
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
+  await expect(page.locator('.zimmer-karte', { hasText: 'Gurkenhüpfer' }).locator('.zimmer-preis')).toBeDisabled();
+});
+
+/* Einen Tausch suchen, der drei Gleiche ergibt – aus den Arten im DOM */
+const dreierZug = (page) => page.evaluate(() => {
+  const n = 7;
+  const art = [...document.querySelectorAll('[data-feld]')].sort((a, b) => a.dataset.feld - b.dataset.feld).map((e) => e.dataset.art);
+  const passt = (b) => {
+    for (let i = 0; i < n * n; i += 1) {
+      const z = Math.floor(i / n); const s = i % n;
+      if (s <= n - 3 && b[i] === b[i + 1] && b[i] === b[i + 2]) return true;
+      if (z <= n - 3 && b[i] === b[i + n] && b[i] === b[i + 2 * n]) return true;
+    }
+    return false;
+  };
+  for (let i = 0; i < n * n; i += 1) {
+    for (const j of [i % n < n - 1 ? i + 1 : -1, i + n < n * n ? i + n : -1]) {
+      if (j < 0) continue;
+      const b = [...art]; [b[i], b[j]] = [b[j], b[i]];
+      if (passt(b)) return [i, j];
+    }
+  }
+  return null;
+});
+
+test('Leckerli-Drei: ein passender Tausch bringt Punkte und kostet einen Zug', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Drei');
+  await expect(page.locator('[data-feld]')).toHaveCount(49);
+  const [a, b] = await dreierZug(page);
+  await page.locator(`[data-feld="${a}"]`).click();
+  await expect(page.locator('.dreier-feld.gewaehlt')).toHaveCount(1);
+  await page.locator(`[data-feld="${b}"]`).click();
+  await expect(page.locator('[data-dreier-beschaeftigt="0"]')).toBeAttached();
+  await expect(page.locator('.zimmer-spiel-hud strong').first()).not.toHaveText('0');
+  const zuege = Number(await page.locator('[data-dreier-zuege]').getAttribute('data-dreier-zuege'));
+  expect(zuege).toBeLessThanOrEqual(19 + 2);
+  expect(zuege).toBeGreaterThanOrEqual(19);
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Punkte');
+});
+
+test('Leckerli-Drei: ein Tausch ohne Reihe zählt nicht', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Drei');
+  // Suche ein Nachbarpaar, das nichts ergibt
+  const paar = await page.evaluate(() => {
+    const n = 7;
+    const art = [...document.querySelectorAll('[data-feld]')].sort((a, b) => a.dataset.feld - b.dataset.feld).map((e) => e.dataset.art);
+    const passt = (b) => b.some((_, i) => (i % n <= n - 3 && b[i] === b[i + 1] && b[i] === b[i + 2])
+      || (Math.floor(i / n) <= n - 3 && b[i] === b[i + n] && b[i] === b[i + 2 * n]));
+    for (let i = 0; i < n * n - 1; i += 1) {
+      if (i % n === n - 1) continue;
+      const b = [...art]; [b[i], b[i + 1]] = [b[i + 1], b[i]];
+      if (!passt(b)) return [i, i + 1];
+    }
+    return null;
+  });
+  await page.locator(`[data-feld="${paar[0]}"]`).click();
+  await page.locator(`[data-feld="${paar[1]}"]`).click();
+  await expect(page.locator('[data-dreier-beschaeftigt="0"]')).toBeAttached();
+  await expect(page.locator('[data-dreier-zuege]')).toHaveAttribute('data-dreier-zuege', '20');
+});
+
+test('Angeln: Tipp wirft den Haken, er kommt zurück; die Zeit läuft', async ({ page }) => {
+  await spielStarten(page, 'Angeln');
+  const spiel = page.locator('.zimmer-spiel-angeln');
+  await expect(spiel).toHaveAttribute('data-angel', 'pendelt');
+  await expect(page.locator('[data-fisch]')).toHaveCount(8);
+  await spiel.dispatchEvent('pointerdown');
+  await expect(spiel).toHaveAttribute('data-angel', /raus|zieht|zurueck/);
+  await expect(spiel).toHaveAttribute('data-angel', 'pendelt', { timeout: 10_000 });
+  await expect(page.locator('.zimmer-spiel-zeit')).not.toHaveText('60 s');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Punkte');
 });

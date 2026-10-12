@@ -9,7 +9,7 @@ const Leckerli = ({ art }) => (art === 'fisch'
   : <g {...K} strokeWidth="3.5"><circle r="15" fill="#d6a15d" /><circle cx="-5" cy="-4" r="2.5" fill="#7c4a1e" stroke="none" /><circle cx="5" cy="3" r="2.5" fill="#7c4a1e" stroke="none" /><circle cx="-2" cy="7" r="2" fill="#7c4a1e" stroke="none" /></g>);
 
 /*
-  Leckerli fangen: Leckerlis fallen, man schiebt den Napf darunter.
+  Bis zu 10 Münzen je Runde, danach kurze Pause (pause.js; bis 2.11.0 eine Stunde) – die
   Bis zu 10 Münzen je Runde, eine Runde pro Stunde (Design 2026-10-06 – die
   Münzquelle, die mit dem alten Leckerli-Regen wegfiel, jetzt mit Grenze).
 

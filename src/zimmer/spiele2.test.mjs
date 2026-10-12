@@ -60,9 +60,9 @@ test('Memory: weniger Züge, mehr Münzen', () => {
   assert.ok(memoryLohn(40) > 0);
 });
 
-test('abkuehlung: eine Stunde nach dem letzten Mal', () => {
+test('abkuehlung: fünf Minuten nach dem letzten Mal', () => {
   const jetzt = 10 * 3_600_000;
   assert.equal(abkuehlung(null, jetzt), 0);
-  assert.equal(abkuehlung(jetzt - 10 * 60_000, jetzt), 50 * 60_000);
+  assert.equal(abkuehlung(jetzt - 2 * 60_000, jetzt), 3 * 60_000);
   assert.equal(abkuehlung(jetzt - 2 * 3_600_000, jetzt), 0);
 });

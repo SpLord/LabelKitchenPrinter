@@ -27,14 +27,24 @@ import SpielNachmachen from './SpielNachmachen.jsx';
 import SpielWolle from './SpielWolle.jsx';
 import { NACHMACHEN, amBoden, blasenLaune, nachmachenLohn, wolleLaune } from './spiele3.js';
 import { ORTE } from './verhalten.js';
+import SpielHuepfer from './SpielHuepfer.jsx';
+import SpielDreier from './SpielDreier.jsx';
+import SpielAngeln from './SpielAngeln.jsx';
+import { HUEPFER } from './huepfer.js';
+import { DREIER, dreierLohn } from './dreier.js';
+import { ANGELN } from './angeln.js';
+import { PAUSE_TEXT, pauseAnzeige } from './pause.js';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
 
 const KEY_LECKERLI = 'zimmer_leckerli_zuletzt';
 const leckerliZuletzt = () => { try { return localStorage.getItem(KEY_LECKERLI); } catch { return null; } };
-// Neue Münzspiele (2.8.0): je einmal pro Stunde
+// Münzspiele: nach jeder Runde eine kurze Pause (pause.js)
 const KEY_VERSTECK = 'zimmer_versteck_zuletzt';
 const KEY_MEMORY = 'zimmer_memory_zuletzt';
 const KEY_NACHMACHEN = 'zimmer_nachmachen_zuletzt';   // 2.10.0
+const KEY_HUEPFER = 'zimmer_huepfer_zuletzt';         // 2.12.0
+const KEY_DREIER = 'zimmer_dreier_zuletzt';
+const KEY_ANGELN = 'zimmer_angeln_zuletzt';
 const zuletzt = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const merken = (key) => { try { localStorage.setItem(key, String(Date.now())); } catch { /* gesperrt */ } };
 import useKatzeImZimmer from './useKatzeImZimmer.js';
@@ -99,7 +109,7 @@ function Herzen({ anzahl }) {
 }
 
 /* Spielen: kurze Spiele für die Pause, jedes etwa eine halbe Minute. */
-/* Spielkarte mit Wartezeit (Münzspiele, einmal pro Stunde). */
+/* Spielkarte mit Wartezeit (Münzspiele, Pause siehe pause.js). */
 function SpielMitPause({ id, titel, text, bild, onSpiel, schluessel }) {
   const warten = abkuehlung(zuletzt(schluessel));
   return (
@@ -108,14 +118,14 @@ function SpielMitPause({ id, titel, text, bild, onSpiel, schluessel }) {
       <h3>{titel}</h3>
       <p>{text}</p>
       <button className="zimmer-preis" disabled={warten > 0} onClick={() => onSpiel(id)}>spielen</button>
-      {warten > 0 && <small>wieder in {Math.ceil(warten / 60_000)} min</small>}
+      {warten > 0 && <small>wieder in {pauseAnzeige(warten)}</small>}
     </article>
   );
 }
 
 function SpieleKarten({ onSpiel, muenzen }) {
   const warten = wartezeit(leckerliZuletzt());
-  const minuten = Math.ceil(warten / 60_000);
+
   return (
     <div className="zimmer-karten zimmer-karten-klein">
       <article className="zimmer-karte">
@@ -133,9 +143,9 @@ function SpieleKarten({ onSpiel, muenzen }) {
             <path d="M14 46 h52 l-6 18 h-40 Z" fill="#ef4444" /><ellipse cx="40" cy="46" rx="26" ry="5" fill="#7f1d1d" /></g>
         </svg>
         <h3>Leckerli fangen</h3>
-        <p>Napf darunter schieben. Bis zu {LECKERLI.maxMuenzen} Münzen, einmal pro Stunde.</p>
+        <p>Napf darunter schieben. Bis zu {LECKERLI.maxMuenzen} Münzen, {PAUSE_TEXT}.</p>
         <button className="zimmer-preis" disabled={warten > 0} onClick={() => onSpiel('leckerli')}>spielen</button>
-        {warten > 0 && <small>wieder in {minuten} min</small>}
+        {warten > 0 && <small>wieder in {pauseAnzeige(warten)}</small>}
       </article>
       <article className="zimmer-karte">
         <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
@@ -167,10 +177,10 @@ function SpieleKarten({ onSpiel, muenzen }) {
         <button className="zimmer-preis" onClick={() => onSpiel('laser')}>spielen</button>
       </article>
       <SpielMitPause id="versteck" titel="Versteckspiel" onSpiel={onSpiel} schluessel={KEY_VERSTECK}
-                     text={`Wo ist sie? ${VERSTECK.lohnJe} Münzen je Fund, einmal pro Stunde.`}
+                     text={`Wo ist sie? ${VERSTECK.lohnJe} Münzen je Fund, ${PAUSE_TEXT}.`}
                      bild={<g {...K}><path d="M10 64 v-36 h60 v36 Z" fill="#d6a15d" /><path d="M10 28 l-6 -10 h60 l6 10" fill="#e7c08a" /><path d="M70 50 q14 -4 12 -20" fill="none" strokeWidth="6" /></g>} />
       <SpielMitPause id="memory" titel="Memory" onSpiel={onSpiel} schluessel={KEY_MEMORY}
-                     text={`${MEMORY.paare} Paare Fundstücke. Bis ${MEMORY.lohn[0][1]} Münzen, einmal pro Stunde.`}
+                     text={`${MEMORY.paare} Paare Fundstücke. Bis ${MEMORY.lohn[0][1]} Münzen, ${PAUSE_TEXT}.`}
                      bild={<g {...K} strokeWidth="3"><rect x="8" y="14" width="28" height="40" rx="5" fill="#fde68a" /><rect x="44" y="14" width="28" height="40" rx="5" fill="#fff" /><circle cx="58" cy="34" r="8" fill="#a5f3fc" /></g>} />
       {/* 2.10.0 */}
       <article className="zimmer-karte">
@@ -182,7 +192,7 @@ function SpieleKarten({ onSpiel, muenzen }) {
         <button className="zimmer-preis" onClick={() => onSpiel('blasen')}>spielen</button>
       </article>
       <SpielMitPause id="nachmachen" titel="Nachmachen" onSpiel={onSpiel} schluessel={KEY_NACHMACHEN}
-                     text={`Sie tippt Kissen an, du machst es nach. ${NACHMACHEN.lohnJe} Münzen je Runde, einmal pro Stunde.`}
+                     text={`Sie tippt Kissen an, du machst es nach. ${NACHMACHEN.lohnJe} Münzen je Runde, ${PAUSE_TEXT}.`}
                      bild={<g {...K} strokeWidth="3">{[['#ef4444', 14, 26], ['#3b82f6', 44, 26], ['#22c55e', 14, 52], ['#f59e0b', 44, 52]].map(([f, x, y]) => <ellipse key={f} cx={x + 11} cy={y} rx="13" ry="8" fill={f} />)}</g>} />
       <article className="zimmer-karte">
         <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
@@ -192,6 +202,16 @@ function SpieleKarten({ onSpiel, muenzen }) {
         <p>Wollknäuel werfen – sie holt es und bringt es zurück. Bringt Laune.</p>
         <button className="zimmer-preis" onClick={() => onSpiel('wolle')}>spielen</button>
       </article>
+      {/* 2.12.0: drei grössere Münzspiele */}
+      <SpielMitPause id="huepfer" titel="Gurkenhüpfer" onSpiel={onSpiel} schluessel={KEY_HUEPFER}
+                     text={`Über Gurken springen, Münzen sammeln. Bis ${HUEPFER.lohnMax} Münzen, ${PAUSE_TEXT}.`}
+                     bild={<g {...K} strokeWidth="3"><path d="M8 58 C6 44 46 40 48 54 C50 64 10 70 8 58 Z" fill="#4ade80" /><circle cx="56" cy="20" r="9" fill="#fbbf24" /><path d="M20 34 q14 -22 28 -12" fill="none" strokeDasharray="4 5" /></g>} />
+      <SpielMitPause id="dreier" titel="Leckerli-Drei" onSpiel={onSpiel} schluessel={KEY_DREIER}
+                     text={`Drei Gleiche in eine Reihe tauschen, ${DREIER.zuege} Züge. Bis ${DREIER.lohnMax} Münzen, ${PAUSE_TEXT}.`}
+                     bild={<g {...K} strokeWidth="3">{[12, 34, 56].map((x) => <circle key={x} cx={x + 6} cy="24" r="10" fill="#d6a15d" />)}<circle cx="18" cy="50" r="10" fill="#f472b6" /><circle cx="40" cy="50" r="10" fill="#60a5fa" /><circle cx="62" cy="50" r="10" fill="#f472b6" /></g>} />
+      <SpielMitPause id="angeln" titel="Angeln" onSpiel={onSpiel} schluessel={KEY_ANGELN}
+                     text={`Haken auswerfen, Fische hochziehen – der Goldfisch zählt achtfach. Bis ${ANGELN.lohnMax} Münzen, ${PAUSE_TEXT}.`}
+                     bild={<g {...K} strokeWidth="3"><rect x="2" y="38" width="76" height="30" rx="6" fill="#38bdf8" /><path d="M40 4 V40" stroke="#f8fafc" strokeWidth="2" /><path d="M40 40 v6 a4 4 0 1 1 -6 2" fill="none" /><ellipse cx="22" cy="56" rx="10" ry="6" fill="#facc15" /></g>} />
     </div>
   );
 }
@@ -316,6 +336,9 @@ export default function Zimmer({ zustand, onZu }) {
     if (art === 'versteck') merken(KEY_VERSTECK);
     if (art === 'memory') merken(KEY_MEMORY);
     if (art === 'nachmachen') merken(KEY_NACHMACHEN);
+    if (art === 'huepfer') merken(KEY_HUEPFER);
+    if (art === 'dreier') merken(KEY_DREIER);
+    if (art === 'angeln') merken(KEY_ANGELN);
     setSpiel(art);
   };
 
@@ -407,6 +430,21 @@ export default function Zimmer({ zustand, onZu }) {
     }
     setErgebnis(n > 0 ? `${n}-mal gebracht – ${name} ist stolz` : `${name} hat das Knäuel liegen lassen`);
   }, [freigeben, pflege, erfreuen, naeher, name]);
+
+  // 2.12.0: Gurkenhüpfer, Leckerli-Drei, Angeln (Münzen)
+  const muenzSpielEnde = useCallback((lohn, text) => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+    if (lohn > 0) {
+      setMuenzen((c) => c + lohn);
+      naeher('spielen', 1);
+    }
+    setErgebnis(lohn > 0 ? `${text}: +${lohn} Münzen` : text);
+  }, [freigeben, pflege, setMuenzen, naeher]);
+  const huepferEnde = useCallback((r) => muenzSpielEnde(r.lohn, `${r.meter} m gerannt, ${r.muenzen} Münzen gesammelt`), [muenzSpielEnde]);
+  const dreierEnde = useCallback((punkte) => muenzSpielEnde(dreierLohn(punkte), `${punkte} Punkte`), [muenzSpielEnde]);
+  const angelnEnde = useCallback((r) => muenzSpielEnde(r.lohn, `${r.fische} ${r.fische === 1 ? 'Fang' : 'Fänge'}, ${r.punkte} Punkte`), [muenzSpielEnde]);
 
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
@@ -576,7 +614,7 @@ export default function Zimmer({ zustand, onZu }) {
   };
 
   return (
-    <div className={`zimmer ${spiel === 'versteck' ? 'katze-versteckt' : ''}`} role="dialog" aria-label="Katzenzimmer">
+    <div className={`zimmer ${['versteck', 'huepfer', 'angeln'].includes(spiel) ? 'katze-versteckt' : ''}`} role="dialog" aria-label="Katzenzimmer">
       <div className="zimmer-buehne">
         <Szene moebel={zustand.moebel} frei={zustand.frei} napf={zustand.napf} katze={katze}
                klo={zustand.klo} kloVoll={zustand.klo >= KLO.kapazitaet} haeufchen={zustand.haeufchen}
@@ -656,6 +694,9 @@ export default function Zimmer({ zustand, onZu }) {
         {spiel === 'blasen' && <SpielBlasen katze={katze} onPlatzt={mausTreffer} onEnde={blasenEnde} />}
         {spiel === 'nachmachen' && <SpielNachmachen katze={katze} onEnde={nachmachenEnde} />}
         {spiel === 'wolle' && <SpielWolle katze={katze} onGebracht={mausTreffer} onEnde={wolleEnde} />}
+        {spiel === 'huepfer' && <SpielHuepfer fell={zustand.fell} zubehoer={zustand.angelegt} onEnde={huepferEnde} />}
+        {spiel === 'dreier' && <SpielDreier onEnde={dreierEnde} />}
+        {spiel === 'angeln' && <SpielAngeln fell={zustand.fell} onEnde={angelnEnde} />}
         {spiel === 'huetchen' && (
           <ErrorBoundary label="Das Hütchenspiel">
             <ShellGame

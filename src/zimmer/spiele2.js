@@ -1,18 +1,13 @@
 import { FUNDSTUECKE } from './fundstuecke.js';
+import { restPause } from './pause.js';
 
 /*
   Neue Spiele (2.8.0): Laserpointer, Versteckspiel, Memory.
   Reine Regeln; die Spiele selbst stehen in Spiel*.jsx.
 */
 
-const STUNDE = 3_600_000;
-
-/* Wie lange noch bis zur nächsten Runde (für Spiele mit Münzen). */
-export const abkuehlung = (zuletzt, jetzt = Date.now(), pause = STUNDE) => {
-  const z = Number(zuletzt);
-  if (!Number.isFinite(z) || z <= 0) return 0;
-  return Math.max(0, z + pause - jetzt);
-};
+/* Wie lange noch bis zur nächsten Runde (für Spiele mit Münzen) – siehe pause.js. */
+export const abkuehlung = restPause;
 
 // ── Laserpointer: der rote Punkt, sie springt drauf ─────────────────────
 export const LASER = {

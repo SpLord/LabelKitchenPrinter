@@ -37,11 +37,11 @@ test('Münzen: höchstens zehn je Runde, nie negativ', () => {
   assert.equal(muenzenFuerRunde(-3), 0);
 });
 
-test('Pause: eine Runde pro Stunde', () => {
+test('Pause: nach einer Runde fünf Minuten', () => {
   const jetzt = 1_000_000_000;
   assert.equal(wartezeit(null, jetzt), 0, 'noch nie gespielt');
   assert.equal(wartezeit(jetzt - LECKERLI.pause, jetzt), 0);
-  assert.equal(wartezeit(jetzt - 10 * 60_000, jetzt), 50 * 60_000);
+  assert.equal(wartezeit(jetzt - 2 * 60_000, jetzt), 3 * 60_000);
   assert.equal(wartezeit('kaputt', jetzt), 0, 'kaputter Speicher sperrt nicht');
 });
 
