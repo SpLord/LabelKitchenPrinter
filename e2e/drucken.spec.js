@@ -143,3 +143,32 @@ test('scheitert der Kopien-Parameter, wird trotzdem gedruckt', async ({ page }) 
   // Und keine Fehlermeldung an den Anwender – die Etiketten kamen ja heraus
   expect(await page.locator('.print-error').count()).toBe(0);
 });
+
+/* 2.11.0: Freitext ohne Datum – zum Beschriften von Dosen, Fächern, Ordnern */
+test.describe('Freitext ohne Datum', () => {
+  test('eingeschaltet bleibt das Datumsfeld leer, auch in der Vorschau', async ({ seite }) => {
+    await seite.getByPlaceholder('Individueller Text').fill('Gewürze Regal 2');
+    await seite.getByText('ohne Datum', { exact: true }).click();
+    await expect(seite.locator('.ohne-datum')).toHaveClass(/an/);
+    await expect.poll(() => seite.evaluate(() => window.__vorschau?.Datum)).toBe('');
+    await seite.locator('.input-group').getByRole('button', { name: 'Drucken' }).click();
+    const drucke = await warteAufDrucke(seite, 1);
+    expect(drucke[0].felder.Name).toBe('Gewürze Regal 2');
+    expect(drucke[0].felder.Datum).toBe('');
+  });
+
+  test('ausgeschaltet (Standard) druckt der Freitext mit Datum', async ({ seite }) => {
+    await expect(seite.locator('.ohne-datum')).not.toHaveClass(/an/);
+    await seite.getByPlaceholder('Individueller Text').fill('Suppe');
+    await seite.locator('.input-group').getByRole('button', { name: 'Drucken' }).click();
+    const drucke = await warteAufDrucke(seite, 1);
+    expect(drucke[0].felder.Datum).toMatch(/^\d{1,2}\.\d{1,2}\.\d{4}$/);
+  });
+
+  test('die Etiketten-Knöpfe drucken immer mit Datum, auch wenn der Schalter an ist', async ({ seite }) => {
+    await seite.getByText('ohne Datum', { exact: true }).click();
+    await seite.getByRole('button', { name: /^Steak/ }).first().click();
+    const drucke = await warteAufDrucke(seite, 1);
+    expect(drucke[0].felder.Datum).toMatch(/^\d{1,2}\.\d{1,2}\.\d{4}$/);
+  });
+});

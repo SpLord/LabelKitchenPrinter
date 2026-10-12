@@ -12,7 +12,7 @@ import {
   KEY_DRUCKER, MAX_ANZAHL, MIN_ANZAHL,
   begrenzeAnzahl, drucke, druckerNamen, waehleDrucker,
 } from './print/drucker.js';
-import { datumsText, verwendbarBis } from './print/etikett.js';
+import { datumsFeld, verwendbarBis } from './print/etikett.js';
 import { meldeDruckfehler } from './fehler/bugsink.js';
 
 /*
@@ -35,6 +35,9 @@ export default function App() {
   const [previewSrc, setPreviewSrc] = useState(null);
   const [error, setError] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  // Freitext ohne Datum (2.11.0): nur beschriften, nicht datieren. Bewusst nicht
+  // gespeichert – nach dem Neuladen steht das Datum wieder drauf.
+  const [ohneDatum, setOhneDatum] = useState(false);
 
   const merkeDruckerRef = useRef(() => {});
 
@@ -63,7 +66,7 @@ export default function App() {
   */
   const etikettDatum = useSchichtDatum();
   // Zuletzt gezeigte Vorschau, damit ein Datumswechsel genau sie neu rendert
-  const letzteVorschauRef = useRef({ text: '', tage: null });
+  const letzteVorschauRef = useRef({ text: '', tage: null, ohne: false });
 
   // Druckerstatus prüfen (DYMO)
   useEffect(() => {
@@ -129,7 +132,7 @@ export default function App() {
     };
   }, []);
 
-  const printLabel = (text, tage = null) => {
+  const printLabel = (text, tage = null, ohne = false) => {
     if (!text) return showError('Bitte Text eingeben.');
 
     const framework = window?.dymo?.label?.framework;
@@ -146,7 +149,7 @@ export default function App() {
       .then(labelXml => {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
-        label.setObjectText("Datum", datumsText(etikettDatum.fuerDruck(), tage));
+        label.setObjectText("Datum", datumsFeld(etikettDatum.fuerDruck(), tage, ohne));
 
         const ziel = printerName || "DYMO LabelWriter 450";
         // Scheitert der Kopien-Parameter, wird einzeln gedruckt statt gar nicht
@@ -178,8 +181,8 @@ export default function App() {
       });
   };
 
-  const generatePreview = (text, tage = null) => {
-    letzteVorschauRef.current = { text, tage };
+  const generatePreview = (text, tage = null, ohne = false) => {
+    letzteVorschauRef.current = { text, tage, ohne };
     const framework = window?.dymo?.label?.framework;
     if (!text || !framework) {
       setPreviewSrc(null);
@@ -194,7 +197,7 @@ export default function App() {
       .then(labelXml => {
         const label = framework.openLabelXml(labelXml);
         label.setObjectText("Name", text);
-        label.setObjectText("Datum", datumsText(etikettDatum.fuerDruck(), tage));
+        label.setObjectText("Datum", datumsFeld(etikettDatum.fuerDruck(), tage, ohne));
         const base64 = label.render();
         setPreviewSrc(`data:image/png;base64,${base64}`);
       })
@@ -202,9 +205,9 @@ export default function App() {
   };
 
   // Tippen erzeugte pro Zeichen einen fetch + DYMO-Render – jetzt entprellt
-  const schedulePreview = (text) => {
+  const schedulePreview = (text, ohne = ohneDatum) => {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = setTimeout(() => generatePreview(text), 250);
+    previewTimerRef.current = setTimeout(() => generatePreview(text, null, ohne), 250);
   };
 
   return (
@@ -273,8 +276,8 @@ export default function App() {
                 etikettDatum.waehlen(date);
                 // Genau das zuletzt gezeigte Etikett neu – samt Haltbarkeit,
                 // die hier früher verloren ging
-                const { text, tage } = letzteVorschauRef.current;
-                generatePreview(text || input, tage);
+                const { text, tage, ohne } = letzteVorschauRef.current;
+                generatePreview(text || input, tage, ohne);
               }}
               inline
               locale="de"
@@ -290,8 +293,8 @@ export default function App() {
                     className="date-zurueck"
                     onClick={() => {
                       etikettDatum.zuruecksetzen();
-                      const { text, tage } = letzteVorschauRef.current;
-                      generatePreview(text || input, tage);
+                      const { text, tage, ohne } = letzteVorschauRef.current;
+                      generatePreview(text || input, tage, ohne);
                     }}
                   >
                     auf heute
@@ -335,9 +338,26 @@ export default function App() {
               }}
               placeholder="Individueller Text"
             />
-            <button onClick={() => printLabel(input)} disabled={printerStatus !== 'online'}>
-              Drucken
-            </button>
+            {/* Schalter neben dem Knopf statt darunter: auf dem 1024 × 768-Tablet
+                rutschte er sonst unter den Bildschirmrand */}
+            <div className="druck-zeile">
+              <button onClick={() => printLabel(input, null, ohneDatum)} disabled={printerStatus !== 'online'}>
+                Drucken
+              </button>
+              {/* Nur für den Freitext: die Etiketten-Knöpfe drucken immer mit Datum */}
+              <label className={`ohne-datum ${ohneDatum ? 'an' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={ohneDatum}
+                  onChange={(e) => {
+                    setOhneDatum(e.target.checked);
+                    if (input) schedulePreview(input, e.target.checked);
+                  }}
+                />
+                <span className="ohne-datum-schalter" aria-hidden="true" />
+                <span className="ohne-datum-text">ohne Datum</span>
+              </label>
+            </div>
           </div>
         </aside>
 

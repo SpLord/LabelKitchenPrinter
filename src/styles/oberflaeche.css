@@ -618,3 +618,36 @@ input:focus-visible {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* Freitext ohne Datum (2.11.0): ein Schalter rechts neben dem Drucken-Knopf.
+   Eingeschaltet färbt er sich bernsteinfarben – es fehlt etwas auf dem
+   Etikett, das soll man sehen. */
+.druck-zeile { display: flex; align-items: stretch; gap: 0.5rem; width: 100%; }
+.druck-zeile > button { flex: 1; min-width: 0; }
+.ohne-datum {
+  position: relative; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.3rem; padding: 0.35rem 0.55rem; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-strong);
+  transition: background 150ms ease, border-color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.side-rail .input-group .ohne-datum input, .input-group .ohne-datum input {
+  position: absolute; opacity: 0; width: 1px; height: 1px; padding: 0; margin: 0; border: 0; box-shadow: none; pointer-events: none;
+}
+.ohne-datum-schalter {
+  position: relative; width: 2.4rem; height: 1.35rem; border-radius: 999px;
+  background: #cbd5e1; transition: background 150ms ease;
+}
+.ohne-datum-schalter::after {
+  content: ''; position: absolute; top: 0.175rem; left: 0.2rem; width: 1rem; height: 1rem;
+  border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform 150ms ease;
+}
+.ohne-datum-text { font-weight: 700; font-size: 0.72rem; color: var(--muted); white-space: nowrap; line-height: 1; }
+.ohne-datum.an { background: #fef3c7; border-color: #f59e0b; }
+.ohne-datum.an .ohne-datum-schalter { background: #f59e0b; }
+.ohne-datum.an .ohne-datum-schalter::after { transform: translateX(1rem); }
+.ohne-datum.an .ohne-datum-text { color: #92400e; }
+.ohne-datum:has(input:focus-visible) { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+@media (prefers-reduced-motion: reduce) {
+  .ohne-datum, .ohne-datum-schalter, .ohne-datum-schalter::after { transition: none; }
+}

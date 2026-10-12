@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_TAGE, datumsText, putzeTage, verwendbarBis } from './etikett.js';
+import { MAX_TAGE, datumsFeld, datumsText, putzeTage, verwendbarBis } from './etikett.js';
 
 const am = (s) => new Date(`${s}T12:00:00`);
 
@@ -45,4 +45,12 @@ test('etikett: der Text bleibt kurz genug fürs Feld', () => {
   // spürbar. Der lange Fall ist das Maximum, das entstehen kann.
   const lang = datumsText(am('2026-12-31'), MAX_TAGE);
   assert.ok(lang.length <= 16, `zu lang: ${lang} (${lang.length})`);
+});
+
+test('etikett: ohne Datum bleibt das Datumsfeld leer, sonst wie gewohnt', () => {
+  const d = am('2026-10-12');
+  assert.equal(datumsFeld(d, null, true), '');
+  assert.equal(datumsFeld(d, 3, true), '');
+  assert.equal(datumsFeld(d, null, false), datumsText(d, null));
+  assert.equal(datumsFeld(d, 3), datumsText(d, 3));
 });

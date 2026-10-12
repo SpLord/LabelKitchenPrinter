@@ -43,3 +43,10 @@ export const datumsText = (herstellung, tage) => {
   if (!bis) return lang(herstellung);
   return `${kurz(herstellung)} → ${kurz(bis)}`;
 };
+
+/*
+  Was ins Datumsfeld kommt. "Ohne Datum" (2.11.0) ist für Etiketten, die nur
+  etwas beschriften – eine Dose, ein Fach, einen Ordner – und kein Lebensmittel
+  datieren: dann bleibt das Feld leer.
+*/
+export const datumsFeld = (herstellung, tage, ohneDatum = false) => (ohneDatum ? '' : datumsText(herstellung, tage));
