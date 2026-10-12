@@ -1,0 +1,165 @@
+/* ── Brett (Leckerli-Drei und Leckerli-Reise) ───────────────────────────── */
+.zimmer-spiel-dreier { display: grid; place-items: center; background: rgba(47, 42, 38, 0.3); cursor: default; }
+.zimmer-spiel-dreier .dreier-brett { margin-top: -2cqw; }
+.dreier-brett {
+  --feld: 7.2cqw;
+  position: relative; width: calc(var(--feld) * var(--n, 7) + 0.9cqw); height: calc(var(--feld) * var(--n, 7) + 0.9cqw);
+  background: #fff7ed; border: 0.45cqw solid var(--kontur); border-radius: 2cqw; box-shadow: 0 0.5cqw 0 var(--kontur);
+  overflow: hidden;
+}
+.dreier-feld, .dreier-pfuetze, .dreier-effekt {
+  position: absolute; left: 0; top: 0; width: var(--feld); height: var(--feld);
+  transform: translate(calc(var(--s) * var(--feld)), calc(var(--z) * var(--feld)));
+}
+.dreier-feld {
+  padding: 0.45cqw; border: 0; background: transparent; cursor: pointer; touch-action: none;
+  transition: transform 220ms cubic-bezier(.3,.7,.4,1);
+}
+.dreier-feld::before {
+  content: ''; position: absolute; inset: 0.35cqw; border-radius: 1.4cqw; background: var(--grund, #fde68a); opacity: 0.5;
+  transition: opacity 120ms, box-shadow 120ms;
+}
+.dreier-feld.art-fisch { --grund: #fed7aa; } .dreier-feld.art-keks { --grund: #fde68a; }
+.dreier-feld.art-maus { --grund: #e5e7eb; } .dreier-feld.art-wolle { --grund: #fbcfe8; }
+.dreier-feld.art-feder { --grund: #bfdbfe; } .dreier-feld.art-milch { --grund: #dcfce7; }
+.dreier-feld.art-regen { --grund: #fff; } .dreier-feld.art-dose { --grund: #e0f2fe; }
+.dreier-feld.art-kiste { cursor: default; } .dreier-feld.art-kiste::before { opacity: 0; }
+.dreier-feld.gewaehlt::before { opacity: 1; box-shadow: 0 0 0 0.4cqw var(--kontur) inset; }
+.dreier-bild { position: relative; display: block; width: 100%; height: 100%; }
+.dreier-bild svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.dreier-feld.gewaehlt .dreier-bild { animation: dreier-hupf 0.6s ease-in-out infinite; }
+@keyframes dreier-hupf { 0%, 100% { transform: none; } 50% { transform: translateY(-8%) scale(1.06); } }
+.dreier-bild.neu { animation: dreier-fall 260ms cubic-bezier(.3,.7,.4,1.2) both; }
+@keyframes dreier-fall { from { transform: translateY(-260%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+.dreier-bild.frisch { animation: dreier-frisch 420ms cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes dreier-frisch { from { transform: scale(0.2) rotate(-90deg); } to { transform: none; } }
+.dreier-feld.platzt .dreier-bild { animation: dreier-platzt 260ms ease-in forwards; }
+@keyframes dreier-platzt { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(0); opacity: 0; } }
+.dreier-feld.art-dose.platzt .dreier-bild { animation: dreier-dose 260ms ease-in forwards; }
+@keyframes dreier-dose { to { transform: translateY(80%) scale(0.6); opacity: 0; } }
+.dreier-feld.wackelt .dreier-bild { animation: zimmer-wackeln 230ms ease-in-out 2; }
+/* Spezial-Leckerli schimmern, damit man sie sieht */
+.dreier-feld.spezial-reihe .dreier-bild, .dreier-feld.spezial-spalte .dreier-bild,
+.dreier-feld.spezial-bombe .dreier-bild, .dreier-feld.art-regen .dreier-bild { filter: drop-shadow(0 0 0.5cqw #fff) drop-shadow(0 0 0.3cqw #facc15); }
+.dreier-feld.art-regen .dreier-bild svg { animation: dreier-dreh 3s linear infinite; }
+@keyframes dreier-dreh { to { transform: rotate(360deg); } }
+/* Milchpfützen: liegen als milchiger Rand über dem Feld (darunter verdeckte sie
+   der Feldhintergrund), das Leckerli bleibt durchscheinend sichtbar */
+.dreier-pfuetze { pointer-events: none; z-index: 1; }
+.dreier-pfuetze::before {
+  content: ''; position: absolute; inset: 0.15cqw; border-radius: 42% 58% 48% 52% / 55% 45% 55% 45%;
+  background: rgba(255, 255, 255, 0.32); border: 0.5cqw solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 0.2cqw #94a3b8, inset 0 0 0.6cqw rgba(148, 163, 184, 0.6);
+}
+.dreier-pfuetze.stufe-2::before {
+  background: rgba(224, 242, 254, 0.45); border-width: 0.75cqw; border-color: #fff;
+  box-shadow: 0 0 0 0.25cqw #0ea5e9, inset 0 0 0 0.25cqw #7dd3fc;
+}
+/* Wirkungen: Strahl über Zeile/Spalte, Druckwelle, Regenbogen-Funkeln */
+.dreier-effekt { pointer-events: none; z-index: 1; }
+.dreier-effekt.effekt-reihe { width: calc(var(--feld) * var(--n, 7)); transform: translate(0, calc(var(--z) * var(--feld))); }
+.dreier-effekt.effekt-spalte { height: calc(var(--feld) * var(--n, 7)); transform: translate(calc(var(--s) * var(--feld)), 0); }
+.dreier-effekt.effekt-reihe::before, .dreier-effekt.effekt-spalte::before {
+  content: ''; position: absolute; inset: 30%; border-radius: 999px; background: #fff;
+  box-shadow: 0 0 1.4cqw 0.6cqw #fde047; animation: dreier-strahl 260ms ease-out forwards;
+}
+.dreier-effekt.effekt-reihe::before { inset: 35% 0; }
+.dreier-effekt.effekt-spalte::before { inset: 0 35%; }
+@keyframes dreier-strahl { from { opacity: 1; } to { opacity: 0; } }
+.dreier-effekt.effekt-bombe::before, .dreier-effekt.effekt-regen::before {
+  content: ''; position: absolute; inset: -100%; border-radius: 50%;
+  border: 0.8cqw solid #fde047; animation: dreier-welle 260ms ease-out forwards;
+}
+.dreier-effekt.effekt-regen::before { border-color: #f472b6; inset: -200%; }
+@keyframes dreier-welle { from { transform: scale(0.2); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+.dreier-meldung {
+  position: absolute; left: 50%; top: 42%; translate: -50% 0; z-index: 2; pointer-events: none; white-space: nowrap;
+  padding: 0.8cqw 2.4cqw; border-radius: 999px; background: #fde047; border: 0.4cqw solid var(--kontur);
+  font-size: 2.6cqw; font-weight: 800; animation: zimmer-pop 1100ms ease-out forwards;
+}
+
+/* ── Leckerli-Reise: Karte ─────────────────────────────────────────────── */
+.zimmer-spiel.reise { cursor: default; background: rgba(47, 42, 38, 0.35); z-index: 30; }
+.reise-karte, .reise-level {
+  position: absolute; inset: 1.2cqw; display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--welt) 60%, #fffbeb); border: 0.45cqw solid var(--kontur); border-radius: 2.4cqw;
+  box-shadow: 0 0.6cqw 0 var(--kontur); overflow: hidden;
+}
+.reise-kopf { display: flex; align-items: center; gap: 2cqw; padding: 1.4cqw 2cqw 0.6cqw; }
+.reise-kopf h2 { margin: 0; font-size: 3.4cqw; }
+.reise-gesamt { display: inline-flex; align-items: center; gap: 0.6cqw; font-size: 2.4cqw; font-weight: 800; margin-right: auto; }
+.reise-gesamt svg { width: 3cqw; height: 3cqw; }
+.reise-welten { display: flex; gap: 1cqw; padding: 0 2cqw; }
+.reise-welten button {
+  flex: 1; padding: 1cqw; border-radius: 1.4cqw; border: 0.35cqw solid var(--kontur); background: var(--farbe);
+  font-size: 2.1cqw; font-weight: 800; cursor: pointer; opacity: 0.7;
+}
+.reise-welten button.aktiv { opacity: 1; box-shadow: 0 0.35cqw 0 var(--kontur); transform: translateY(-0.2cqw); }
+.reise-welten button:disabled { cursor: not-allowed; opacity: 0.4; filter: grayscale(0.6); }
+.reise-weg { flex: 1; width: 100%; min-height: 0; }
+.reise-station.offen { cursor: pointer; }
+.reise-station.offen:hover circle, .reise-station.offen:focus circle { fill: #fef9c3; }
+.reise-station.geschafft circle { fill: #fef3c7; }
+.reise-station.hier circle { stroke: #ef4444; }
+.reise-halo { animation: reise-puls 1.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes reise-puls { 0%, 100% { transform: scale(0.9); opacity: 0.9; } 50% { transform: scale(1.12); opacity: 0.3; } }
+.reise-mieze { animation: dreier-hupf 1.6s ease-in-out infinite; }
+
+/* ── Leckerli-Reise: Level ─────────────────────────────────────────────── */
+.reise-spielfeld { flex: 1; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2.4cqw; padding: 2cqw 2.4cqw; min-height: 0; }
+.reise-seite { display: grid; gap: 1.4cqw; align-content: center; }
+.reise-levelnr { font-size: 2cqw; font-weight: 800; color: #57534e; }
+.reise-zuege {
+  display: flex; align-items: baseline; gap: 1cqw; padding: 1cqw 1.8cqw; border-radius: 1.6cqw;
+  background: #fff; border: 0.35cqw solid var(--kontur);
+}
+.reise-zuege strong { font-size: 5cqw; line-height: 1; }
+.reise-zuege span { font-size: 2cqw; font-weight: 700; }
+.reise-ziele { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.8cqw; }
+.reise-ziele li {
+  display: flex; align-items: center; gap: 1.2cqw; padding: 0.6cqw 1.2cqw; border-radius: 1.4cqw;
+  background: #fff; border: 0.3cqw solid var(--kontur); font-size: 2.2cqw; font-weight: 800;
+}
+.reise-ziele li svg { width: 4.4cqw; height: 4.4cqw; flex: none; overflow: visible; }
+.reise-ziele li.fertig { background: #dcfce7; color: #166534; }
+.reise-punkte { font-size: 2cqw; font-weight: 700; }
+.reise-punkte strong { font-size: 3cqw; }
+.reise-punkte small { color: #15803d; }
+.reise-balken { position: relative; height: 1.4cqw; margin-top: 0.8cqw; border-radius: 999px; background: #fff; border: 0.3cqw solid var(--kontur); }
+.reise-balken span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: #facc15; transition: width 300ms ease; }
+.reise-balken i { position: absolute; top: -0.6cqw; width: 0.4cqw; height: 2.2cqw; margin-left: -0.2cqw; background: var(--kontur); border-radius: 0.2cqw; }
+.reise-aufgeben { justify-self: start; }
+
+/* Tafeln: Start, geschafft, verloren */
+.reise-tafel {
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 3; width: 52cqw; max-height: 64cqw; overflow: auto;
+  display: grid; justify-items: center; gap: 1cqw; padding: 2.4cqw 3cqw; text-align: center;
+  background: #fffbeb; border: 0.45cqw solid var(--kontur); border-radius: 2.4cqw; box-shadow: 0 0.6cqw 0 var(--kontur);
+  animation: zimmer-feier 280ms cubic-bezier(.3,1.5,.5,1);
+}
+.reise-tafel h2 { margin: 0; font-size: 4cqw; }
+.reise-tafel p { margin: 0; font-size: 2cqw; }
+.reise-tafel-sterne { display: flex; gap: 1cqw; font-size: 1.4cqw; }
+.reise-tafel-ziele { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6cqw; }
+.reise-tafel-ziele li { display: flex; align-items: center; gap: 1cqw; font-size: 2.2cqw; font-weight: 800; }
+.reise-tafel-ziele li svg { width: 4cqw; height: 4cqw; overflow: visible; }
+.reise-tafel-ziele li.fertig { color: #15803d; }
+.reise-tafel-zuege { font-weight: 700; color: #57534e; }
+.reise-tipp { background: #fef3c7; border-radius: 1.4cqw; padding: 1cqw 1.6cqw; font-weight: 600; }
+.reise-rekord { color: #57534e; }
+.reise-los { font-size: 2.6cqw; padding: 1cqw 5cqw; }
+.reise-tafel-punkte strong { font-size: 3.4cqw; }
+.reise-lohn { display: inline-flex; align-items: center; gap: 0.8cqw; font-weight: 800; color: #b45309; }
+.reise-knoepfe { display: flex; gap: 1.4cqw; margin-top: 0.6cqw; }
+.reise-stern-pop { animation: reise-stern 500ms cubic-bezier(.3,1.8,.5,1) both; }
+@keyframes reise-stern { from { transform: scale(0) rotate(-120deg); } to { transform: none; } }
+.reise-geschafft-schild {
+  position: absolute; left: 50%; top: 40%; translate: -50% 0; z-index: 3; padding: 1.2cqw 3cqw; border-radius: 999px;
+  background: #22c55e; color: #fff; border: 0.45cqw solid var(--kontur); font-size: 3cqw; font-weight: 800;
+  animation: zimmer-feier 280ms cubic-bezier(.3,1.5,.5,1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dreier-feld, .dreier-bild, .dreier-bild svg, .dreier-meldung, .dreier-effekt::before,
+  .reise-halo, .reise-mieze, .reise-tafel, .reise-stern-pop, .reise-geschafft-schild { animation: none !important; transition: none !important; }
+}

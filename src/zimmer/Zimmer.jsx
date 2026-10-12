@@ -30,8 +30,9 @@ import { ORTE } from './verhalten.js';
 import SpielHuepfer from './SpielHuepfer.jsx';
 import SpielDreier from './SpielDreier.jsx';
 import SpielAngeln from './SpielAngeln.jsx';
+import Reise from './reise/Reise.jsx';
 import { HUEPFER } from './huepfer.js';
-import { DREIER, dreierLohn } from './dreier.js';
+import { FREI, freiLohn } from './reise/frei.js';
 import { ANGELN } from './angeln.js';
 import { PAUSE_TEXT, pauseAnzeige } from './pause.js';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
@@ -123,6 +124,29 @@ function SpielMitPause({ id, titel, text, bild, onSpiel, schluessel }) {
   );
 }
 
+/* Leckerli-Reise: Level ohne Pause (Münzen nur für Neues), daneben das freie Spiel mit Pause. */
+function ReiseKarteImBlatt({ onSpiel }) {
+  const warten = abkuehlung(zuletzt(KEY_DREIER));
+  return (
+    <article className="zimmer-karte zimmer-karte-reise">
+      <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
+        <g {...K} strokeWidth="3">
+          <path d="M8 60 C20 40 30 62 42 44 S64 30 72 12" fill="none" strokeDasharray="3 6" />
+          {[[10, 58, '#d6a15d'], [40, 46, '#f472b6'], [70, 14, '#60a5fa']].map(([x, y, f]) => <circle key={x} cx={x} cy={y} r="8" fill={f} />)}
+          <path d="M66 4 l2 5 l5 1 l-4 3 l1 5 l-4 -3 l-4 3 l1 -5 l-4 -3 l5 -1 Z" fill="#facc15" strokeWidth="1.5" />
+        </g>
+      </svg>
+      <h3>Leckerli-Reise</h3>
+      <p>Match-3 in 30 Leveln: Küche, Garten, Dachboden. Münzen für jedes neue Level und jeden Stern.</p>
+      <button className="zimmer-preis" onClick={() => onSpiel('reise')}>Reise</button>
+      <button className="zimmer-knopf zimmer-karte-neben" disabled={warten > 0} onClick={() => onSpiel('dreier')}
+              title={`Freies Spiel: ${FREI.zuege} Züge, bis ${FREI.lohnMax} Münzen, ${PAUSE_TEXT}`}>
+        {warten > 0 ? `frei in ${pauseAnzeige(warten)}` : 'freies Spiel'}
+      </button>
+    </article>
+  );
+}
+
 function SpieleKarten({ onSpiel, muenzen }) {
   const warten = wartezeit(leckerliZuletzt());
 
@@ -206,9 +230,8 @@ function SpieleKarten({ onSpiel, muenzen }) {
       <SpielMitPause id="huepfer" titel="Gurkenhüpfer" onSpiel={onSpiel} schluessel={KEY_HUEPFER}
                      text={`Über Gurken springen, Münzen sammeln. Bis ${HUEPFER.lohnMax} Münzen, ${PAUSE_TEXT}.`}
                      bild={<g {...K} strokeWidth="3"><path d="M8 58 C6 44 46 40 48 54 C50 64 10 70 8 58 Z" fill="#4ade80" /><circle cx="56" cy="20" r="9" fill="#fbbf24" /><path d="M20 34 q14 -22 28 -12" fill="none" strokeDasharray="4 5" /></g>} />
-      <SpielMitPause id="dreier" titel="Leckerli-Drei" onSpiel={onSpiel} schluessel={KEY_DREIER}
-                     text={`Drei Gleiche in eine Reihe tauschen, ${DREIER.zuege} Züge. Bis ${DREIER.lohnMax} Münzen, ${PAUSE_TEXT}.`}
-                     bild={<g {...K} strokeWidth="3">{[12, 34, 56].map((x) => <circle key={x} cx={x + 6} cy="24" r="10" fill="#d6a15d" />)}<circle cx="18" cy="50" r="10" fill="#f472b6" /><circle cx="40" cy="50" r="10" fill="#60a5fa" /><circle cx="62" cy="50" r="10" fill="#f472b6" /></g>} />
+      {/* 2.13.0: Leckerli-Drei wird zur Reise mit 30 Leveln; das freie Spiel bleibt */}
+      <ReiseKarteImBlatt onSpiel={onSpiel} />
       <SpielMitPause id="angeln" titel="Angeln" onSpiel={onSpiel} schluessel={KEY_ANGELN}
                      text={`Haken auswerfen, Fische hochziehen – der Goldfisch zählt achtfach. Bis ${ANGELN.lohnMax} Münzen, ${PAUSE_TEXT}.`}
                      bild={<g {...K} strokeWidth="3"><rect x="2" y="38" width="76" height="30" rx="6" fill="#38bdf8" /><path d="M40 4 V40" stroke="#f8fafc" strokeWidth="2" /><path d="M40 40 v6 a4 4 0 1 1 -6 2" fill="none" /><ellipse cx="22" cy="56" rx="10" ry="6" fill="#facc15" /></g>} />
@@ -443,7 +466,16 @@ export default function Zimmer({ zustand, onZu }) {
     setErgebnis(lohn > 0 ? `${text}: +${lohn} Münzen` : text);
   }, [freigeben, pflege, setMuenzen, naeher]);
   const huepferEnde = useCallback((r) => muenzSpielEnde(r.lohn, `${r.meter} m gerannt, ${r.muenzen} Münzen gesammelt`), [muenzSpielEnde]);
-  const dreierEnde = useCallback((punkte) => muenzSpielEnde(dreierLohn(punkte), `${punkte} Punkte`), [muenzSpielEnde]);
+  const dreierEnde = useCallback((punkte) => muenzSpielEnde(freiLohn(punkte), `${punkte} Punkte`), [muenzSpielEnde]);
+  const reiseLohn = useCallback((lohn) => {
+    setMuenzen((c) => c + lohn);
+    naeher('spielen', 1);
+  }, [setMuenzen, naeher]);
+  const reiseZu = useCallback(() => {
+    setSpiel(null);
+    freigeben();
+    pflege('spielen');
+  }, [freigeben, pflege]);
   const angelnEnde = useCallback((r) => muenzSpielEnde(r.lohn, `${r.fische} ${r.fische === 1 ? 'Fang' : 'Fänge'}, ${r.punkte} Punkte`), [muenzSpielEnde]);
 
   const federFang = useCallback(() => {
@@ -696,6 +728,7 @@ export default function Zimmer({ zustand, onZu }) {
         {spiel === 'wolle' && <SpielWolle katze={katze} onGebracht={mausTreffer} onEnde={wolleEnde} />}
         {spiel === 'huepfer' && <SpielHuepfer fell={zustand.fell} zubehoer={zustand.angelegt} onEnde={huepferEnde} />}
         {spiel === 'dreier' && <SpielDreier onEnde={dreierEnde} />}
+        {spiel === 'reise' && <Reise fell={zustand.fell} onLohn={reiseLohn} onZu={reiseZu} />}
         {spiel === 'angeln' && <SpielAngeln fell={zustand.fell} onEnde={angelnEnde} />}
         {spiel === 'huetchen' && (
           <ErrorBoundary label="Das Hütchenspiel">

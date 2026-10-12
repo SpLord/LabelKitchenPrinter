@@ -647,7 +647,7 @@ test('Sonnenfleck: an sonnigen Tagen liegt er auf dem Boden, nachts nicht', asyn
 test('Spielen bietet jetzt dreizehn Spiele', async ({ page }) => {
   await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
   for (const n of ['Federangel', 'Leckerli fangen', 'Mäuseloch', 'Hütchenspiel', 'Laserpointer', 'Versteckspiel', 'Memory',
-    'Seifenblasen', 'Nachmachen', 'Apportieren', 'Gurkenhüpfer', 'Leckerli-Drei', 'Angeln']) {
+    'Seifenblasen', 'Nachmachen', 'Apportieren', 'Gurkenhüpfer', 'Leckerli-Reise', 'Angeln']) {
     await expect(page.locator('.zimmer-karte', { hasText: n })).toHaveCount(1);
   }
 });
@@ -822,11 +822,14 @@ test('Aquarium antippen: die Fische flitzen, sie kommt gucken', async ({ page })
 });
 
 /* ── 2.12.0: Gurkenhüpfer, Leckerli-Drei, Angeln; Pause fünf Minuten ──── */
-const spielStarten = async (page, name) => {
-  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
-  const karte = page.locator('.zimmer-karte', { hasText: name });
+const spielStarten = async (page, name, werte = {}) => {
+  await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0), ...werte });
+  // Leckerli-Drei ist seit 2.13.0 das freie Spiel auf der Karte der Leckerli-Reise
+  const karte = page.locator('.zimmer-karte', { hasText: name === 'Leckerli-Drei' ? 'Leckerli-Reise' : name });
   await karte.scrollIntoViewIfNeeded();
-  await karte.locator('.zimmer-preis').click();
+  if (name === 'Leckerli-Drei') await karte.getByRole('button', { name: 'freies Spiel' }).click();
+  else if (name === 'Leckerli-Reise') await karte.getByRole('button', { name: 'Reise' }).click();
+  else await karte.locator('.zimmer-preis').click();
 };
 
 test('Gurkenhüpfer: Tipp startet, Tippen springt, an der Gurke ist Schluss', async ({ page }) => {
@@ -859,9 +862,11 @@ test('Gurkenhüpfer: Tipp startet, Tippen springt, an der Gurke ist Schluss', as
 const dreierZug = (page) => page.evaluate(() => {
   const n = 7;
   const art = [...document.querySelectorAll('[data-feld]')].sort((a, b) => a.dataset.feld - b.dataset.feld).map((e) => e.dataset.art);
+  const leckerli = (x) => ['fisch', 'keks', 'maus', 'wolle', 'feder', 'milch'].includes(x);
   const passt = (b) => {
     for (let i = 0; i < n * n; i += 1) {
       const z = Math.floor(i / n); const s = i % n;
+      if (!leckerli(b[i])) continue;
       if (s <= n - 3 && b[i] === b[i + 1] && b[i] === b[i + 2]) return true;
       if (z <= n - 3 && b[i] === b[i + n] && b[i] === b[i + 2 * n]) return true;
     }
@@ -869,7 +874,8 @@ const dreierZug = (page) => page.evaluate(() => {
   };
   for (let i = 0; i < n * n; i += 1) {
     for (const j of [i % n < n - 1 ? i + 1 : -1, i + n < n * n ? i + n : -1]) {
-      if (j < 0) continue;
+      if (j < 0 || art[i] === 'kiste' || art[j] === 'kiste' || art[i] === 'dose' && art[j] === 'dose') continue;
+      if (art[i] === 'regen' || art[j] === 'regen') return [i, j];
       const b = [...art]; [b[i], b[j]] = [b[j], b[i]];
       if (passt(b)) return [i, j];
     }
@@ -887,8 +893,7 @@ test('Leckerli-Drei: ein passender Tausch bringt Punkte und kostet einen Zug', a
   await expect(page.locator('[data-dreier-beschaeftigt="0"]')).toBeAttached();
   await expect(page.locator('.zimmer-spiel-hud strong').first()).not.toHaveText('0');
   const zuege = Number(await page.locator('[data-dreier-zuege]').getAttribute('data-dreier-zuege'));
-  expect(zuege).toBeLessThanOrEqual(19 + 2);
-  expect(zuege).toBeGreaterThanOrEqual(19);
+  expect(zuege).toBe(19);
   await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(page.locator('.zimmer-ergebnis')).toContainText('Punkte');
 });
@@ -925,4 +930,72 @@ test('Angeln: Tipp wirft den Haken, er kommt zurück; die Zeit läuft', async ({
   await expect(page.locator('.zimmer-spiel-zeit')).not.toHaveText('60 s');
   await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(page.locator('.zimmer-ergebnis')).toContainText('Punkte');
+});
+
+/* ── 2.13.0: Leckerli-Reise ──────────────────────────────────────────── */
+const reiseSpielen = async (page, maxZuege = 25) => {
+  for (let k = 0; k < maxZuege; k += 1) {
+    if (await page.locator('[data-reise-phase="spiel"]').count() === 0) return;
+    const [a, b] = await dreierZug(page);
+    await page.locator(`[data-feld="${a}"]`).click();
+    await page.locator(`[data-feld="${b}"]`).click();
+    await expect(page.locator('[data-dreier-beschaeftigt="0"]')).toBeAttached({ timeout: 20_000 });
+  }
+};
+
+test('Leckerli-Reise: Karte mit Level 1 offen, Level 2 gesperrt; zurück ins Zimmer', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Reise');
+  await expect(page.locator('[data-reise-karte="kueche"]')).toBeVisible();
+  await expect(page.locator('[data-station]')).toHaveCount(10);
+  await expect(page.locator('[data-station="1"]')).toHaveClass(/offen/);
+  await expect(page.locator('[data-station="2"]')).toHaveClass(/zu/);
+  await expect(page.getByRole('button', { name: /Garten/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Zurück ins Zimmer' }).click();
+  await expect(page.locator('.reise')).toHaveCount(0);
+  await expect(page.locator('.zimmer-menue')).toBeVisible();
+});
+
+test('Leckerli-Reise: Level 1 schaffen bringt Sterne, Münzen und schaltet Level 2 frei', async ({ page }) => {
+  test.setTimeout(150_000);
+  await spielStarten(page, 'Leckerli-Reise');
+  await page.locator('[data-station="1"]').click();
+  // Startbild: Ziel und Tipp
+  await expect(page.locator('.reise-tafel')).toContainText('600 Punkte');
+  await expect(page.locator('.reise-tipp')).toBeVisible();
+  await page.getByRole('button', { name: 'Los!' }).click();
+  await reiseSpielen(page);
+  await expect(page.locator('.reise-tafel.gewonnen')).toBeVisible({ timeout: 10_000 });
+  const lohn = Number(await page.locator('[data-reise-lohn]').getAttribute('data-reise-lohn'));
+  expect(lohn).toBeGreaterThanOrEqual(7);
+  await expect(page.locator('.zimmer-geld')).toContainText(String(500 + lohn));
+  // Nochmal genauso gut: keine Münzen mehr
+  await page.getByRole('button', { name: 'Karte' }).last().click();
+  await expect(page.locator('[data-station="2"]')).toHaveClass(/offen/);
+  await expect(page.locator('[data-station="1"]')).toHaveClass(/geschafft/);
+  const gespeichert = await page.evaluate(() => JSON.parse(localStorage.getItem('zimmer_reise')));
+  expect(gespeichert.sterne[1]).toBeGreaterThanOrEqual(1);
+});
+
+test('Leckerli-Reise: gespeicherter Fortschritt öffnet die Welt, Startbild zeigt Kisten-Ziel', async ({ page }) => {
+  const sterne = Object.fromEntries(Array.from({ length: 10 }, (_, k) => [k + 1, 2]));
+  await spielStarten(page, 'Leckerli-Reise', { zimmer_reise: JSON.stringify({ sterne, rekord: {} }) });
+  // Nächstes Level liegt im Garten – dort öffnet die Karte
+  await expect(page.locator('[data-reise-karte="garten"]')).toBeVisible();
+  await expect(page.locator('.reise-gesamt')).toContainText('20 / 90');
+  await page.locator('[data-station="11"]').click();
+  await expect(page.locator('.reise-tafel')).toContainText('Alle Kisten kaputt');
+  await page.getByRole('button', { name: 'Los!' }).click();
+  await expect(page.locator('[data-art="kiste"]')).toHaveCount(7);
+  await expect(page.locator('[data-ziel="kisten"]')).toContainText('0 / 7');
+  await page.getByRole('button', { name: 'Karte' }).click();
+  await expect(page.locator('[data-reise-karte]')).toBeVisible();
+});
+
+test('Leckerli-Reise: Pfützen liegen unter dem Brett', async ({ page }) => {
+  const sterne = Object.fromEntries(Array.from({ length: 5 }, (_, k) => [k + 1, 1]));
+  await spielStarten(page, 'Leckerli-Reise', { zimmer_reise: JSON.stringify({ sterne, rekord: {} }) });
+  await page.locator('[data-station="6"]').click();
+  await page.getByRole('button', { name: 'Los!' }).click();
+  await expect(page.locator('[data-pfuetze]')).toHaveCount(14);
+  await expect(page.locator('[data-ziel="pfuetzen"]')).toContainText('0 / 14');
 });
