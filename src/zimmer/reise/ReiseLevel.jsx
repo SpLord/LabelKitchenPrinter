@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import BrettAnsicht from './BrettAnsicht.jsx';
+import BrettAnsicht, { PfotenKnopf } from './BrettAnsicht.jsx';
 import Feld, { BILD } from './Feld.jsx';
 import useBrettSpiel from './useBrettSpiel.js';
-import { startBrett } from './brett.js';
-import { WELTEN, ZUG_BONUS, anfang, geschafft, sterne as sterneFuer, zielStand } from './level.js';
+import { rausch, startBrett } from './brett.js';
+import { WELTEN, anfang, geschafft, sterne as sterneFuer, zielStand } from './level.js';
 
 const K = { stroke: '#2f2a26', strokeWidth: 3, strokeLinejoin: 'round', strokeLinecap: 'round' };
 
@@ -40,11 +40,12 @@ export default function ReiseLevel({ level, rekord = 0, besteSterne = 0, onErgeb
   const [ende, setEnde] = useState(null);
   const eingetragenRef = useRef(false);
 
-  const spiel = useBrettSpiel(() => startS, level.arten, (r, sNeu) => {
+  const [rauschPunkte, setRauschPunkte] = useState(0);
+  const spiel = useBrettSpiel(() => startS, level.arten, (r, sNeu, { ohneZug }) => {
     const gesammelt = { ...stand.gesammelt };
     Object.entries(r.gesammelt).forEach(([k, n]) => { gesammelt[k] = (gesammelt[k] ?? 0) + n; });
     const neu = { punkte: stand.punkte + r.punkte, gesammelt };
-    const rest = zuege - 1;
+    const rest = ohneZug ? zuege : zuege - 1;
     setStand(neu);
     setZuege(rest);
     if (geschafft(zielStand(level, neu, sNeu, anfangRef.current))) setPhase('bonus');
@@ -52,21 +53,32 @@ export default function ReiseLevel({ level, rekord = 0, besteSterne = 0, onErgeb
   }, phase !== 'spiel');
 
   const staende = zielStand(level, stand, spiel.s, anfangRef.current);
-  const bonus = phase === 'bonus' || phase === 'gewonnen' ? zuege * ZUG_BONUS : 0;
+  const bonus = rauschPunkte;
   const gesamt = stand.punkte + bonus;
 
-  // Bonus zählen, dann eintragen (genau einmal)
+  // Leckerli-Rausch: die übrigen Züge zünden als gestreifte Leckerli, dann eintragen (genau einmal)
+  const { abspielen, s: brettJetzt } = spiel;
+  const rauschRef = useRef(false);
   useEffect(() => {
-    if (phase !== 'bonus') return undefined;
-    const t = setTimeout(() => {
-      const st = sterneFuer(level, gesamt, true);
-      const lohn = eingetragenRef.current ? 0 : onErgebnis(st, gesamt);
+    if (phase !== 'bonus' || rauschRef.current) return;
+    rauschRef.current = true;
+    (async () => {
+      await new Promise((r) => { setTimeout(r, 700); });
+      const r = rausch(brettJetzt, zuege, level.arten);
+      if (r.schritte.length) {
+        await abspielen(r);
+        setRauschPunkte(r.punkte);
+      }
+      const endpunkte = stand.punkte + r.punkte;
+      const st = sterneFuer(level, endpunkte, true);
+      const lohn = eingetragenRef.current ? 0 : onErgebnis(st, endpunkte);
       eingetragenRef.current = true;
-      setEnde({ sterne: st, lohn, punkte: gesamt });
+      await new Promise((res) => { setTimeout(res, 500); });
+      setZuege(0);
+      setEnde({ sterne: st, lohn, punkte: endpunkte });
       setPhase('gewonnen');
-    }, 1300);
-    return () => clearTimeout(t);
-  }, [phase, gesamt, level, onErgebnis]);
+    })();
+  }, [phase, brettJetzt, zuege, level, stand.punkte, abspielen, onErgebnis]);
   useEffect(() => {
     if (phase !== 'verloren' || eingetragenRef.current) return;
     eingetragenRef.current = true;
@@ -86,18 +98,24 @@ export default function ReiseLevel({ level, rekord = 0, besteSterne = 0, onErgeb
             {staende.map((z, k) => (
               <li key={k} className={z.fertig ? 'fertig' : ''} data-ziel={z.ziel.typ}>
                 <svg viewBox="-20 -20 40 40" aria-hidden="true"><ZielBild ziel={z.ziel} /></svg>
-                <span>{z.fertig ? '✓' : `${z.ist} / ${z.soll}`}</span>
+                <span>{z.fertig
+                  // Gezeichnet statt "✓": nicht jede Schrift auf dem Tablet hat das Zeichen
+                  ? <svg viewBox="0 0 20 20" width="1.1em" height="1.1em" aria-label="geschafft" role="img"><path d="M4 10.5 l4 4 l8 -9" fill="none" stroke="#15803d" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  : `${z.ist} / ${z.soll}`}</span>
               </li>
             ))}
           </ul>
           <div className="reise-punkte">
-            <strong>{gesamt}</strong> Punkte{bonus > 0 && <small> (+{bonus} Zugbonus)</small>}
+            <strong>{gesamt}</strong> Punkte{bonus > 0 && <small> (+{bonus} Rausch)</small>}
             <div className="reise-balken" aria-hidden="true">
               <span style={{ width: `${balken * 100}%` }} />
               <i style={{ left: `${(level.sterne[0] / level.sterne[1]) * 100}%` }} /><i style={{ left: '100%' }} />
             </div>
           </div>
-          <button className="zimmer-knopf reise-aufgeben" onClick={onKarte}>Karte</button>
+          <div className="reise-werkzeug">
+            <PfotenKnopf spiel={spiel} />
+            <button className="zimmer-knopf reise-aufgeben" onClick={onKarte}>Karte</button>
+          </div>
         </aside>
       </div>
 
@@ -116,7 +134,7 @@ export default function ReiseLevel({ level, rekord = 0, besteSterne = 0, onErgeb
           <button className="zimmer-preis reise-los" onClick={() => setPhase('spiel')}>Los!</button>
         </div>
       )}
-      {phase === 'bonus' && <div className="reise-geschafft-schild" role="status">Geschafft! Zugbonus +{bonus}</div>}
+      {phase === 'bonus' && <div className="reise-geschafft-schild" role="status">{zuege > 0 ? 'Geschafft! Leckerli-Rausch!' : 'Geschafft!'}</div>}
       {phase === 'gewonnen' && ende && (
         <div className="reise-tafel gewonnen" role="dialog" aria-label="Level geschafft">
           <h2>Geschafft!</h2>

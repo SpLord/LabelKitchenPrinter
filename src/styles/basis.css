@@ -29,6 +29,16 @@ html, body {
   height: 100%;
 }
 
+/*
+  Kein grauer/schwarzer Kasten beim Antippen: Android und iPad zeichnen sonst um
+  jedes angetippte Element (Katze, Spielfläche, Brett) ein dunkles Rechteck.
+  Die Eigenschaft vererbt sich, hier oben reicht. Tastatur-Fokus bleibt sichtbar
+  (:focus-visible-Regeln an den Knöpfen).
+*/
+html { -webkit-tap-highlight-color: transparent; }
+/* Kein 300-ms-Warten auf einen möglichen Doppeltipp-Zoom */
+button, [role="button"], a { touch-action: manipulation; }
+
 body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";

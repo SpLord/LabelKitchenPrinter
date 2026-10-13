@@ -599,3 +599,45 @@ button.zimmer-knopf:active { transform: translateY(0.2cqw); box-shadow: 0 0.1cqw
 }
 /* Leckerli-Reise-Karte: zweiter, kleiner Knopf fürs freie Spiel */
 .zimmer-karte-neben { margin-top: 0.6cqw; font-size: 1.5cqw; padding: 0.5cqw 1.4cqw; }
+
+/* ── 2.14.0: Antippen ohne Kasten, Ziehen ohne Markieren ──────────────────── */
+/* Langes Drücken (Kuscheln, Ziehen im Spiel) soll weder Text markieren noch das
+   Menü "Bild speichern" öffnen; ein Mausklick zeigt keinen Fokusrahmen –
+   die Tastatur schon (:focus-visible). */
+.zimmer { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.zimmer input, .zimmer [contenteditable] { -webkit-user-select: text; user-select: text; }
+.zimmer :focus:not(:focus-visible) { outline: none; }
+.zimmer svg *:focus { outline: none; }
+/* Antippbares federt kurz – man merkt, dass der Tipp angekommen ist */
+.zimmer-tippbar:active { filter: brightness(0.94); }
+.zimmer-knopf:active, .zimmer-preis:active:not(:disabled), .zimmer-menue button:active { transform: translateY(0.25cqw) scale(0.97); }
+
+/* Bestenliste (2.14.0): Endbild von Gurkenhüpfer und Leckerli-Drei */
+.zimmer-spiel-schluss { position: absolute; inset: 0; z-index: 35; display: grid; place-items: center; background: rgba(47, 42, 38, 0.35); cursor: default; }
+.bestenliste {
+  width: 46cqw; display: grid; justify-items: center; gap: 1cqw; padding: 2.4cqw 3cqw;
+  background: #fffbeb; border: 0.45cqw solid var(--kontur); border-radius: 2.4cqw; box-shadow: 0 0.6cqw 0 var(--kontur);
+  animation: zimmer-feier 280ms cubic-bezier(.3,1.5,.5,1);
+}
+.bestenliste h2 { margin: 0; font-size: 3.6cqw; }
+.bestenliste h2.rekord { color: #b45309; animation: zimmer-pochen 1.2s ease-in-out infinite; }
+.bestenliste p { margin: 0; }
+.bestenliste-wert { font-size: 2.2cqw; }
+.bestenliste-wert strong { font-size: 4.4cqw; }
+.bestenliste-zusatz { font-size: 1.8cqw; color: #78350f; font-weight: 700; }
+.bestenliste-name { display: grid; gap: 0.4cqw; font-size: 1.6cqw; font-weight: 700; color: #57534e; justify-items: center; }
+.bestenliste-name input {
+  width: 26cqw; font: inherit; font-size: 2.4cqw; font-weight: 800; text-align: center; color: var(--kontur);
+  padding: 0.6cqw 1cqw; border: 0.35cqw solid var(--kontur); border-radius: 1.2cqw; background: #fff;
+}
+.bestenliste-name input:focus { outline: 0.35cqw solid #f59e0b; outline-offset: 0.2cqw; }
+.bestenliste-liste { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 0.4cqw; }
+.bestenliste-liste li {
+  display: grid; grid-template-columns: 3cqw 1fr auto; align-items: center; gap: 1cqw;
+  padding: 0.5cqw 1.2cqw; border-radius: 1cqw; background: #fff; font-size: 1.9cqw; font-weight: 700;
+}
+.bestenliste-liste li.neu { background: #fde047; box-shadow: 0 0 0 0.3cqw var(--kontur) inset; }
+.bestenliste-liste li.leer { grid-template-columns: 1fr; text-align: center; color: #78716c; }
+.bestenliste-liste .wert { font-variant-numeric: tabular-nums; }
+.zimmer-karte-rekord { font-size: 1.35cqw; font-weight: 800; color: #b45309; margin: 0.2cqw 0 0.4cqw; }
+@media (prefers-reduced-motion: reduce) { .bestenliste, .bestenliste h2.rekord { animation: none; } }

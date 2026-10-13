@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LECKERLI, PUNKTE, belohnung, gruppen, gueltig, hatZug, laeufe, mischen, nachbarn, restDosen, restKisten,
-  restPfuetzen, startBrett, zug, leer,
+  restPfuetzen, startBrett, zug, leer, hinweis, pfote, rausch,
 } from './brett.js';
 
 const zufallAus = (saat) => { let x = saat; return () => { x = (x * 9301 + 49297) % 233280; return x / 233280; }; };
@@ -163,4 +163,68 @@ test('Zufallsspiel: hundert Züge lang bleibt das Brett heil', () => {
     assert.equal(new Set(s.felder.map((f) => f.id)).size, 49, 'ids eindeutig');
   }
   assert.equal(gespielt, 100);
+});
+
+// ── 2.14.0: wie im Original – Spezial mit Spezial, Hinweis, Pfote, Leckerli-Rausch ──
+test('Kombi: zwei Spezial-Leckerli getauscht wirken auch ohne Reihe', () => {
+  const s = brett(RUHIG, { spezial: { 0: 'reihe', 1: 'spalte' } });
+  assert.equal(gueltig(s, 0, 1), true);
+  const r = zug(s, 0, 1, ARTEN, zufallAus(1));
+  const e = r.schritte[1].effekte.map((x) => x.art);
+  assert.ok(e.includes('reihe') && e.includes('spalte'), `Kreuz: ${e}`);
+  assert.ok(r.schritte[1].platzt.length >= 9, 'Zeile und Spalte (5 + 5 − 1)');
+});
+
+test('Kombi: Paket + Paket sprengt ein 5 × 5', () => {
+  const s = brett(['fkmwefk', 'kmwefkm', 'mwefkmw', 'wefkmwe', 'efkmwef', 'fkmwefk', 'kmwefkm'], { spezial: { 24: 'bombe', 25: 'bombe' } });
+  const r = zug(s, 24, 25, ARTEN, zufallAus(2));
+  assert.ok(r.schritte[1].platzt.length >= 25, `${r.schritte[1].platzt.length}`);
+});
+
+test('Kombi: gestreift + Paket räumt drei Zeilen und drei Spalten', () => {
+  const s = brett(['fkmwefk', 'kmwefkm', 'mwefkmw', 'wefkmwe', 'efkmwef', 'fkmwefk', 'kmwefkm'], { spezial: { 24: 'reihe', 25: 'bombe' } });
+  const r = zug(s, 24, 25, ARTEN, zufallAus(3));
+  assert.ok(r.schritte[1].platzt.length >= 33, `${r.schritte[1].platzt.length}`);
+});
+
+test('Kombi: Regenbogen + gestreift macht alle dieser Sorte zu gestreiften und zündet sie', () => {
+  const s = brett(RUHIG.map((z, i) => (i === 0 ? `R${z.slice(1)}` : z)), { spezial: { 1: 'reihe' } });
+  const kekse = s.felder.filter((f) => f.art === 'keks').length;
+  const r = zug(s, 0, 1, ARTEN, zufallAus(4));
+  const streifen = r.schritte[1].effekte.filter((x) => x.art === 'reihe' || x.art === 'spalte').length;
+  assert.ok(streifen >= kekse, `${streifen} Strahlen für ${kekse} Kekse`);
+});
+
+test('Hinweis: findet einen Zug, der geht', () => {
+  const s = startBrett(leer(7), ARTEN, zufallAus(8));
+  const h = hinweis(s, zufallAus(9));
+  assert.ok(h);
+  assert.equal(gueltig(s, h[0], h[1]), true);
+});
+
+test('Pfote: ein Feld wegklopfen kostet keinen Zug, zündet Spezial, trifft Kisten, nicht Dosen', () => {
+  const s = brett(RUHIG, { spezial: { 12: 'reihe' } });
+  const r = pfote(s, 12, ARTEN, zufallAus(5));
+  assert.ok(r.schritte[1].effekte.some((x) => x.art === 'reihe'));
+  assert.ok(r.schritte[1].platzt.length >= 5);
+  const k = brett(['Kkmwe', 'kmwef', 'mwefk', 'wefkm', 'efkmw']);
+  assert.equal(pfote(k, 0, ARTEN, zufallAus(6)).kisten, 1);
+  const d = brett(['Dkmwe', 'kmwef', 'mwefk', 'wefkm', 'efkmw']);
+  assert.equal(pfote(d, 0, ARTEN, zufallAus(7)), null);
+});
+
+test('Rausch: übrige Züge werden zu gestreiften Leckerli, die alle zünden', () => {
+  const s = startBrett(leer(7), ARTEN, zufallAus(10));
+  const r = rausch(s, 5, ARTEN, zufallAus(11));
+  assert.ok(r.schritte[1].effekte.filter((x) => x.art === 'reihe' || x.art === 'spalte').length >= 5);
+  assert.ok(r.punkte > 0);
+  assert.equal(laeufe(r.s).length, 0, 'danach in Ruhe');
+  assert.deepEqual(rausch(s, 0, ARTEN, zufallAus(11)).schritte.length, 0);
+});
+
+test('Schritte tragen ihre Punkte – für die fliegenden Zahlen', () => {
+  const s = brett(['ffkfe', 'kmfwf', 'mwekm', 'wekmw', 'ekmwe']);
+  const r = zug(s, 2, 7, ARTEN, zufallAus(12));
+  const summe = r.schritte.reduce((x, sch) => x + (sch.punkte ?? 0), 0);
+  assert.equal(summe, r.punkte);
 });

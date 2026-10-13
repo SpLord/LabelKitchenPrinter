@@ -1,5 +1,5 @@
-import { gueltig, startBrett, zug } from './brett.js';
-import { ZUG_BONUS, anfang, geschafft, sterne, zielStand } from './level.js';
+import { gueltig, rausch, startBrett, zug } from './brett.js';
+import { anfang, geschafft, sterne, zielStand } from './level.js';
 
 /*
   Ein einfacher Mitspieler zum Ausbalancieren der Level: wählt in jedem Zug
@@ -39,7 +39,8 @@ export function botSpiel(level, zufall) {
     stand = { punkte: stand.punkte + r.punkte, gesammelt: { ...stand.gesammelt } };
     Object.entries(r.gesammelt).forEach(([k, n]) => { stand.gesammelt[k] = (stand.gesammelt[k] ?? 0) + n; });
     if (geschafft(zielStand(level, stand, s, a))) {
-      const end = stand.punkte + (zuege - 1) * ZUG_BONUS;
+      // Leckerli-Rausch: die übrigen Züge zünden als gestreifte Leckerli
+      const end = stand.punkte + rausch(s, zuege - 1, level.arten, zufall).punkte;
       return { gewonnen: true, punkte: end, sterne: sterne(level, end, true), restZuege: zuege - 1 };
     }
   }

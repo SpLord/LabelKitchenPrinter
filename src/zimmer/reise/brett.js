@@ -98,6 +98,8 @@ export function gueltig(s, a, b) {
   const fa = s.felder[a]; const fb = s.felder[b];
   if (!beweglich(fa) || !beweglich(fb)) return false;
   if ((fa.art === 'regen' && (istLeckerli(fb) || fb.art === 'regen')) || (fb.art === 'regen' && istLeckerli(fa))) return true;
+  // Wie im Original: zwei Spezial-Leckerli getauscht wirken immer zusammen
+  if (fa.spezial && fb.spezial) return true;
   return laeufe(tausch(s, a, b)).length > 0;
 }
 
@@ -126,15 +128,23 @@ function sprengen(s, start) {
     const f = s.felder[i];
     if (!f) continue;
     const ziele = [];
-    if (f.spezial === 'reihe') { effekte.push({ art: 'reihe', i }); for (let k = 0; k < s.n; k += 1) ziele.push(zeile(s, i) * s.n + k); }
-    if (f.spezial === 'spalte') { effekte.push({ art: 'spalte', i }); for (let k = 0; k < s.n; k += 1) ziele.push(k * s.n + spalte(s, i)); }
-    if (f.spezial === 'bombe') {
-      effekte.push({ art: 'bombe', i });
-      for (let dz = -1; dz <= 1; dz += 1) for (let ds = -1; ds <= 1; ds += 1) {
-        const z = zeile(s, i) + dz; const sp = spalte(s, i) + ds;
+    const z0 = zeile(s, i); const s0 = spalte(s, i);
+    const reiheWeg = (z) => { if (z < 0 || z >= s.n) return; effekte.push({ art: 'reihe', i: z * s.n + s0 }); for (let k = 0; k < s.n; k += 1) ziele.push(z * s.n + k); };
+    const spalteWeg = (sp) => { if (sp < 0 || sp >= s.n) return; effekte.push({ art: 'spalte', i: z0 * s.n + sp }); for (let k = 0; k < s.n; k += 1) ziele.push(k * s.n + sp); };
+    const quadrat = (r) => {
+      effekte.push({ art: 'bombe', i, gross: r > 1 });
+      for (let dz = -r; dz <= r; dz += 1) for (let ds = -r; ds <= r; ds += 1) {
+        const z = z0 + dz; const sp = s0 + ds;
         if (z >= 0 && z < s.n && sp >= 0 && sp < s.n) ziele.push(z * s.n + sp);
       }
-    }
+    };
+    if (f.spezial === 'reihe') reiheWeg(z0);
+    if (f.spezial === 'spalte') spalteWeg(s0);
+    if (f.spezial === 'bombe') quadrat(1);
+    // Kombis aus zwei getauschten Spezial-Leckerli (nur im Zug selbst gesetzt)
+    if (f.spezial === 'kreuz') { reiheWeg(z0); spalteWeg(s0); }
+    if (f.spezial === 'grosskreuz') { for (let d = -1; d <= 1; d += 1) { reiheWeg(z0 + d); spalteWeg(s0 + d); } }
+    if (f.spezial === 'riesenbombe') quadrat(2);
     if (f.art === 'regen') {
       // Von einer Explosion getroffen: nimmt die häufigste Sorte mit
       const zaehl = {};
@@ -242,7 +252,7 @@ function aufloesen(s0, arten, zufall, bevorzugt, erst = null) {
         if (d.ids.length === 0) break;
         summe = addieren(summe, { punkte: PUNKTE.dose * d.ids.length, gesammelt: {}, kisten: 0, pfuetzen: 0, dosen: d.ids.length });
         s = nachrutschen(d.s, arten, zufall);
-        schritte.push({ s, platzt: d.ids, effekte: [], dosen: d.ids.length });
+        schritte.push({ s, platzt: d.ids, effekte: [], dosen: d.ids.length, punkte: PUNKTE.dose * d.ids.length });
         continue;
       }
       const start = new Set();
@@ -266,7 +276,7 @@ function aufloesen(s0, arten, zufall, bevorzugt, erst = null) {
     }
     summe = addieren(summe, { ...r.zaehler, dosen: 0 });
     s = nachrutschen({ ...r.s, felder, id: Math.max(s.id, r.s.id) }, arten, zufall);
-    schritte.push({ s, platzt: r.platzt, effekte, kette, geboren: [...geboren.keys()] });
+    schritte.push({ s, platzt: r.platzt, effekte, kette, geboren: [...geboren.keys()], punkte: r.zaehler.punkte, mitte: mitte(s0.n, getroffen) });
   }
   return { s, schritte, summe };
 }
@@ -280,17 +290,39 @@ export function zug(s0, a, b, arten, zufall = Math.random) {
   const s = tausch(s0, a, b);
   const fa = s.felder[b]; const fb = s.felder[a];   // nach dem Tausch: fa liegt jetzt in b
   let erst = null;
-  let knaeuel = -1;
+  let bereit = s;
   if (fa.art === 'regen' || fb.art === 'regen') {
-    let anderes;
-    [knaeuel, anderes] = fa.art === 'regen' ? [b, a] : [a, b];
-    const sorte = s.felder[anderes].art;
+    const [knaeuel, anderes] = fa.art === 'regen' ? [b, a] : [a, b];
+    const anderesFeld = s.felder[anderes];
+    const sorte = anderesFeld.art;
+    const dieser = s.felder.map((f, i) => (f?.art === sorte ? i : -1)).filter((i) => i >= 0);
     erst = sorte === 'regen'
       ? s.felder.map((f, i) => (beweglich(f) && f.art !== 'dose' ? i : -1)).filter((i) => i >= 0)
-      : [knaeuel, ...s.felder.map((f, i) => (f?.art === sorte ? i : -1)).filter((i) => i >= 0)];
+      : [knaeuel, ...dieser];
+    bereit = {
+      ...s,
+      felder: s.felder.map((f, i) => {
+        // Das Knäuel selbst zündet nicht noch einmal: es geht als gewöhnliches Stück mit
+        if (i === knaeuel) return { ...f, art: 'regen-weg' };
+        // Regenbogen + Spezial: alle dieser Sorte werden zu diesem Spezial (Streifen gemischt)
+        if (anderesFeld.spezial && f?.art === sorte) {
+          const sp = anderesFeld.spezial === 'bombe' ? 'bombe' : (zufall() < 0.5 ? 'reihe' : 'spalte');
+          return { ...f, spezial: sp };
+        }
+        return f;
+      }),
+    };
+  } else if (fa.spezial && fb.spezial) {
+    // Zwei Spezial: in b entsteht die Kombi, a wird gewöhnlich (es steckt ja in der Kombi)
+    const arten2 = [fa.spezial, fb.spezial];
+    const bomben = arten2.filter((x) => x === 'bombe').length;
+    const kombi = bomben === 2 ? 'riesenbombe' : bomben === 1 ? 'grosskreuz' : 'kreuz';
+    bereit = {
+      ...s,
+      felder: s.felder.map((f, i) => (i === b ? { ...f, spezial: kombi } : i === a ? { ...f, spezial: undefined } : f)),
+    };
+    erst = [a, b];
   }
-  // Das Knäuel selbst zündet nicht noch einmal: es geht als gewöhnliches Stück mit
-  const bereit = knaeuel < 0 ? s : { ...s, felder: s.felder.map((f, i) => (i === knaeuel ? { ...f, art: 'regen-weg' } : f)) };
   const r = aufloesen(bereit, arten, zufall, [a, b], erst);
   const schritte = [{ s: bereit, platzt: [], effekte: [] }, ...r.schritte];
   let ende = r.s;
@@ -356,3 +388,63 @@ export const leer = (n) => Array.from({ length: n }, () => '.'.repeat(n));
 export const restKisten = (s) => s.felder.filter((f) => f?.art === 'kiste').length;
 export const restPfuetzen = (s) => s.pfuetzen.filter((p) => p > 0).length;
 export const restDosen = (s) => s.felder.filter((f) => f?.art === 'dose').length;
+
+/* Wo eine Gruppe ungefähr liegt (für die fliegenden Punkte): Zeile/Spalte der Mitte. */
+function mitte(n, zellen) {
+  const liste = [...zellen];
+  if (!liste.length) return null;
+  const z = liste.reduce((a, i) => a + Math.floor(i / n), 0) / liste.length;
+  const sp = liste.reduce((a, i) => a + (i % n), 0) / liste.length;
+  return { z, sp };
+}
+
+/* Hinweis (2.14.0): ein möglicher Zug, zufällig gewählt – oder null. */
+export function hinweis(s, zufall = Math.random) {
+  const moeglich = [];
+  for (let i = 0; i < s.felder.length; i += 1) {
+    if (spalte(s, i) < s.n - 1 && gueltig(s, i, i + 1)) moeglich.push([i, i + 1]);
+    if (zeile(s, i) < s.n - 1 && gueltig(s, i, i + s.n)) moeglich.push([i, i + s.n]);
+  }
+  if (!moeglich.length) return null;
+  return moeglich[Math.min(moeglich.length - 1, Math.floor(zufall() * moeglich.length))];
+}
+
+/*
+  Pfote (2.14.0, wie der Lolli-Hammer im Original): ein Feld wegklopfen,
+  ohne Zug. Spezial-Leckerli zünden, Kisten bekommen einen Stoss; Dosen
+  lassen sich nicht wegklopfen. null, wenn es nicht geht.
+*/
+export function pfote(s, i, arten, zufall = Math.random) {
+  const f = s.felder[i];
+  if (!f || f.art === 'dose') return null;
+  const r = aufloesen(s, arten, zufall, [], [i]);
+  const schritte = [{ s, platzt: [], effekte: [] }, ...r.schritte];
+  let ende = r.s;
+  if (!hatZug(ende)) {
+    ende = mischen(ende, arten, zufall);
+    schritte.push({ s: ende, platzt: [], effekte: [], gemischt: true });
+  }
+  return { s: ende, schritte, ...r.summe };
+}
+
+/*
+  Leckerli-Rausch (2.14.0, wie "Sugar Crush"): Ist das Ziel geschafft, wird
+  für jeden übrigen Zug ein Leckerli gestreift; dann zünden alle Spezial-
+  Leckerli auf dem Brett auf einmal. Die Punkte zählen.
+*/
+export function rausch(s, n, arten, zufall = Math.random) {
+  if (n <= 0) return { s, schritte: [], punkte: 0 };
+  const frei = s.felder.map((f, i) => (istLeckerli(f) && !f.spezial ? i : -1)).filter((i) => i >= 0);
+  for (let k = frei.length - 1; k > 0; k -= 1) {
+    const j = Math.floor(zufall() * (k + 1));
+    [frei[k], frei[j]] = [frei[j], frei[k]];
+  }
+  const gewaehlt = new Set(frei.slice(0, n));
+  const mitStreifen = {
+    ...s,
+    felder: s.felder.map((f, i) => (gewaehlt.has(i) ? { ...f, spezial: zufall() < 0.5 ? 'reihe' : 'spalte', frisch: true } : f)),
+  };
+  const zuenden = mitStreifen.felder.map((f, i) => (f && (f.spezial || f.art === 'regen') ? i : -1)).filter((i) => i >= 0);
+  const r = aufloesen(mitStreifen, arten, zufall, [], zuenden);
+  return { s: r.s, schritte: [{ s: mitStreifen, platzt: [], effekte: [] }, ...r.schritte], ...r.summe };
+}

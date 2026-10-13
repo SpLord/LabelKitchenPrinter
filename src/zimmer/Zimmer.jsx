@@ -35,6 +35,9 @@ import { HUEPFER } from './huepfer.js';
 import { FREI, freiLohn } from './reise/frei.js';
 import { ANGELN } from './angeln.js';
 import { PAUSE_TEXT, pauseAnzeige } from './pause.js';
+import { FUTTER } from './futter.js';
+import { bestenliste } from './Bestenliste.jsx';
+import { rekord } from './bestenliste.js';
 import { FEDER, LECKERLI, muenzenFuerRunde, wartezeit } from './spiele.js';
 
 const KEY_LECKERLI = 'zimmer_leckerli_zuletzt';
@@ -76,10 +79,14 @@ const BEREICHE = [
 
 /* Was in den noch nicht gebauten Bereichen kommt – ehrlich statt Attrappe. */
 
-const FUTTER = [
-  { id: 'trocken', name: 'Trockenfutter', menge: 20, preis: 3, farbe: '#fde68a' },
-  { id: 'nass', name: 'Nassfutter', menge: 35, preis: 5, farbe: '#c7d2fe' },
-];
+/* Futterbilder je Sorte (Liste und Wirkung: futter.js) */
+const FUTTER_BILD = {
+  trocken: (f) => <g {...K}><path d="M18 10 h44 l6 54 h-56 Z" fill={f.farbe} /><circle cx="40" cy="40" r="10" fill="#a16207" strokeWidth="3" /></g>,
+  nass: (f) => <g {...K}><rect x="14" y="18" width="52" height="44" rx="7" fill={f.farbe} /><ellipse cx="40" cy="18" rx="26" ry="7" fill="#e0e7ff" /><path d="M22 38 h36" stroke="#6366f1" strokeWidth="6" /></g>,
+  milch: (f) => <g {...K}><path d="M26 22 l6 -12 h16 l6 12 v36 a4 4 0 0 1 -4 4 h-20 a4 4 0 0 1 -4 -4 Z" fill={f.farbe} /><rect x="26" y="32" width="28" height="12" fill="#60a5fa" strokeWidth="3" /><path d="M32 10 h16" /></g>,
+  thunfisch: (f) => <g {...K}><ellipse cx="40" cy="22" rx="24" ry="7" fill="#e5e7eb" /><path d="M16 22 v28 a24 7 0 0 0 48 0 v-28" fill="#cbd5e1" /><rect x="16" y="30" width="48" height="16" fill={f.farbe} strokeWidth="3" /><path d="M30 38 q8 -7 16 0 q-8 7 -16 0 Z M30 38 l-5 -4 v8 Z" fill="#fb923c" strokeWidth="2.5" /></g>,
+  festmahl: (f) => <g {...K}><ellipse cx="40" cy="54" rx="32" ry="8" fill="#fff" /><path d="M14 46 C20 26 60 26 66 46 Z" fill={f.farbe} /><path d="M24 40 q8 -6 16 0 q8 6 16 0" fill="none" stroke="#fff" strokeWidth="3" /><path d="M60 26 q6 -10 2 -16" fill="none" stroke="#16a34a" strokeWidth="4" /></g>,
+};
 
 /* ── Bausteine ───────────────────────────────────────────────────────────── */
 function Ring({ wert, farbe, titel, children }) {
@@ -111,13 +118,14 @@ function Herzen({ anzahl }) {
 
 /* Spielen: kurze Spiele für die Pause, jedes etwa eine halbe Minute. */
 /* Spielkarte mit Wartezeit (Münzspiele, Pause siehe pause.js). */
-function SpielMitPause({ id, titel, text, bild, onSpiel, schluessel }) {
+function SpielMitPause({ id, titel, text, bild, onSpiel, schluessel, rekordText }) {
   const warten = abkuehlung(zuletzt(schluessel));
   return (
     <article className="zimmer-karte">
       <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">{bild}</svg>
       <h3>{titel}</h3>
       <p>{text}</p>
+      {rekordText && <p className="zimmer-karte-rekord">{rekordText}</p>}
       <button className="zimmer-preis" disabled={warten > 0} onClick={() => onSpiel(id)}>spielen</button>
       {warten > 0 && <small>wieder in {pauseAnzeige(warten)}</small>}
     </article>
@@ -138,6 +146,9 @@ function ReiseKarteImBlatt({ onSpiel }) {
       </svg>
       <h3>Leckerli-Reise</h3>
       <p>Match-3 in 30 Leveln: Küche, Garten, Dachboden. Münzen für jedes neue Level und jeden Stern.</p>
+      {rekord(bestenliste('dreier')) > 0 && (
+        <p className="zimmer-karte-rekord">Freies Spiel – Rekord: {rekord(bestenliste('dreier'))} ({bestenliste('dreier')[0].name})</p>
+      )}
       <button className="zimmer-preis" onClick={() => onSpiel('reise')}>Reise</button>
       <button className="zimmer-knopf zimmer-karte-neben" disabled={warten > 0} onClick={() => onSpiel('dreier')}
               title={`Freies Spiel: ${FREI.zuege} Züge, bis ${FREI.lohnMax} Münzen, ${PAUSE_TEXT}`}>
@@ -228,6 +239,7 @@ function SpieleKarten({ onSpiel, muenzen }) {
       </article>
       {/* 2.12.0: drei grössere Münzspiele */}
       <SpielMitPause id="huepfer" titel="Gurkenhüpfer" onSpiel={onSpiel} schluessel={KEY_HUEPFER}
+                     rekordText={rekord(bestenliste('huepfer')) > 0 ? `Rekord: ${rekord(bestenliste('huepfer'))} m (${bestenliste('huepfer')[0].name})` : null}
                      text={`Über Gurken springen, Münzen sammeln. Bis ${HUEPFER.lohnMax} Münzen, ${PAUSE_TEXT}.`}
                      bild={<g {...K} strokeWidth="3"><path d="M8 58 C6 44 46 40 48 54 C50 64 10 70 8 58 Z" fill="#4ade80" /><circle cx="56" cy="20" r="9" fill="#fbbf24" /><path d="M20 34 q14 -22 28 -12" fill="none" strokeDasharray="4 5" /></g>} />
       {/* 2.13.0: Leckerli-Drei wird zur Reise mit 30 Leveln; das freie Spiel bleibt */}
@@ -239,7 +251,7 @@ function SpieleKarten({ onSpiel, muenzen }) {
   );
 }
 
-function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen, onLohn }) {
+function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen, onLohn, onGefuettert }) {
   const titel = BEREICHE.find((b) => b.id === bereich)?.titel ?? ({ herzen: 'Freundschaft', aufgaben: 'Aufgaben für heute' }[bereich] ?? '');
   return (
     <div className="zimmer-blatt-huelle" onClick={onZu}>
@@ -264,15 +276,11 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen, onLohn
               const zuTeuer = zustand.muenzen < f.preis;
               return (
                 <article key={f.id} className="zimmer-karte">
-                  <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">
-                    {f.id === 'trocken'
-                      ? <g {...K}><path d="M18 10 h44 l6 54 h-56 Z" fill={f.farbe} /><circle cx="40" cy="40" r="10" fill="#a16207" strokeWidth="3" /></g>
-                      : <g {...K}><rect x="14" y="18" width="52" height="44" rx="7" fill={f.farbe} /><ellipse cx="40" cy="18" rx="26" ry="7" fill="#e0e7ff" /><path d="M22 38 h36" stroke="#6366f1" strokeWidth="6" /></g>}
-                  </svg>
+                  <svg viewBox="0 0 80 70" className="zimmer-karte-bild" aria-hidden="true">{FUTTER_BILD[f.id](f)}</svg>
                   <h3>{f.name}</h3>
-                  <p>+{f.menge} in den Napf</p>
+                  <p>{f.text}</p>
                   <button className="zimmer-preis" disabled={voll || zuTeuer}
-                          onClick={() => zustand.napfFuellen(f.menge, f.preis)}>
+                          onClick={() => { if (zustand.napfFuellen(f.menge, f.preis, f)) onGefuettert?.(f); }}>
                     <span className="zimmer-muenze" aria-hidden="true" /> {f.preis}
                   </button>
                   {voll && <small>Napf ist voll</small>}
@@ -407,25 +415,28 @@ export default function Zimmer({ zustand, onZu }) {
     setErgebnis(spruenge > 0 ? `${spruenge} ${spruenge === 1 ? 'Sprung' : 'Sprünge'} – ${name} ist ganz aus dem Häuschen` : 'Der Punkt war zu schnell');
   }, [freigeben, pflege, erfreuen, naeher, name]);
   const versteckEnde = useCallback((funde) => {
+    zaehle('gefunden', funde);
     setSpiel(null);
     freigeben();
     pflege('spielen');
     const lohn = versteckLohn(funde);
     if (lohn > 0) setMuenzen((c) => c + lohn);
     setErgebnis(lohn > 0 ? `${funde}-mal gleich gefunden: +${lohn} Münzen` : `${name} hat sich gut versteckt`);
-  }, [freigeben, pflege, setMuenzen, name]);
+  }, [freigeben, pflege, setMuenzen, name, zaehle]);
   const memoryEnde = useCallback((zuege) => {
     setSpiel(null);
     freigeben();
     pflege('spielen');
     if (zuege === null) { setErgebnis('Memory abgebrochen'); return; }
+    zaehle('memory');
     const lohn = memoryLohn(zuege);
     setMuenzen((c) => c + lohn);
     setErgebnis(`Alle Paare in ${zuege} Zügen: +${lohn} Münzen`);
-  }, [freigeben, pflege, setMuenzen]);
+  }, [freigeben, pflege, setMuenzen, zaehle]);
 
   // 2.10.0: Seifenblasen und Apportieren (Laune), Nachmachen (Münzen)
   const blasenEnde = useCallback((n) => {
+    zaehle('blasen', n);
     setSpiel(null);
     freigeben();
     pflege('spielen');
@@ -434,7 +445,7 @@ export default function Zimmer({ zustand, onZu }) {
       naeher('spielen', 1);
     }
     setErgebnis(n > 0 ? `${n} ${n === 1 ? 'Blase' : 'Blasen'} geplatzt – ${name} ist ganz zappelig` : 'Die Blasen sind davongeflogen');
-  }, [freigeben, pflege, erfreuen, naeher, name]);
+  }, [freigeben, pflege, erfreuen, naeher, name, zaehle]);
   const nachmachenEnde = useCallback((runden) => {
     setSpiel(null);
     freigeben();
@@ -444,6 +455,7 @@ export default function Zimmer({ zustand, onZu }) {
     setErgebnis(lohn > 0 ? `${runden} ${runden === 1 ? 'Runde' : 'Runden'} nachgemacht: +${lohn} Münzen` : `${name} war zu schnell`);
   }, [freigeben, pflege, setMuenzen, name]);
   const wolleEnde = useCallback((n) => {
+    zaehle('apport', n);
     setSpiel(null);
     freigeben();
     pflege('spielen');
@@ -452,7 +464,7 @@ export default function Zimmer({ zustand, onZu }) {
       naeher('spielen', 1);
     }
     setErgebnis(n > 0 ? `${n}-mal gebracht – ${name} ist stolz` : `${name} hat das Knäuel liegen lassen`);
-  }, [freigeben, pflege, erfreuen, naeher, name]);
+  }, [freigeben, pflege, erfreuen, naeher, name, zaehle]);
 
   // 2.12.0: Gurkenhüpfer, Leckerli-Drei, Angeln (Münzen)
   const muenzSpielEnde = useCallback((lohn, text) => {
@@ -465,8 +477,18 @@ export default function Zimmer({ zustand, onZu }) {
     }
     setErgebnis(lohn > 0 ? `${text}: +${lohn} Münzen` : text);
   }, [freigeben, pflege, setMuenzen, naeher]);
-  const huepferEnde = useCallback((r) => muenzSpielEnde(r.lohn, `${r.meter} m gerannt, ${r.muenzen} Münzen gesammelt`), [muenzSpielEnde]);
-  const dreierEnde = useCallback((punkte) => muenzSpielEnde(freiLohn(punkte), `${punkte} Punkte`), [muenzSpielEnde]);
+  const huepferEnde = useCallback((r) => {
+    zaehle('meter', r.meter);
+    muenzSpielEnde(r.lohn, `${r.meter} m gerannt, ${r.muenzen} Münzen gesammelt`);
+  }, [muenzSpielEnde, zaehle]);
+  const dreierEnde = useCallback((punkte) => {
+    zaehle('dreierPunkte', punkte);
+    muenzSpielEnde(freiLohn(punkte), `${punkte} Punkte`);
+  }, [muenzSpielEnde, zaehle]);
+  const reiseGeschafft = useCallback((sterne) => {
+    zaehle('reise');
+    zaehle('sterne', sterne);
+  }, [zaehle]);
   const reiseLohn = useCallback((lohn) => {
     setMuenzen((c) => c + lohn);
     naeher('spielen', 1);
@@ -476,7 +498,11 @@ export default function Zimmer({ zustand, onZu }) {
     freigeben();
     pflege('spielen');
   }, [freigeben, pflege]);
-  const angelnEnde = useCallback((r) => muenzSpielEnde(r.lohn, `${r.fische} ${r.fische === 1 ? 'Fang' : 'Fänge'}, ${r.punkte} Punkte`), [muenzSpielEnde]);
+  const angelnEnde = useCallback((r) => {
+    zaehle('fische', r.gefangen.filter((a) => a !== 'schuh').length);
+    zaehle('goldfisch', r.gefangen.filter((a) => a === 'gold').length);
+    muenzSpielEnde(r.lohn, `${r.fische} ${r.fische === 1 ? 'Fang' : 'Fänge'}, ${r.punkte} Punkte`);
+  }, [muenzSpielEnde, zaehle]);
 
   const federFang = useCallback(() => {
     erfreuen(FEDER.laune);
@@ -609,6 +635,7 @@ export default function Zimmer({ zustand, onZu }) {
   const { tue } = katze;
   const kuscheln = () => {
     begruessungAbbrechen();
+    zustand.zaehle('kuscheln');
     setSchnurrt(true);
     tue(null, 'treteln', 2600);
     zustand.pflege('streicheln');
@@ -618,6 +645,7 @@ export default function Zimmer({ zustand, onZu }) {
   };
   const locken = (p) => {
     begruessungAbbrechen();
+    zustand.zaehle('locken');
     const ziel = amBoden(p);
     setTipp({ id: Date.now(), x: ziel.x, y: ziel.y });
     tue({ ...ziel, richtung: ziel.x < katze.pos.x ? -1 : 1 }, 'kopfschief', 2600);
@@ -635,6 +663,17 @@ export default function Zimmer({ zustand, onZu }) {
     begruessungAbbrechen();
     setFischeErschreckt(true);
     tue(ORTE.aquarium, 'fische', 8_000);
+  };
+
+  // Besonderes Futter (2.14.0): eine kleine Meldung, und es zählt für die Aufgaben
+  const gefuettert = (f) => {
+    if (f.id === 'trocken' || f.id === 'nass') return;
+    zustand.zaehle('besonders');
+    setErgebnis({
+      milch: `${zustand.name} schleckt die Milch`,
+      thunfisch: `Thunfisch! ${zustand.name} schnurrt`,
+      festmahl: `Ein Festmahl – ${zustand.name} ist selig`,
+    }[f.id]);
   };
 
   const streicheln = () => {
@@ -728,7 +767,7 @@ export default function Zimmer({ zustand, onZu }) {
         {spiel === 'wolle' && <SpielWolle katze={katze} onGebracht={mausTreffer} onEnde={wolleEnde} />}
         {spiel === 'huepfer' && <SpielHuepfer fell={zustand.fell} zubehoer={zustand.angelegt} onEnde={huepferEnde} />}
         {spiel === 'dreier' && <SpielDreier onEnde={dreierEnde} />}
-        {spiel === 'reise' && <Reise fell={zustand.fell} onLohn={reiseLohn} onZu={reiseZu} />}
+        {spiel === 'reise' && <Reise fell={zustand.fell} onLohn={reiseLohn} onGeschafft={reiseGeschafft} onZu={reiseZu} />}
         {spiel === 'angeln' && <SpielAngeln fell={zustand.fell} onEnde={angelnEnde} />}
         {spiel === 'huetchen' && (
           <ErrorBoundary label="Das Hütchenspiel">
@@ -757,7 +796,8 @@ export default function Zimmer({ zustand, onZu }) {
         {!spiel && !bereich && zustand.neueFreischaltungen.length > 0 && (
           <HerzFeier neu={zustand.neueFreischaltungen} name={zustand.name} onWeiter={zustand.freischaltungenGesehen} />
         )}
-        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft} onLohn={(l) => setErgebnis(`+${l} Münzen – gut gemacht!`)}
+        {bereich && <Blatt bereich={bereich} zustand={zustand} onZu={() => setBereich(null)} onSpiel={spielStarten} onGekauft={gekauft}
+                                  onGefuettert={gefuettert} onLohn={(l) => setErgebnis(`+${l} Münzen – gut gemacht!`)}
                                   onAngezogen={(a) => setErgebnis(`${a.name} gekauft – ${zustand.name} trägt es`)} />}
       </div>
     </div>

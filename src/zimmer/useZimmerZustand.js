@@ -338,14 +338,17 @@ export default function useZimmerZustand() {
   anwendenRef.current = anwenden;
 
   /* Futter in den Napf – kostet Münzen, nie über voll hinaus. */
-  const napfFuellen = useCallback((menge, preis) => {
+  // extra (2.14.0): Besonderes wirkt sofort – Milch löscht Durst, Fisch macht froh
+  const napfFuellen = useCallback((menge, preis, extra = {}) => {
     if (muenzen.stand < preis || napf >= 100) return false;
     muenzen.setStand((c) => c - preis);
     setNapf((v) => Math.min(100, v + menge));
+    if (extra.durst) traenken(extra.durst);
+    if (extra.laune) erfreuen(extra.laune);
     naeher('fuettern', FREUNDSCHAFT_FUETTERN);
     pflege('fuettern');
     return true;
-  }, [muenzen, napf, naeher, pflege]);
+  }, [muenzen, napf, naeher, pflege, traenken, erfreuen]);
 
   /*
     Keine Sackgasse: Wer keine Münzen fürs billigste Futter hat, bekommt einmal

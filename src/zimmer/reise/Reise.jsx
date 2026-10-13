@@ -11,7 +11,7 @@ const schreiben = (f) => { try { localStorage.setItem(KEY_REISE, JSON.stringify(
   Fortschritt (Sterne, Rekorde) liegt im Browser; Münzen gehen über onLohn
   an das Zimmer – nur fürs erste Schaffen und neue Sterne.
 */
-export default function Reise({ fell, onLohn, onZu }) {
+export default function Reise({ fell, onLohn, onGeschafft, onZu }) {
   const [fortschritt, setFortschritt] = useState(lesen);
   const [ansicht, setAnsicht] = useState({ art: 'karte' });
 
@@ -21,8 +21,9 @@ export default function Reise({ fell, onLohn, onZu }) {
     schreiben(neu);
     setFortschritt(neu);
     if (lohn > 0) onLohn(lohn);
+    if (sterne > 0) onGeschafft?.(sterne);
     return lohn;
-  }, [onLohn]);
+  }, [onLohn, onGeschafft]);
 
   if (ansicht.art === 'level') {
     const level = LEVEL[ansicht.nr - 1];

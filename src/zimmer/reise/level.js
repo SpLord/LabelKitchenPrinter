@@ -6,14 +6,14 @@ import { LECKERLI, restDosen, restKisten, restPfuetzen } from './brett.js';
   Vorlage: 7 Zeilen à 7 Zeichen –  .  Feld   p/P Pfütze (1/2)   k/K Kiste (1/2)   d Dose
   Ziele:   punkte n · sammeln art n · pfuetzen (alle weg) · kisten (alle weg) · dosen (alle runter)
   sterne:  Punkte für den zweiten und dritten Stern (der erste = Ziele geschafft).
-           Übrige Züge zählen am Ende als Bonus (ZUG_BONUS je Zug).
+           Übrige Züge zünden am Ende als Leckerli-Rausch (brett.js rausch) –
+           seine Punkte zählen mit. Schwellen mit scripts/reise-bot.mjs bestimmt.
 
   Jede Welt führt etwas Neues ein und mischt es dann mit dem Bekannten:
   Küche – Spezial-Leckerli und Pfützen, Garten – Kisten und Dosen,
   Dachboden – alles zusammen, weniger Züge, sechs Sorten.
 */
 
-export const ZUG_BONUS = 60;
 export const WELTEN = [
   { id: 'kueche', name: 'Küche', farbe: '#fde68a' },
   { id: 'garten', name: 'Garten', farbe: '#bbf7d0' },
@@ -33,38 +33,38 @@ const DO = { typ: 'dosen' };
 
 const ROH = [
   // ── Küche ───────────────────────────────────────────────────────────────
-  { zuege: 20, ziele: [punkte(600)], sterne: [1600, 2000], tipp: 'Tausche zwei Nachbarn, sodass drei Gleiche in einer Reihe liegen.' },
-  { zuege: 18, ziele: [sammeln('fisch', 15)], sterne: [2000, 2400] },
-  { zuege: 18, ziele: [punkte(1200)], sterne: [1800, 2200], tipp: 'Vier in einer Reihe ergeben ein gestreiftes Leckerli – es räumt eine ganze Reihe.' },
-  { zuege: 20, ziele: [sammeln('keks', 18), sammeln('maus', 18)], sterne: [2400, 3100] },
-  { zuege: 16, ziele: [punkte(1600)], sterne: [2100, 2600], tipp: 'Über Kreuz (L oder T) gibt es ein Paket: es sprengt alles drumherum.' },
-  { zuege: 22, ziele: [PF], vorlage: v(L, L, L, 'ppppppp', 'ppppppp', L, L), sterne: [3300, 5800], tipp: 'Milchpfützen verschwinden, wenn über ihnen etwas platzt.' },
-  { zuege: 24, ziele: [PF, sammeln('wolle', 15)], vorlage: v(L, L, 'ppppppp', L, 'ppppppp', L, L), sterne: [3200, 4300] },
-  { zuege: 24, ziele: [PF], vorlage: v(L, '...p...', '...p...', 'pppPppp', '...p...', '...p...', L), sterne: [2800, 4200], tipp: 'Dicke Pfützen brauchen zwei Treffer.' },
-  { zuege: 16, ziele: [sammeln('feder', 24)], sterne: [2800, 3900], tipp: 'Fünf in einer Reihe: ein Regenbogen-Knäuel. Mit einem Leckerli getauscht räumt es alle dieser Sorte.' },
-  { zuege: 28, ziele: [PF, punkte(2500)], vorlage: v(L, L, L, 'ppppppp', 'ppPPPpp', 'ppppppp', L), sterne: [3900, 5000] },
+  { zuege: 20, ziele: [punkte(600)], sterne: [1700, 2200], tipp: 'Tausche zwei Nachbarn, sodass drei Gleiche in einer Reihe liegen.' },
+  { zuege: 18, ziele: [sammeln('fisch', 15)], sterne: [2200, 2800] },
+  { zuege: 18, ziele: [punkte(1200)], sterne: [2000, 3000], tipp: 'Vier in einer Reihe ergeben ein gestreiftes Leckerli – es räumt eine ganze Reihe.' },
+  { zuege: 20, ziele: [sammeln('keks', 18), sammeln('maus', 18)], sterne: [2900, 3500] },
+  { zuege: 16, ziele: [punkte(1600)], sterne: [2400, 3300], tipp: 'Über Kreuz (L oder T) gibt es ein Paket: es sprengt alles drumherum.' },
+  { zuege: 22, ziele: [PF], vorlage: v(L, L, L, 'ppppppp', 'ppppppp', L, L), sterne: [3700, 6200], tipp: 'Milchpfützen verschwinden, wenn über ihnen etwas platzt.' },
+  { zuege: 24, ziele: [PF, sammeln('wolle', 15)], vorlage: v(L, L, 'ppppppp', L, 'ppppppp', L, L), sterne: [3800, 4800] },
+  { zuege: 24, ziele: [PF], vorlage: v(L, '...p...', '...p...', 'pppPppp', '...p...', '...p...', L), sterne: [3000, 4400], tipp: 'Dicke Pfützen brauchen zwei Treffer.' },
+  { zuege: 16, ziele: [sammeln('feder', 24)], sterne: [3100, 4200], tipp: 'Fünf in einer Reihe: ein Regenbogen-Knäuel. Mit einem Leckerli getauscht räumt es alle dieser Sorte.' },
+  { zuege: 28, ziele: [PF, punkte(2500)], vorlage: v(L, L, L, 'ppppppp', 'ppPPPpp', 'ppppppp', L), sterne: [3900, 5700] },
   // ── Garten ──────────────────────────────────────────────────────────────
-  { zuege: 20, ziele: [KI], vorlage: v(L, L, L, 'kkkkkkk', L, L, L), sterne: [1700, 2400], tipp: 'Kisten zerbrechen, wenn direkt daneben etwas platzt.' },
-  { zuege: 22, ziele: [KI], vorlage: v(L, L, '..KKK..', '..KKK..', L, L, L), sterne: [2100, 3000], tipp: 'Dunkle Kisten halten zwei Stösse aus.' },
-  { zuege: 20, ziele: [KI, sammeln('fisch', 18)], vorlage: v(L, 'k.....k', 'k.....k', L, 'k.....k', 'k.....k', L), sterne: [2300, 3200] },
-  { zuege: 20, ziele: [DO], vorlage: v(L, L, '...d...', L, L, L, L), sterne: [2100, 2900], tipp: 'Die Fischdose muss ganz nach unten – räume darunter frei.' },
-  { zuege: 30, ziele: [DO, KI], vorlage: v(L, L, '..d.d..', 'kk...kk', L, L, L), sterne: [2900, 3500] },
-  { zuege: 24, ziele: [PF, KI], vorlage: v(L, L, '.kkkkk.', '.kpppk.', '.kpppk.', '.kkkkk.', L), sterne: [2600, 3600] },
-  { zuege: 32, ziele: [DO], vorlage: v(L, L, '.d.d.d.', L, L, L, L), sterne: [4100, 4900] },
-  { zuege: 24, arten: 6, ziele: [punkte(2000)], sterne: [2300, 2700], tipp: 'Jetzt gibt es sechs Sorten – Reihen werden seltener.' },
-  { zuege: 28, ziele: [KI, PF], vorlage: v(L, L, 'kkkkkkk', L, 'ppppppp', 'ppppppp', L), sterne: [3700, 4500] },
-  { zuege: 30, ziele: [DO, KI, PF], vorlage: v(L, '..d.d..', '.KK.KK.', L, 'ppppppp', 'ppppppp', L), sterne: [4900, 6300] },
+  { zuege: 20, ziele: [KI], vorlage: v(L, L, L, 'kkkkkkk', L, L, L), sterne: [2000, 2500], tipp: 'Kisten zerbrechen, wenn direkt daneben etwas platzt.' },
+  { zuege: 22, ziele: [KI], vorlage: v(L, L, '..KKK..', '..KKK..', L, L, L), sterne: [2200, 2900], tipp: 'Dunkle Kisten halten zwei Stösse aus.' },
+  { zuege: 20, ziele: [KI, sammeln('fisch', 18)], vorlage: v(L, 'k.....k', 'k.....k', L, 'k.....k', 'k.....k', L), sterne: [2700, 3700] },
+  { zuege: 20, ziele: [DO], vorlage: v(L, L, '...d...', L, L, L, L), sterne: [2600, 3300], tipp: 'Die Fischdose muss ganz nach unten – räume darunter frei.' },
+  { zuege: 30, ziele: [DO, KI], vorlage: v(L, L, '..d.d..', 'kk...kk', L, L, L), sterne: [2800, 4500] },
+  { zuege: 24, ziele: [PF, KI], vorlage: v(L, L, '.kkkkk.', '.kpppk.', '.kpppk.', '.kkkkk.', L), sterne: [2800, 3900] },
+  { zuege: 32, ziele: [DO], vorlage: v(L, L, '.d.d.d.', L, L, L, L), sterne: [3700, 5400] },
+  { zuege: 24, arten: 6, ziele: [punkte(2000)], sterne: [2500, 2900], tipp: 'Jetzt gibt es sechs Sorten – Reihen werden seltener.' },
+  { zuege: 28, ziele: [KI, PF], vorlage: v(L, L, 'kkkkkkk', L, 'ppppppp', 'ppppppp', L), sterne: [3600, 4900] },
+  { zuege: 30, ziele: [DO, KI, PF], vorlage: v(L, '..d.d..', '.KK.KK.', L, 'ppppppp', 'ppppppp', L), sterne: [5100, 6500] },
   // ── Dachboden ───────────────────────────────────────────────────────────
-  { zuege: 26, ziele: [PF], vorlage: v(L, L, L, 'PPPPPPP', 'PPPPPPP', 'ppppppp', L), sterne: [4200, 5000] },
-  { zuege: 20, ziele: [KI], vorlage: v('.K...K.', '.K...K.', '.K...K.', '.K...K.', L, L, L), sterne: [2300, 3000] },
-  { zuege: 18, ziele: [sammeln('fisch', 15), sammeln('keks', 15), sammeln('maus', 15)], sterne: [2100, 2700] },
-  { zuege: 32, ziele: [DO, PF], vorlage: v(L, L, '.d.d.d.', L, 'ppppppp', 'ppppppp', L), sterne: [4300, 5800] },
-  { zuege: 25, arten: 6, ziele: [KI, PF], vorlage: v(L, 'k.k.k.k', L, 'ppppppp', L, 'ppppppp', L), sterne: [2600, 3000] },
-  { zuege: 26, ziele: [PF, KI], vorlage: v(L, '.KKKKK.', '.KPPPK.', '.KPPPK.', '.KPPPK.', '.KKKKK.', L), sterne: [3700, 4600] },
-  { zuege: 32, ziele: [DO], vorlage: v(L, L, '.d.d.d.', 'kkkkkkk', L, L, L), sterne: [3600, 6600] },
-  { zuege: 28, arten: 6, ziele: [punkte(3200)], sterne: [3400, 3800] },
-  { zuege: 34, ziele: [DO, KI, PF], vorlage: v(L, '..d.d..', 'K.K.K.K', L, 'ppppppp', 'PPPPPPP', L), sterne: [5100, 9800] },
-  { zuege: 38, ziele: [DO, KI, PF], vorlage: v(L, L, '..d.d..', 'KK...KK', 'ppppppp', 'PPPPPPP', 'ppppppp'), sterne: [4900, 5400], tipp: 'Das Finale – zeig, was du gelernt hast!' },
+  { zuege: 26, ziele: [PF], vorlage: v(L, L, L, 'PPPPPPP', 'PPPPPPP', 'ppppppp', L), sterne: [4700, 5900] },
+  { zuege: 20, ziele: [KI], vorlage: v('.K...K.', '.K...K.', '.K...K.', '.K...K.', L, L, L), sterne: [2600, 3400] },
+  { zuege: 18, ziele: [sammeln('fisch', 15), sammeln('keks', 15), sammeln('maus', 15)], sterne: [2500, 3200] },
+  { zuege: 32, ziele: [DO, PF], vorlage: v(L, L, '.d.d.d.', L, 'ppppppp', 'ppppppp', L), sterne: [5500, 6000] },
+  { zuege: 25, arten: 6, ziele: [KI, PF], vorlage: v(L, 'k.k.k.k', L, 'ppppppp', L, 'ppppppp', L), sterne: [2600, 3200] },
+  { zuege: 26, ziele: [PF, KI], vorlage: v(L, '.KKKKK.', '.KPPPK.', '.KPPPK.', '.KPPPK.', '.KKKKK.', L), sterne: [4000, 5100] },
+  { zuege: 32, ziele: [DO], vorlage: v(L, L, '.d.d.d.', 'kkkkkkk', L, L, L), sterne: [4100, 5000] },
+  { zuege: 28, arten: 6, ziele: [punkte(3200)], sterne: [4000, 4500] },
+  { zuege: 34, ziele: [DO, KI, PF], vorlage: v(L, '..d.d..', 'K.K.K.K', L, 'ppppppp', 'PPPPPPP', L), sterne: [5700, 6800] },
+  { zuege: 38, ziele: [DO, KI, PF], vorlage: v(L, L, '..d.d..', 'KK...KK', 'ppppppp', 'PPPPPPP', 'ppppppp'), sterne: [6900, 7600], tipp: 'Das Finale – zeig, was du gelernt hast!' },
 ];
 
 export const LEVEL = ROH.map((l, k) => ({

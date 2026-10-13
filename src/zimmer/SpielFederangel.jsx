@@ -3,6 +3,21 @@ import { FEDER, inReichweite, zielUnterFeder } from './spiele.js';
 
 const K = { stroke: '#2f2a26', strokeLinejoin: 'round', strokeLinecap: 'round' };
 
+/*
+  Finger festhalten (2.14.0): Wer zieht und dabei über den Rand der Fläche
+  gerät, verliert sonst die Bewegung – mit Pointer-Capture kommt jede
+  Bewegung bis zum Loslassen an.
+*/
+/*
+  Finger an die Spielfläche binden, damit Ziehen auch ausserhalb weiterläuft.
+  Nie auf Knöpfen (Fertig, Pfote …): sonst landete deren Klick bei der Fläche
+  und das Spiel liesse sich nicht mehr beenden.
+*/
+export const festhalten = (e) => {
+  if (e.target?.closest?.('button, a, input, .zimmer-spiel-hud')) return;
+  try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* ältere Browser */ }
+};
+
 /* Fingerposition in Szenenpunkte (1024 × 768) umrechnen. */
 export const inSzene = (e, element) => {
   const r = element.getBoundingClientRect();
@@ -68,7 +83,7 @@ export default function SpielFederangel({ katze, onFang, onEnde }) {
   // Angel: der Stock kommt von oben rechts, die Schnur hängt zur Feder
   const spitze = { x: Math.min(1000, feder.x + 150), y: 70 };
   return (
-    <div className="zimmer-spiel" ref={flaecheRef} onPointerMove={bewegen} onPointerDown={bewegen}
+    <div className="zimmer-spiel" ref={flaecheRef} onPointerMove={bewegen} onPointerDown={(e) => { festhalten(e); bewegen(e); }}
          role="application" aria-label="Federangel – mit dem Finger die Feder führen">
       <svg viewBox="0 0 1024 768" className="zimmer-spiel-svg" aria-hidden="true">
         <line x1={spitze.x + 120} y1={-20} x2={spitze.x} y2={spitze.y} stroke="#a16207" strokeWidth="10" strokeLinecap="round" />

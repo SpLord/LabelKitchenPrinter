@@ -71,7 +71,7 @@ export default function SpielAngeln({ fell, onEnde }) {
   const ende = (punkte) => {
     if (fertigRef.current) return;
     fertigRef.current = true;
-    onEnde({ punkte, lohn: angelLohn(punkte), fische: s.gefangen.length });
+    onEnde({ punkte, lohn: angelLohn(punkte), fische: s.gefangen.length, gefangen: s.gefangen });
   };
   useEffect(() => {
     if (!s.vorbei) return undefined;

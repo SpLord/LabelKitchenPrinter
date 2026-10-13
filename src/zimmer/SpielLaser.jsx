@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { inSzene } from './SpielFederangel.jsx';
+import { festhalten, inSzene } from './SpielFederangel.jsx';
 import { LASER, gesprungen } from './spiele2.js';
 
 /* Auf dem Boden bleibt sie: der Punkt darf an die Wand, sie springt nur bis zur Fussleiste. */
@@ -50,7 +50,7 @@ export default function SpielLaser({ katze, onSprung, onEnde }) {
 
   const bewegen = (e) => { if (flaecheRef.current) setPunkt(inSzene(e, flaecheRef.current)); };
   return (
-    <div className="zimmer-spiel" ref={flaecheRef} onPointerMove={bewegen} onPointerDown={bewegen}
+    <div className="zimmer-spiel" ref={flaecheRef} onPointerMove={bewegen} onPointerDown={(e) => { festhalten(e); bewegen(e); }}
          role="application" aria-label="Laserpointer – mit dem Finger den Punkt führen">
       <svg viewBox="0 0 1024 768" className="zimmer-spiel-svg" aria-hidden="true">
         <g transform={`translate(${punkt.x} ${punkt.y})`} data-laser="">

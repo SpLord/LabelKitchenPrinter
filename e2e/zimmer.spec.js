@@ -613,7 +613,7 @@ test('Etiketten-Münzen: ein gedrucktes Etikett bringt eine Münze', async ({ pa
   await expect(page.locator('.kuechen-katze-muenze')).toBeAttached();
 });
 
-test('Aufgaben: drei für heute, erfüllte lassen sich einmal abholen', async ({ page }) => {
+test('Aufgaben: vier für heute, erfüllte lassen sich einmal abholen', async ({ page }) => {
   const tag = schichtTag(0);
   const ids = aufgabenFuer(tag);
   const a = AUFGABEN[ids[0]];
@@ -624,7 +624,7 @@ test('Aufgaben: drei für heute, erfüllte lassen sich einmal abholen', async ({
   const knopf = page.getByRole('button', { name: /Aufgaben für heute/ });
   await expect(knopf).toContainText('1');
   await knopf.click();
-  await expect(page.locator('[data-aufgabe]')).toHaveCount(3);
+  await expect(page.locator('[data-aufgabe]')).toHaveCount(4);
   const erste = page.locator(`[data-aufgabe="${ids[0]}"]`);
   await erste.getByRole('button', { name: /abholen/ }).click();
   await expect(page.locator('.zimmer-geld')).toContainText(String(500 + a.lohn));
@@ -853,6 +853,9 @@ test('Gurkenhüpfer: Tipp startet, Tippen springt, an der Gurke ist Schluss', as
   expect(await hoechste).toBeGreaterThan(60);
   // Danach nicht mehr tippen – die nächste Gurke beendet den Lauf
   await expect(spiel).toHaveAttribute('data-huepfer', 'vorbei', { timeout: 15_000 });
+  // Endbild mit Bestenliste; erster Lauf auf diesem Gerät = Rekord
+  await expect(page.locator('[data-bestenliste="huepfer"]')).toBeVisible();
+  await page.locator('.bestenliste').getByRole('button', { name: 'Fertig' }).click();
   await expect(page.locator('.zimmer-ergebnis')).toContainText('m gerannt');
   await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
   await expect(page.locator('.zimmer-karte', { hasText: 'Gurkenhüpfer' }).locator('.zimmer-preis')).toBeDisabled();
@@ -894,7 +897,8 @@ test('Leckerli-Drei: ein passender Tausch bringt Punkte und kostet einen Zug', a
   await expect(page.locator('.zimmer-spiel-hud strong').first()).not.toHaveText('0');
   const zuege = Number(await page.locator('[data-dreier-zuege]').getAttribute('data-dreier-zuege'));
   expect(zuege).toBe(19);
-  await page.getByRole('button', { name: 'Fertig' }).click();
+  await page.locator('.zimmer-spiel-hud').getByRole('button', { name: 'Fertig' }).click();
+  await page.locator('.bestenliste').getByRole('button', { name: 'Fertig' }).click();
   await expect(page.locator('.zimmer-ergebnis')).toContainText('Punkte');
 });
 
@@ -998,4 +1002,85 @@ test('Leckerli-Reise: Pfützen liegen unter dem Brett', async ({ page }) => {
   await page.getByRole('button', { name: 'Los!' }).click();
   await expect(page.locator('[data-pfuetze]')).toHaveCount(14);
   await expect(page.locator('[data-ziel="pfuetzen"]')).toContainText('0 / 14');
+});
+
+/* ── 2.14.0: kein Kasten beim Antippen, Futter, Bestenlisten, Ziehen, Hinweis, Pfote ── */
+test('Antippen: kein Markierungskasten um Katze, Spielfläche und Brett', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Drei');
+  const stile = await page.evaluate(() => {
+    const st = (sel) => { const e = document.querySelector(sel); const c = getComputedStyle(e); return [c.webkitTapHighlightColor, c.userSelect, c.webkitTouchCallout]; };
+    return { katze: st('.zimmer-katze'), feld: st('.dreier-feld'), spiel: st('.zimmer-spiel') };
+  });
+  for (const [wo, [farbe, auswahl]] of Object.entries(stile)) {
+    expect(farbe, wo).toBe('rgba(0, 0, 0, 0)');
+    expect(auswahl, wo).toBe('none');
+  }
+});
+
+test('Füttern: fünf Sorten; Thunfisch kostet 7, füllt 50 und freut sie', async ({ page }) => {
+  await zimmerAuf(page, { zimmer_geschenk: schichtTag(0), zimmer_napf: 10 });
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
+  for (const n of ['Trockenfutter', 'Nassfutter', 'Katzenmilch', 'Thunfisch', 'Lachs-Festmahl']) {
+    await expect(page.locator('.zimmer-karte', { hasText: n })).toHaveCount(1);
+  }
+  await page.locator('.zimmer-karte', { hasText: 'Thunfisch' }).locator('.zimmer-preis').click();
+  await expect(page.locator('.zimmer-geld')).toContainText('493');
+  await expect(page.locator('.zimmer-ergebnis')).toContainText('Thunfisch!');
+  await expect(page.locator('.zimmer-blatt-info')).toContainText('Napf 60 %');
+});
+
+test('Gurkenhüpfer: Rekord mit Namen, steht danach auf der Karte', async ({ page }) => {
+  await spielStarten(page, 'Gurkenhüpfer');
+  await page.locator('.zimmer-spiel-huepfer').dispatchEvent('pointerdown');
+  await expect(page.locator('[data-bestenliste="huepfer"]')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.bestenliste h2')).toHaveText('Neuer Rekord!');
+  await page.locator('.bestenliste-name input').fill('Carla');
+  await expect(page.locator('.bestenliste-liste li.neu')).toContainText('Carla');
+  await page.locator('.bestenliste').getByRole('button', { name: 'Fertig' }).click();
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Spielen/ }).click();
+  await expect(page.locator('.zimmer-karte', { hasText: 'Gurkenhüpfer' })).toContainText('(Carla)');
+  // Der Name bleibt für das nächste Mal
+  expect(await page.evaluate(() => localStorage.getItem('zimmer_spielername'))).toBe('Carla');
+});
+
+test('Leckerli-Drei: Ziehen tauscht, ohne loszulassen', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Drei');
+  const [a, b] = await dreierZug(page);
+  const ka = await page.locator(`[data-feld="${a}"]`).boundingBox();
+  const kb = await page.locator(`[data-feld="${b}"]`).boundingBox();
+  await page.mouse.move(ka.x + ka.width / 2, ka.y + ka.height / 2);
+  await page.mouse.down();
+  // Halber Weg zum Nachbarn reicht – das Feld folgt dem Finger
+  await page.mouse.move(ka.x + ka.width / 2 + (kb.x - ka.x) * 0.2, ka.y + ka.height / 2 + (kb.y - ka.y) * 0.2, { steps: 3 });
+  await expect(page.locator('.dreier-feld.zieht')).toHaveCount(2);
+  await page.mouse.move(ka.x + ka.width / 2 + (kb.x - ka.x) * 0.6, ka.y + ka.height / 2 + (kb.y - ka.y) * 0.6, { steps: 3 });
+  await expect(page.locator('[data-dreier-zuege]')).toHaveAttribute('data-dreier-zuege', '19');
+  await page.mouse.up();
+});
+
+test('Leckerli-Drei: nach ein paar Sekunden zeigt ein Hinweis einen Zug', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Drei');
+  await expect(page.locator('.dreier-feld.hinweis')).toHaveCount(2, { timeout: 9_000 });
+});
+
+test('Leckerli-Drei: Pfote klopft ein Feld weg und kostet keinen Zug', async ({ page }) => {
+  await spielStarten(page, 'Leckerli-Drei');
+  await page.locator('[data-pfote]').click();
+  await expect(page.locator('.dreier-brett.pfote-an')).toBeVisible();
+  const vorher = await page.locator('[data-feld="24"]').getAttribute('aria-label');
+  await page.locator('[data-feld="24"]').click();
+  await expect(page.locator('[data-dreier-beschaeftigt="0"]')).toBeAttached();
+  await expect(page.locator('[data-pfote]')).toHaveAttribute('data-pfote', '0');
+  await expect(page.locator('[data-dreier-zuege]')).toHaveAttribute('data-dreier-zuege', '20');
+  await expect(page.locator('.zimmer-spiel-hud strong').first()).not.toHaveText('0');
+  expect(vorher).toBeTruthy();
+});
+
+test('Aufgaben: Thunfisch zählt für "Etwas Besonderes servieren"', async ({ page }) => {
+  const tag = schichtTag(0);
+  await zimmerAuf(page, { zimmer_geschenk: tag, zimmer_napf: 10 });
+  await page.locator('.zimmer-menue').getByRole('button', { name: /Füttern/ }).click();
+  await page.locator('.zimmer-karte', { hasText: 'Thunfisch' }).locator('.zimmer-preis').click();
+  const stand = await page.evaluate(() => JSON.parse(localStorage.getItem('zimmer_aufgaben')));
+  expect(stand.zaehler.besonders).toBe(1);
 });

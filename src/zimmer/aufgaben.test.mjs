@@ -1,15 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AUFGABEN, DRUCK, aufgabenFuer, zaehlen, abholbar, abholen, aufgabenLesen, druckLohn,
+  AUFGABEN, DRUCK, PRO_TAG, aufgabenFuer, zaehlen, abholbar, abholen, aufgabenLesen, druckLohn,
 } from './aufgaben.js';
 
 const T = (d = 9, h = 12) => new Date(2026, 9, d, h);
 
-test('aufgabenFuer: drei verschiedene je Schichttag, am selben Tag immer dieselben', () => {
+test('aufgabenFuer: vier verschiedene je Schichttag, am selben Tag immer dieselben', () => {
   const a = aufgabenFuer('2026-10-09');
-  assert.equal(a.length, 3);
-  assert.equal(new Set(a).size, 3);
+  assert.equal(a.length, PRO_TAG);
+  assert.equal(new Set(a).size, PRO_TAG);
   assert.deepEqual(aufgabenFuer('2026-10-09'), a);
   const tage = new Set();
   for (let d = 1; d <= 20; d += 1) tage.add(aufgabenFuer(`2026-10-${String(d).padStart(2, '0')}`).join());
@@ -62,4 +62,14 @@ test('aufgabenLesen: Unsinn → null', () => {
   assert.equal(aufgabenLesen('{kaputt'), null);
   assert.deepEqual(aufgabenLesen(JSON.stringify({ tag: '2026-10-09', zaehler: { fuettern: 2, x: 'a' }, abgeholt: ['a', 3] })),
     { tag: '2026-10-09', zaehler: { fuettern: 2 }, abgeholt: ['a'] });
+});
+
+test('aufgabenFuer: nie zwei Aufgaben, die dasselbe zählen; über einen Monat kommen viele verschiedene dran', () => {
+  const gesehen = new Set();
+  for (let t = 1; t <= 30; t += 1) {
+    const a = aufgabenFuer(`2026-11-${String(t).padStart(2, '0')}`);
+    assert.equal(new Set(a.map((id) => AUFGABEN[id].zaehlt)).size, a.length, `Tag ${t}`);
+    a.forEach((id) => gesehen.add(id));
+  }
+  assert.ok(gesehen.size >= 18, `${gesehen.size} verschiedene`);
 });

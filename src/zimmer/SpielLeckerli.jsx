@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { inSzene } from './SpielFederangel.jsx';
+import { festhalten, inSzene } from './SpielFederangel.jsx';
 import { LECKERLI, fallplan, gefangen } from './spiele.js';
 
 const K = { stroke: '#2f2a26', strokeLinejoin: 'round', strokeLinecap: 'round' };
@@ -60,7 +60,7 @@ export default function SpielLeckerli({ onEnde }) {
 
   const strecke = LECKERLI.napfHoehe - LECKERLI.start;
   return (
-    <div className="zimmer-spiel" ref={flaecheRef} onPointerMove={bewegen} onPointerDown={bewegen}
+    <div className="zimmer-spiel" ref={flaecheRef} onPointerMove={bewegen} onPointerDown={(e) => { festhalten(e); bewegen(e); }}
          role="application" aria-label="Leckerli fangen – den Napf mit dem Finger verschieben">
       <svg viewBox="0 0 1024 768" className="zimmer-spiel-svg" aria-hidden="true">
         {fallend.map((l) => (

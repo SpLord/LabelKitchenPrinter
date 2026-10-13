@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import KatzePose from './KatzePose.jsx';
+import Bestenliste from './Bestenliste.jsx';
 import useTakt from './useTakt.js';
 import { HINDERNISSE, HUEPFER, huepferLohn, huepferStart, meter, schritt } from './huepfer.js';
 
@@ -43,12 +44,14 @@ export default function SpielHuepfer({ fell, zubehoer, onEnde }) {
   const [los, setLos] = useState(false);
   const sprungRef = useRef(false);
   const fertigRef = useRef(false);
+  // Endbild mit Bestenliste: nach dem Zusammenstoss oder auf "Fertig"
+  const [abschluss, setAbschluss] = useState(null);
 
   useTakt((dt) => {
     const sprung = sprungRef.current;
     sprungRef.current = false;
     setS((alt) => schritt(alt, dt, sprung));
-  }, los && !s.vorbei);
+  }, los && !s.vorbei && !abschluss);
 
   const tippen = () => {
     if (s.vorbei) return;
@@ -56,7 +59,10 @@ export default function SpielHuepfer({ fell, zubehoer, onEnde }) {
     sprungRef.current = true;
   };
   useEffect(() => {
-    const taste = (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); tippen(); } };
+    const taste = (e) => {
+      if (abschluss || e.target instanceof HTMLInputElement) return;
+      if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); tippen(); }
+    };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
   });
@@ -64,7 +70,7 @@ export default function SpielHuepfer({ fell, zubehoer, onEnde }) {
   const ende = (lauf) => {
     if (fertigRef.current) return;
     fertigRef.current = true;
-    onEnde({ lohn: huepferLohn(lauf), meter: meter(lauf), muenzen: lauf.gesammelt });
+    setAbschluss({ lohn: huepferLohn(lauf), meter: meter(lauf), muenzen: lauf.gesammelt });
   };
   useEffect(() => {
     if (!s.vorbei) return undefined;
@@ -137,6 +143,13 @@ export default function SpielHuepfer({ fell, zubehoer, onEnde }) {
           </g>
         )}
       </svg>
+      {abschluss && (
+        <div className="zimmer-spiel-schluss" onPointerDown={(e) => e.stopPropagation()}>
+          <Bestenliste spiel="huepfer" wert={abschluss.meter} einheit="m" titel="Vorbei!"
+                       zusatz={`${abschluss.muenzen} Münzen gesammelt · +${abschluss.lohn} Münzen`}
+                       onFertig={() => onEnde(abschluss)} />
+        </div>
+      )}
       <div className="zimmer-spiel-hud">
         <span><strong>{meter(s)}</strong> m</span>
         <span><span className="zimmer-muenze" aria-hidden="true" /> <strong>{s.gesammelt}</strong></span>
