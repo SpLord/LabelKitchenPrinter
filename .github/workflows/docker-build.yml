@@ -59,8 +59,9 @@ jobs:
           # Lint oder Unit-Tests rot: E2E lief nicht, es gibt keinen Bericht.
           if [ ! -d playwright-report ]; then echo "farm=leer" >> "$GITHUB_OUTPUT"; exit 0; fi
           tar --zstd -cf playwright-bericht.tar.zst playwright-report/
-          if command -v fh-artifact >/dev/null && [ -n "${FH_ARTIFACTS:-}" ]; then
-            fh-artifact upload playwright-bericht.tar.zst --name playwright-bericht
+          # Scheitert der Upload (Dienst noch nicht in Betrieb), greift der Rückfall.
+          if command -v fh-artifact >/dev/null && [ -n "${FH_ARTIFACTS:-}" ] \
+             && fh-artifact upload playwright-bericht.tar.zst --name playwright-bericht; then
             echo "farm=true" >> "$GITHUB_OUTPUT"
           else
             echo "Kein Artefakt-Dienst am Standort – Rückfall auf actions/upload-artifact"
