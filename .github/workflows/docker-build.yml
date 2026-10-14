@@ -49,13 +49,31 @@ jobs:
       - name: E2E
         run: npm run test:e2e
 
-      - name: Bericht bei Fehlschlag sichern
+      # Der Bericht geht in den Artefakt-Speicher der Farm (Seite "Builds"),
+      # nicht zu GitHub. Nur ausserhalb der Farm Rückfall auf GitHub, 3 Tage.
+      - name: Bericht bei Fehlschlag in die Farm hochladen
+        id: farm
         if: failure()
+        shell: bash
+        run: |
+          # Lint oder Unit-Tests rot: E2E lief nicht, es gibt keinen Bericht.
+          if [ ! -d playwright-report ]; then echo "farm=leer" >> "$GITHUB_OUTPUT"; exit 0; fi
+          tar --zstd -cf playwright-bericht.tar.zst playwright-report/
+          if command -v fh-artifact >/dev/null && [ -n "${FH_ARTIFACTS:-}" ]; then
+            fh-artifact upload playwright-bericht.tar.zst --name playwright-bericht
+            echo "farm=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Kein Artefakt-Dienst am Standort – Rückfall auf actions/upload-artifact"
+            echo "farm=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rückfall auf GitHub-Artefakte
+        if: failure() && steps.farm.outputs.farm == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-bericht
-          path: playwright-report/
-          retention-days: 7
+          path: playwright-bericht.tar.zst
+          retention-days: 3
 
   build:
     needs: verify
