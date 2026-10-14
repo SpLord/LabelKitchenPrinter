@@ -610,7 +610,9 @@ test('Etiketten-Münzen: ein gedrucktes Etikett bringt eine Münze', async ({ pa
   await page.getByRole('button', { name: /^Steak/ }).first().click();
   await warteAufDrucke(page, 1);
   await expect(page.locator('.kuechen-karte')).toContainText('501');
-  await expect(page.locator('.kuechen-katze-muenze')).toBeAttached();
+  // first(): auf der Farm stand die Münze einmal kurz doppelt im DOM
+  // (Lauf 38562927320), der Kontostand oben stimmt trotzdem.
+  await expect(page.locator('.kuechen-katze-muenze').first()).toBeAttached();
 });
 
 test('Aufgaben: vier für heute, erfüllte lassen sich einmal abholen', async ({ page }) => {
@@ -838,19 +840,22 @@ test('Gurkenhüpfer: Tipp startet, Tippen springt, an der Gurke ist Schluss', as
   await expect(spiel).toHaveAttribute('data-huepfer', 'bereit');
   // Die Zimmerkatze ist weg, im Flur rennt ihre eigene
   await expect(page.locator('.zimmer')).toHaveClass(/katze-versteckt/);
-  // Ein Sprung dauert keine Sekunde – also jedes Bild mitschauen, wie hoch sie kommt
-  const hoechste = page.evaluate(() => new Promise((fertig) => {
-    let max = 0; const bis = performance.now() + 1500;
+  // Ein Sprung dauert keine Sekunde – also jedes Bild mitschauen, wie hoch sie kommt.
+  // Die Messung läuft im Hintergrund weiter: auf einer langsamen Farm-VM kam der
+  // Tipp sonst manchmal erst nach dem Ende eines festen Messfensters an.
+  await page.evaluate(() => {
+    window.huepferHoechste = 0;
+    const bis = performance.now() + 8000;
     const blick = () => {
       const k = document.querySelector('[data-huepfer-katze]');
-      max = Math.max(max, Number(k?.dataset.huepferKatze ?? 0));
-      if (performance.now() < bis) requestAnimationFrame(blick); else fertig(max);
+      window.huepferHoechste = Math.max(window.huepferHoechste, Number(k?.dataset.huepferKatze ?? 0));
+      if (performance.now() < bis) requestAnimationFrame(blick);
     };
     requestAnimationFrame(blick);
-  }));
+  });
   await spiel.dispatchEvent('pointerdown');
   await expect(spiel).toHaveAttribute('data-huepfer', 'laeuft');
-  expect(await hoechste).toBeGreaterThan(60);
+  await expect.poll(() => page.evaluate(() => window.huepferHoechste), { timeout: 5000 }).toBeGreaterThan(60);
   // Danach nicht mehr tippen – die nächste Gurke beendet den Lauf
   await expect(spiel).toHaveAttribute('data-huepfer', 'vorbei', { timeout: 15_000 });
   // Endbild mit Bestenliste; erster Lauf auf diesem Gerät = Rekord
