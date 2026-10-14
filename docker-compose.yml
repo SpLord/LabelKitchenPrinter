@@ -1,15 +1,15 @@
 services:
   labelkitchen:
-    # Defaults, damit der Portainer-Git-Stack ohne .env im Repository auskommt.
-    # Überschreibbar über die Stack-Umgebung in Portainer oder eine .env auf dem Host.
+    # Defaults, damit der Stack ohne .env im Repository auskommt.
+    # Überschreibbar über die .env des Komodo-Stacks auf docker-prod.
     image: splord/labelkitchen:${IMAGE_VERSION:-latest}
     container_name: labelkitchen
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-7077}:80"
     environment:
-      # Bugsink-DSN. Der echte Wert steht nur in der Stack-Umgebung in
-      # Portainer, nie im Repo. Leer = die Küche läuft ohne Fehlertracking.
+      # Bugsink-DSN. Der echte Wert steht nur in der .env des Komodo-Stacks,
+      # nie im Repo. Leer = die Küche läuft ohne Fehlertracking.
       - SENTRY_DSN=${SENTRY_DSN:-}
       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
     volumes:

@@ -48,7 +48,7 @@ GitHub-Issue mit Label `bugsink` in diesem Repo.
 
 **Aufbau wie im Farmhaus-Projekt – der echte DSN bleibt auf dem Server:**
 
-- Der DSN steht nur in der Stack-Umgebung in Portainer (`SENTRY_DSN`), nie im
+- Der DSN steht nur in der `.env` des Komodo-Stacks (`SENTRY_DSN`), nie im
   Repo. Ohne ihn läuft die App still ohne Tracking.
 - Beim Containerstart erzeugt `docker/40-bugsink.sh` daraus
   `/etc/nginx/bugsink.conf`: `/api/client-config` sagt dem Browser nur, ob

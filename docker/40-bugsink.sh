@@ -31,7 +31,7 @@ EOF
 }
 
 DSN="${SENTRY_DSN:-}"
-# Ränder kürzen – beim Einfügen in ein Portainer-Feld rutscht gern ein
+# Ränder kürzen – beim Einfügen in ein Formularfeld rutscht gern ein
 # Leerzeichen oder Umbruch mit. Ein Umbruch MITTEN im Wert bleibt erhalten
 # und wird unten abgewiesen (sed arbeitet zeilenweise; die Befehlsersetzung
 # entfernt nur Umbrüche am Ende).

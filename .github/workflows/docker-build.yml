@@ -60,29 +60,21 @@ jobs:
   build:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    # Pusht nur zu Docker Hub und auf den deploy-Branch, Portainer zieht selbst –
-    # kein Zugriff ins Heimnetz nötig, also der normale Pool, nicht linux-deploy.
+    # Pusht nur zu Docker Hub; das Ausrollen macht der deploy-Job im Heimnetz.
     runs-on: [self-hosted, farmhaus, linux]
     # Nie zwei Bau-Läufe gleichzeitig: sonst kann ein älterer Lauf sein
-    # :latest NACH einem neueren pushen, und Portainer zöge das alte Image in
+    # :latest NACH einem neueren pushen, und Komodo zöge das alte Image in
     # die Küche. Wartende Läufe reihen sich ein; GitHub behält davon nur den
     # neuesten, und der ist der richtige.
     concurrency:
       group: bauen-und-ausrollen
       cancel-in-progress: false
-    # Zum Nachziehen des deploy-Branches am Ende des Jobs
-    permissions:
-      contents: write
     env:
       IMAGE_NAME: splord/labelkitchen
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          # Volle Historie: sonst kann der Push auf deploy den Fast-Forward
-          # nicht belegen und wird abgelehnt (flacher Klon hat keine Vorgänger).
-          fetch-depth: 0
 
       - name: Set Docker Tag (commit hash + date)
         id: version
@@ -97,9 +89,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Erst lokal bauen und starten, dann pushen: Portainer zieht jedes
-      # gepushte :latest binnen einer Minute in die Küche. Ein Image, das nicht
-      # startet, darf dort nie ankommen.
+      # Erst lokal bauen und starten, dann pushen: der deploy-Job rollt jedes
+      # gepushte :latest sofort in die Küche. Ein Image, das nicht startet,
+      # darf dort nie ankommen.
       - name: Image bauen (lokal)
         uses: docker/build-push-action@v5
         with:
@@ -172,10 +164,53 @@ jobs:
       - name: Image pushen
         run: docker push --all-tags ${{ env.IMAGE_NAME }}
 
-      # Portainer beobachtet den deploy-Branch, nicht main. Er wird erst hier
-      # nachgezogen – also nachdem das Image wirklich in der Registry liegt.
-      # Vorher pollte Portainer main im Minutentakt und erwischte den Commit
-      # gelegentlich, bevor das Image fertig war: dann wurde der alte Stand
-      # ausgerollt und der Commit als erledigt vermerkt, ohne Selbstheilung.
-      - name: Deploy-Branch nachziehen
-        run: git push origin HEAD:refs/heads/deploy
+  # Seit 13.10.2026 rollt Komodo aus (Portainer ist abgeschaltet). Der Stack
+  # labelkitchenprinter auf docker-prod zieht :latest; "Webhook Force Deploy"
+  # erzeugt den Container auch ohne Änderung an der Compose-Datei neu.
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Komodo und die Küche sind nur im Heimnetz erreichbar.
+    runs-on: [self-hosted, farmhaus, linux, deploy-home]
+    concurrency:
+      group: ausrollen
+      cancel-in-progress: false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Komodo-Deploy auslösen
+        env:
+          URL: ${{ secrets.KOMODO_WEBHOOK_URL }}
+          SECRET: ${{ secrets.KOMODO_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "::error::KOMODO_WEBHOOK_URL/KOMODO_WEBHOOK_SECRET fehlen – kein Deploy"
+            exit 1
+          fi
+          body='{"ref":"refs/heads/main"}'
+          sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
+          code=$(curl -sk -o komodo.out -w '%{http_code}' --max-time 120 \
+                   -X POST "$URL" -H 'Content-Type: application/json' \
+                   -H 'X-GitHub-Event: push' -H "X-Hub-Signature-256: sha256=$sig" -d "$body")
+          echo "Komodo-Webhook: HTTP $code"
+          head -c 500 komodo.out || true
+          case "$code" in
+            2??) echo "Deploy ausgelöst." ;;
+            *) echo "::error::Komodo-Webhook fehlgeschlagen (HTTP $code)"; exit 1 ;;
+          esac
+
+      # Komodo arbeitet asynchron: bis zum Neuerzeugen antwortet auch der alte
+      # Container mit 200. Deshalb auf die Version im JS-Bündel warten.
+      - name: Deploy verifizieren
+        run: |
+          want="labelkitchen@$(node -p 'require("./package.json").version')"
+          for i in $(seq 1 30); do
+            js=$(curl -fsS --max-time 10 http://192.168.10.57:7077/ | grep -o 'assets/index-[^"]*\.js' | head -1 || true)
+            got=$( [ -n "$js" ] && curl -fsS --max-time 10 "http://192.168.10.57:7077/$js" | grep -o 'labelkitchen@[0-9.]*' | head -1 || true)
+            echo "Versuch $i: live=${got:-?} erwartet=$want"
+            [ "$got" = "$want" ] && { echo "$want ist live."; exit 0; }
+            sleep 10
+          done
+          echo "::error::Nach 300 s läuft nicht $want (zuletzt: ${got:-keine Antwort})"
+          exit 1
