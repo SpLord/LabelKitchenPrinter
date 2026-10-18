@@ -49,13 +49,16 @@ jobs:
       - name: E2E
         run: npm run test:e2e
 
+      # Artefakte nur über den Farm-Speicher (fh-artifact), GitHub-Artefakte sind verboten (18.10.2026).
+      # Zu finden auf https://farm.mtc-server.de unter „Builds“.
       - name: Bericht bei Fehlschlag sichern
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-bericht
-          path: playwright-report/
-          retention-days: 7
+        run: |
+          [ -d playwright-report ] || { echo "::warning::kein playwright-report"; exit 0; }
+          tar czf "$RUNNER_TEMP/playwright-bericht.tgz" playwright-report
+          rc=0; fh-artifact upload "$RUNNER_TEMP/playwright-bericht.tgz" --name playwright-bericht --channel "${GITHUB_REF_NAME}" || rc=$?
+          if [ "$rc" -eq 3 ]; then echo "::error::Farm-Artefakt-Speicher nicht erreichbar oder Grenze überschritten (Exit 3) – kein Rückfall auf GitHub"; fi
+          exit "$rc"
 
   build:
     needs: verify
