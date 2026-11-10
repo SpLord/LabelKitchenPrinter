@@ -107,6 +107,12 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
     window.addEventListener('etikett-gedruckt', gedruckt);
     return () => window.removeEventListener('etikett-gedruckt', gedruckt);
   }, []);
+  // Sie hat aus Napf oder Schale gefressen bzw. getrunken (auch ohne offenes Zimmer)
+  useEffect(() => {
+    const versorgt = (e) => setSpruch({ id: Date.now(), text: e.detail?.art === 'trinken' ? 'Schlürf, schlürf …' : 'Mjam, mjam …' });
+    window.addEventListener('katze-versorgt', versorgt);
+    return () => window.removeEventListener('katze-versorgt', versorgt);
+  }, []);
   useEffect(() => {
     const lohn = (e) => setMuenze({ id: Date.now(), lohn: e.detail?.lohn ?? 1 });
     window.addEventListener('druck-muenze', lohn);
@@ -146,6 +152,10 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
   const futterGeht = zustand.napf < 100 && zustand.muenzen >= FUTTER.preis;
   // Wasser (2.5.0): nur anbieten, wenn die Schale nicht voll ist und kein Brunnen steht
   const wasserNoetig = !zustand.moebel.has('trinkbrunnen') && zustand.wasser < 100;
+  const medizin = () => {
+    if (zustand.medizinGeben()) setSpruch({ id: Date.now(), text: 'Danke, schon besser!' });
+    setMenue(false);
+  };
   const wasserGeben = () => {
     if (zustand.wasserAuffuellen()) setSpruch({ id: Date.now(), text: 'Frisches Wasser!' });
     setMenue(false);
@@ -195,6 +205,11 @@ export default function KuechenKatze({ zustand, onOeffnen }) {
           <button type="button" onClick={fuettern} disabled={!futterGeht}>
             Füttern <span className="zimmer-muenze" aria-hidden="true" /> {FUTTER.preis}
           </button>
+          {zustand.krank && (
+            <button type="button" onClick={medizin}>
+              Medizin {zustand.medizinPreis > 0 ? <><span className="zimmer-muenze" aria-hidden="true" /> {zustand.medizinPreis}</> : 'gratis'}
+            </button>
+          )}
           {wasserNoetig && <button type="button" onClick={wasserGeben}>Wasser</button>}
           <button type="button" className="los" onClick={() => { setMenue(false); onOeffnen(); }}>Zimmer ›</button>
         </div>

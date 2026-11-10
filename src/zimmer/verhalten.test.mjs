@@ -1,14 +1,40 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ORTE, PORTION, SCHLUCK, SCHWELLE, WASSER_SCHLUCK, naechsteTaetigkeit, wegDauer, wirkung } from './verhalten.js';
+import { ORTE, PORTION, SCHLUCK, SCHWELLE, WASSER_SCHLUCK, naechsteTaetigkeit, selbstVersorgung, wegDauer, wirkung } from './verhalten.js';
 
 const satt = { hunger: 80, durst: 80, napf: 50, moebel: new Set() };
 const immer = (wert) => () => wert;
 
-test('Rangfolge: krank schlägt alles', () => {
-  const t = naechsteTaetigkeit({ ...satt, krank: true, nacht: true, durst: 5, hunger: 5 });
+test('Rangfolge: krank schlägt alles, wenn es nichts zu fressen oder trinken gibt', () => {
+  const t = naechsteTaetigkeit({ ...satt, krank: true, nacht: true, durst: 5, hunger: 5, napf: 0, wasser: 0 });
   assert.equal(t.art, 'liegen');
   assert.equal(t.blase, 'krank');
+  assert.equal(naechsteTaetigkeit({ ...satt, krank: true }).art, 'liegen');
+});
+
+/* Vorher lag eine kranke Katze nur herum und rührte den vollen Napf nicht an –
+   die Selbstheilung (zwölf Stunden gut versorgt) konnte so nie greifen. */
+test('krank: sie trinkt und frisst trotzdem, wenn sie muss und etwas da ist', () => {
+  const durstig = naechsteTaetigkeit({ ...satt, krank: true, durst: 10, wasser: 50 });
+  assert.equal(durstig.art, 'trinken');
+  assert.equal(durstig.blase, 'krank');
+  const hungrig = naechsteTaetigkeit({ ...satt, krank: true, hunger: 10, napf: 30 });
+  assert.equal(hungrig.art, 'fressen');
+  assert.equal(hungrig.blase, 'krank');
+});
+
+/* Selbstversorgung: Fressen und Trinken auch ohne offenes Zimmer. */
+test('selbstVersorgung: Durst vor Hunger, nur wenn nötig und etwas da ist', () => {
+  assert.equal(selbstVersorgung({ ...satt }), null);
+  assert.equal(selbstVersorgung({ ...satt, durst: 10, hunger: 10 }), 'trinken');
+  assert.equal(selbstVersorgung({ ...satt, hunger: 10 }), 'fressen');
+  assert.equal(selbstVersorgung({ ...satt, hunger: 10, napf: 0 }), null);
+  assert.equal(selbstVersorgung({ ...satt, durst: 10, wasser: 0 }), null);
+  assert.equal(selbstVersorgung({ ...satt, durst: 10, wasser: 0, moebel: new Set(['trinkbrunnen']) }), 'trinken');
+  // leere Schale, aber Hunger und Futter: dann eben fressen
+  assert.equal(selbstVersorgung({ ...satt, durst: 10, wasser: 0, hunger: 10 }), 'fressen');
+  // krank und nachts gilt es genauso – Hunger kennt keine Uhrzeit
+  assert.equal(selbstVersorgung({ ...satt, hunger: 10, krank: true, nacht: true }), 'fressen');
 });
 
 test('Rangfolge: nachts schläft sie, in der Höhle, wenn es eine gibt', () => {

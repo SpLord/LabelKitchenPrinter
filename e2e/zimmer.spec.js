@@ -98,9 +98,10 @@ test('Küchenkatze: auf dem Tablet gibt es die freie Lücke unter „Fleisch“,
 });
 
 test('Küchenkatze: Durst steht als Denkblase über ihr', async ({ page }) => {
-  await oeffnen(page, '/', { cat_thirst: 20 });
+  // Leere Schale – mit Wasser trinkt sie seit 2.15.0 sofort von selbst
+  await oeffnen(page, '/', { cat_thirst: 20, zimmer_wasser: 0 });
   await expect(page.locator('.kuechen-katze .kuechen-katze-blase')).toBeVisible();
-  await expect(page.locator('.kuechen-katze')).toHaveAttribute('aria-label', /hat Durst/);
+  await expect(page.locator('.kuechen-katze')).toHaveAttribute('aria-label', /Wasser leer/);
 });
 
 test('die Küche druckt wie immer', async ({ page }) => {
@@ -110,8 +111,8 @@ test('die Küche druckt wie immer', async ({ page }) => {
 });
 
 test('die Karte zeigt, was ihr fehlt', async ({ page }) => {
-  await oeffnen(page, '/', { cat_thirst: 20 });
-  await expect(page.locator('.kuechen-karte')).toContainText('hat Durst');
+  await oeffnen(page, '/', { cat_thirst: 20, zimmer_wasser: 0 });
+  await expect(page.locator('.kuechen-karte')).toContainText('Wasser leer');
   await expect(page.locator('.kuechen-karte-punkt')).toBeVisible();
 });
 
@@ -600,6 +601,28 @@ test('Küchenkatze: bei halbleerer Schale bietet sie auch Wasser an', async ({ p
   await page.getByRole('group', { name: /was tun/ }).getByRole('button', { name: 'Wasser' }).dispatchEvent('click');
   await expect(page.locator('.kuechen-katze-spruch')).toContainText('Frisches Wasser');
   expect(await page.evaluate(() => localStorage.getItem('zimmer_wasser'))).toBe('100');
+});
+
+/* 2.15.0: vorher frass und trank sie nur bei offenem Zimmer */
+test('Hauptseite: hungrig und durstig versorgt sie sich ohne Zimmer aus Napf und Schale', async ({ page }) => {
+  await page.clock.install();
+  await oeffnen(page, '/', { cat_hunger: 20, cat_thirst: 20, zimmer_napf: 50, zimmer_wasser: 100 });
+  const wert = (k) => page.evaluate((key) => Number(localStorage.getItem(key)), k);
+  // Durst geht vor; spätestens im nächsten Minutentakt frisst sie auch
+  await expect.poll(() => wert('cat_thirst')).toBeGreaterThan(45);
+  expect(await wert('zimmer_wasser')).toBe(75);
+  await page.clock.runFor(61_000);
+  await expect.poll(() => wert('cat_hunger')).toBeGreaterThan(45);
+  expect(await wert('zimmer_napf')).toBe(15);
+});
+
+test('Küchenkatze: kranke Katze bekommt Medizin direkt im Menü', async ({ page }) => {
+  await oeffnen(page, '/', { cat_coinCount: 100, cat_krank: '1', cat_hunger: 60, cat_thirst: 60 });
+  await page.locator('.kuechen-katze').dispatchEvent('click');
+  await page.getByRole('group', { name: /was tun/ }).getByRole('button', { name: /Medizin/ }).dispatchEvent('click');
+  await expect(page.locator('.kuechen-katze-spruch')).toContainText('schon besser');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('cat_krank'))).toBe('0');
+  await expect(page.locator('.kuechen-karte')).toContainText('60');
 });
 
 /* ── 2.6.0: Etiketten-Münzen und Tagesaufgaben ────────────────────────── */

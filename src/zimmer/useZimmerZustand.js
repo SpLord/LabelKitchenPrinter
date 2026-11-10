@@ -7,7 +7,7 @@ import { MEDIZIN_PREIS, bedarf, schlaeft } from '../cat/tamagotchi.js';
 import { FREUNDSCHAFT_FUETTERN, tagesSchluessel } from '../cat/wachstum.js';
 import { einrichtung } from './einrichtung.js';
 import { KLO, faellig, gang, haeufchenWeg, kloLeeren, lesen as kloLesen, nachholen } from './klo.js';
-import { wirkung } from './verhalten.js';
+import { selbstVersorgung, wirkung } from './verhalten.js';
 import { STANDARD_NAME, putzeName } from './katzenname.js';
 import { abholen, geschenkDa, pflegeLesen, pflegen, selbstheilung } from './geschenk.js';
 import { freigeschaltet, freundschaftHeute, grenzeLesen, neuFreigeschaltet } from './herzen.js';
@@ -337,6 +337,22 @@ export default function useZimmerZustand() {
   const anwendenRef = useRef(anwenden);
   anwendenRef.current = anwenden;
 
+  /*
+    Fressen und Trinken auch bei geschlossenem Zimmer. Vorher bewegte nur die
+    Zimmerkatze Hunger und Durst: wer auf der Hauptseite fütterte, füllte den
+    Napf, aber die Katze blieb hungrig, bis jemand das Zimmer öffnete. Ist das
+    Zimmer offen, macht das weiter die Zimmerkatze mit Weg und Animation –
+    sonst frässe sie doppelt.
+  */
+  const raumAktivRef = useRef(false);
+  useEffect(() => {
+    if (raumAktivRef.current) return;
+    const art = selbstVersorgung(lageRef.current);
+    if (!art) return;
+    anwendenRef.current(art);
+    window.dispatchEvent(new CustomEvent('katze-versorgt', { detail: { art } }));
+  }, [jetzt]);
+
   /* Futter in den Napf – kostet Münzen, nie über voll hinaus. */
   // extra (2.14.0): Besonderes wirkt sofort – Milch löscht Durst, Fisch macht froh
   const napfFuellen = useCallback((menge, preis, extra = {}) => {
@@ -458,5 +474,6 @@ export default function useZimmerZustand() {
     putzen,
     lageRef,
     anwendenRef,
+    raumAktivRef,
   };
 }

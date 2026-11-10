@@ -64,6 +64,21 @@ const gewichtet = (liste, zufall) => {
 };
 
 /*
+  Muss sie gerade trinken oder fressen, und ist etwas da? Durst geht vor.
+  Liefert 'trinken', 'fressen' oder null. Gilt unabhängig von Krankheit und
+  Uhrzeit – useZimmerZustand nutzt das, damit sie auch bei geschlossenem
+  Zimmer aus Napf und Schale versorgt wird.
+*/
+export function selbstVersorgung(lage) {
+  const { hunger = 100, durst = 100, napf = 0 } = lage;
+  const moebel = lage.moebel ?? new Set();
+  const wasserDa = moebel.has('trinkbrunnen') || (lage.wasser ?? 100) > 0;
+  if (durst < SCHWELLE && wasserDa) return 'trinken';
+  if (hunger < SCHWELLE && napf > 0) return 'fressen';
+  return null;
+}
+
+/*
   lage: { hunger, durst, krank, nacht, napf, mussMal, kloPlatz, moebel: Set<string> }
   mussMal: ein Gang ist fällig (klo.js); kloPlatz: es steht ein Klo und es
   ist nicht voll.
@@ -74,7 +89,13 @@ export function naechsteTaetigkeit(lage, zufall = Math.random) {
   const { hunger = 100, durst = 100, krank = false, nacht = false, napf = 0 } = lage;
   const moebel = lage.moebel ?? new Set();
 
-  if (krank) return { art: 'liegen', ort: ORTE.liegen, dauer: 20_000, blase: 'krank' };
+  if (krank) {
+    // Auch krank trinkt und frisst sie, sonst kann sie nie von selbst gesund werden
+    const muss = selbstVersorgung(lage);
+    if (muss === 'trinken') return { art: 'trinken', ort: ORTE.wasser, dauer: 6_000, blase: 'krank' };
+    if (muss === 'fressen') return { art: 'fressen', ort: ORTE.napf, dauer: 7_000, blase: 'krank' };
+    return { art: 'liegen', ort: ORTE.liegen, dauer: 20_000, blase: 'krank' };
+  }
   if (nacht) {
     return { art: 'schlafen', ort: moebel.has('kuschelhoehle') ? ORTE.hoehle : ORTE.liegen, dauer: 60_000, blase: null };
   }

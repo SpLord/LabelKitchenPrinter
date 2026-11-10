@@ -348,6 +348,12 @@ function Blatt({ bereich, zustand, onZu, onSpiel, onGekauft, onAngezogen, onLohn
 /* ── Das Zimmer ──────────────────────────────────────────────────────────── */
 export default function Zimmer({ zustand, onZu }) {
   const katze = useKatzeImZimmer(zustand.lageRef, zustand.anwendenRef);
+  // Solange das Zimmer offen ist, frisst und trinkt sie hier – mit Weg zum Napf
+  const { raumAktivRef } = zustand;
+  useEffect(() => {
+    raumAktivRef.current = true;
+    return () => { raumAktivRef.current = false; };
+  }, [raumAktivRef]);
   const [bereich, setBereich] = useState(null);
   const [herzchen, setHerzchen] = useState(0);
   const [spiel, setSpiel] = useState(null);       // 'feder' | 'leckerli' | null
