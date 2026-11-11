@@ -769,13 +769,29 @@ test('Seifenblasen: antippen lässt sie platzen, Fertig meldet es', async ({ pag
   await expect(page.locator('.zimmer-ergebnis')).toContainText('geplatzt');
 });
 
+/*
+  Welches Kissen hat sie gezeigt? Es leuchtet nur rund eine halbe Sekunde –
+  unter Last verpasste der Test das Fenster (CI, 11.11.2026). Deshalb schreibt
+  ein Beobachter jedes Aufleuchten mit, schon bevor das Spiel startet.
+*/
+const kissenMitschreiben = (page) => page.evaluate(() => {
+  window.gezeigteKissen = [];
+  new MutationObserver(() => {
+    const k = document.querySelector('[data-kissen]:has(.leuchtet)')?.dataset.kissen;
+    if (k !== undefined && window.gezeigteKissen.at(-1) !== k) window.gezeigteKissen.push(k);
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+});
+const erstesKissen = async (page) => {
+  await expect.poll(() => page.evaluate(() => window.gezeigteKissen.length)).toBeGreaterThan(0);
+  return page.evaluate(() => window.gezeigteKissen[0]);
+};
+
 test('Nachmachen: sie zeigt ein Kissen, richtig nachgemacht bringt Münzen', async ({ page }) => {
   await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await kissenMitschreiben(page);
   await page.locator('.zimmer-karte', { hasText: 'Nachmachen' }).locator('.zimmer-preis').click();
-  // Welches Kissen leuchtet, während sie vorzeigt?
-  const an = page.locator('[data-kissen]:has(.leuchtet)');
-  await expect(an).toHaveCount(1);
-  const k = await an.getAttribute('data-kissen');
+  // Welches Kissen hat geleuchtet, während sie vorzeigte?
+  const k = await erstesKissen(page);
   await expect(page.locator('[data-nachmachen-phase="nachmachen"]')).toBeVisible();
   await page.locator(`[data-kissen="${k}"]`).dispatchEvent('pointerdown');
   await expect(page.locator('.zimmer-spiel-hud')).toContainText('Runde 2');
@@ -788,10 +804,9 @@ test('Nachmachen: sie zeigt ein Kissen, richtig nachgemacht bringt Münzen', asy
 
 test('Nachmachen: falsches Kissen beendet das Spiel ohne Münzen', async ({ page }) => {
   await spielenOeffnen(page, { zimmer_geschenk: schichtTag(0) });
+  await kissenMitschreiben(page);
   await page.locator('.zimmer-karte', { hasText: 'Nachmachen' }).locator('.zimmer-preis').click();
-  const an = page.locator('[data-kissen]:has(.leuchtet)');
-  await expect(an).toHaveCount(1);
-  const k = Number(await an.getAttribute('data-kissen'));
+  const k = Number(await erstesKissen(page));
   await expect(page.locator('[data-nachmachen-phase="nachmachen"]')).toBeVisible();
   await page.locator(`[data-kissen="${(k + 1) % 4}"]`).dispatchEvent('pointerdown');
   await expect(page.locator('.zimmer-ergebnis')).toContainText('war zu schnell');
