@@ -1,4 +1,4 @@
-import { schichtSchluessel } from '../print/schicht.js';
+import { schichtDatum, schichtSchluessel } from '../print/schicht.js';
 
 /*
   Tägliches Geschenk und Selbstheilung (Design 2026-10-06, Etappe 3).
@@ -43,8 +43,13 @@ export const geschenkDa = (abgeholt, jetzt = new Date(), zweites = false) => {
   return zweites && anzahl < 2 && jetzt.getHours() >= MITTAG;
 };
 
-/* Schlüssel des Schichttags davor. */
-const vortagSchluessel = (jetzt) => schichtSchluessel(new Date(jetzt.getTime() - 24 * 3_600_000));
+/* Schlüssel des Schichttags davor – über den Kalender, nicht minus 24 Stunden
+   (an den Tagen der Zeitumstellung hat ein Tag 23 oder 25 Stunden). */
+const vortagSchluessel = (jetzt) => {
+  const d = schichtDatum(jetzt);
+  d.setDate(d.getDate() - 1);
+  return schichtSchluessel(d);
+};
 
 /* Pflegepunkte des Vortags – egal ob heute schon gepflegt wurde. */
 const pflegeVom = (pflege, tag) => {

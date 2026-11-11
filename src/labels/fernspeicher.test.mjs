@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PFAD, ablegen, holen } from './fernspeicher.js';
+import { PFAD, ablegen, holen, startAbgleich } from './fernspeicher.js';
 import { buildBackup } from './backup.js';
 import { resetGroups } from './store.js';
 
@@ -63,4 +63,27 @@ test('holen: bricht die Verbindung beim Lesen des Inhalts ab, ist das ein Fehler
   const fetcher = async () => ({ ok: true, status: 200, text: async () => { throw new TypeError('network error'); } });
   const r = await holen(fetcher);
   assert.equal(r.zustand, 'fehler');
+});
+
+// ── Abgleich beim Start (2.15.1) ─────────────────────────────────────────────
+// Vorher gewann beim Start immer der Server: wer offline Etiketten änderte,
+// verlor sie beim nächsten Neuladen still.
+
+test('startAbgleich: ohne offene Änderungen gewinnt der Server', () => {
+  assert.equal(startAbgleich({ zustand: 'gefunden' }, { ungesichert: false, geaendert: false }), 'uebernehmen');
+});
+
+test('startAbgleich: offline Geändertes wird hochgeladen statt überschrieben', () => {
+  assert.equal(startAbgleich({ zustand: 'gefunden' }, { ungesichert: true, geaendert: false }), 'hochladen');
+  assert.equal(startAbgleich({ zustand: 'leer' }, { ungesichert: true, geaendert: false }), 'hochladen');
+});
+
+test('startAbgleich: während des Abgleichs bearbeitet – die Bearbeitung bleibt', () => {
+  assert.equal(startAbgleich({ zustand: 'gefunden' }, { ungesichert: false, geaendert: true }), 'behalten');
+});
+
+test('startAbgleich: leerer Server bekommt den lokalen Stand, Fehler lässt alles lokal', () => {
+  assert.equal(startAbgleich({ zustand: 'leer' }, { ungesichert: false, geaendert: false }), 'hochladen');
+  assert.equal(startAbgleich({ zustand: 'fehler' }, { ungesichert: true, geaendert: false }), 'lokal');
+  assert.equal(startAbgleich({ zustand: 'fehler' }, { ungesichert: false, geaendert: false }), 'lokal');
 });

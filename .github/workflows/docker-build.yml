@@ -165,7 +165,16 @@ jobs:
           # Die Startseite darf nicht ungefragt aus dem Zwischenspeicher kommen
           curl -sI localhost:8081/ | grep -qi '^cache-control: no-cache' || { echo "Startseite ohne no-cache"; exit 1; }
           # Der Etikettenspeicher läuft unverändert
-          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8081/daten/etiketten.json)" = 204
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          test "$(code localhost:8081/daten/etiketten.json)" = 204
+          # Ablegen und Lesen der einen Datei geht …
+          test "$(code -X PUT -H 'Content-Type: application/json' --data '{"probe":1}' localhost:8081/daten/etiketten.json)" = 201
+          curl -fsS localhost:8081/daten/etiketten.json | grep -q '"probe"'
+          # … alles andere nicht (2.15.1: vorher jeder Pfad, auch DELETE)
+          test "$(code -X DELETE localhost:8081/daten/etiketten.json)" = 403
+          test "$(code -X PUT --data '<script>x</script>' localhost:8081/daten/boese.html)" = 404
+          test "$(code localhost:8081/daten/boese.html)" = 404
+          test "$(code localhost:8081/daten/.tmp/)" = 404
           echo "Rauchtest bestanden"
 
       - name: Rauchtest – Logs bei Fehlschlag

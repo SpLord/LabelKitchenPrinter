@@ -95,3 +95,29 @@ test('kaputte Serverdaten werfen die App nicht um', async ({ page }) => {
   await page.click('.edit-toggle');
   await expect(page.locator('.editor-speicher.nurLokal')).toBeVisible();
 });
+
+/* 2.15.1: vorher gewann beim nächsten Start der Server – die offline
+   angelegten Etiketten waren dann still weg. */
+test('offline Geändertes geht nicht verloren, wenn der Server zurück ist', async ({ page }) => {
+  await serverWeg(page);
+  await grundaufbau(page);
+  await page.goto('/');
+  await page.waitForSelector('.status-indicator .online');
+  await page.click('.edit-toggle');
+  const gruppe = page.locator('.editor-group').first();
+  await gruppe.getByPlaceholder('Neues Etikett…').fill('Offlinewurst');
+  await gruppe.getByRole('button', { name: /Hinzufügen/ }).click();
+  await expect(page.locator('.editor-speicher.nurLokal')).toBeVisible();
+
+  // Server ist wieder da – mit dem alten Stand von vorher
+  await page.unroute('**/daten/etiketten.json');
+  const ablage = serverMit(page, liste([
+    { id: 'x', name: 'Alt', icon: '🌐', entries: [{ name: 'Altwurst', tage: null }] },
+  ]));
+  await page.reload();
+  await page.waitForSelector('.status-indicator .online');
+  await expect(page.getByRole('button', { name: /^Offlinewurst/ })).toBeVisible();
+  await expect.poll(() => ablage.puts).toBe(1);
+  expect(ablage.wert).toContain('Offlinewurst');
+  expect(await page.evaluate(() => localStorage.getItem('etikett_ungesichert'))).toBeNull();
+});

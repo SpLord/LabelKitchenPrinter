@@ -117,3 +117,14 @@ test('alter Speicherstand (nur Tag als Text) zählt als ein abgeholtes Geschenk'
   assert.equal(geschenkDa('2026-10-06', TAG(6, 15), true), true);
   assert.equal(geschenkDa('2026-10-06', TAG(6, 15), false), false);
 });
+
+/* 2.15.1: "Vortag" war jetzt minus 24 Stunden. Am Morgen der Umstellung auf
+   Sommerzeit hat der Tag nur 23 Stunden – zwischen 5 und 6 Uhr landete man
+   so vor 5 Uhr des Vortags, also zwei Schichttage zurück, und der
+   Pflegebonus fiel weg. */
+test('Geschenk: Pflegebonus vom Vortag auch am Morgen der Sommerzeit-Umstellung', () => {
+  const vortag = { tag: '2026-03-28', punkte: 20 };
+  const jetzt = new Date(2026, 2, 29, 5, 30);   // 29.03.2026, 05:30 Sommerzeit
+  const r = abholen({ abgeholt: null, pflege: vortag, herzen: 0 }, jetzt);
+  assert.equal(r.muenzen, GESCHENK.grund + 20);
+});

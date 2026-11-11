@@ -76,3 +76,21 @@ export const ablegen = async (groups, fetcher = mitZeitlimit) => {
     return { ok: false, grund: err?.name === 'AbortError' ? 'Zeitüberschreitung' : 'nicht erreichbar' };
   }
 };
+
+/*
+  Was beim Start mit der Antwort des Servers geschieht.
+
+  ungesichert: eine Änderung auf diesem Gerät hat den Server nie erreicht
+  (Netz weg beim Speichern). geaendert: während des Abgleichs wurde schon
+  bearbeitet. In beiden Fällen ist der lokale Stand der neuere – vorher gewann
+  trotzdem der Server, und die Änderung war beim Neuladen still weg.
+
+  'uebernehmen' Serverstand übernehmen · 'hochladen' lokalen Stand ablegen ·
+  'behalten' nichts tun (die Bearbeitung legt selbst ab) · 'lokal' Server weg
+*/
+export const startAbgleich = (antwort, { ungesichert = false, geaendert = false } = {}) => {
+  if (antwort?.zustand !== 'gefunden' && antwort?.zustand !== 'leer') return 'lokal';
+  if (geaendert) return 'behalten';
+  if (ungesichert || antwort.zustand === 'leer') return 'hochladen';
+  return 'uebernehmen';
+};
